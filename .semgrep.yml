@@ -1,0 +1,237 @@
+# Semgrep configuration for Pete/Campus project
+# Docs: https://semgrep.dev/docs
+
+rules:
+  # --------- Python rules ---------------------------------------------------------------------------------------------------------------------------------------
+
+  # Hardcoded secrets in Python
+  - id: python-hardcoded-secret
+    patterns:
+      - pattern: |
+          $VAR = "..."
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i).*(?:api_key|apikey|secret|password|token|jwt_secret).*
+      - pattern-not: |
+          $VAR = os.environ.get(...)
+      - pattern-not: |
+          $VAR = os.getenv(...)
+    message: "Potential hardcoded secret in Python. Use environment variables instead."
+    languages: [python]
+    severity: ERROR
+
+  # Python eval/exec usage
+  - id: python-eval-exec
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+    message: "Avoid eval/exec with user input - leads to code injection."
+    languages: [python]
+    severity: WARNING
+
+  # Python pickle deserialization
+  - id: python-pickle-unsafe
+    patterns:
+      - pattern-either:
+          - pattern: pickle.load(...)
+          - pattern: pickle.loads(...)
+          - pattern: joblib.load(...)
+    message: "Unsafe deserialization. Avoid loading untrusted data with pickle/joblib."
+    languages: [python]
+    severity: WARNING
+
+  # Python SQL injection
+  - id: python-sql-injection
+    pattern-either:
+      - pattern: |
+          cursor.execute(f"...{$VAR}...")
+      - pattern: |
+          cursor.execute("..." + $VAR + "...")
+      - pattern: |
+          cursor.execute("...".format($VAR))
+      - pattern: |
+          cursor.execute(f'...{$VAR}...')
+    message: "Potential SQL injection. Use parameterized queries instead."
+    languages: [python]
+    severity: ERROR
+
+  # Python subprocess shell injection
+  - id: python-subprocess-shell
+    pattern-either:
+      - pattern: subprocess.call($CMD, shell=True)
+      - pattern: subprocess.Popen($CMD, shell=True)
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+    message: "Shell=True leads to command injection if input is not sanitized."
+    languages: [python]
+    severity: WARNING
+
+  # Python debug print left in
+  - id: python-debug-print
+    patterns:
+      - pattern: print(...)
+      - pattern-not-inside: |
+          if __name__ == "__main__":
+            ...
+    message: "Debug print left in production code."
+    languages: [python]
+    severity: INFO
+
+  # Python request without timeout
+  - id: python-request-no-timeout
+    pattern-either:
+      - pattern: requests.get($URL)
+      - pattern: requests.post($URL)
+      - pattern: requests.put($URL)
+      - pattern: requests.delete($URL)
+    message: "requests call without timeout could hang indefinitely. Add timeout= parameter."
+    languages: [python]
+    severity: WARNING
+
+  # --------- Dart/Flutter rules ------------------------------------------------------------------------------------------------------------------------------
+
+  # Hardcoded JWT secret in Dart
+  - id: dart-hardcoded-secret
+    patterns:
+      - pattern-either:
+          - pattern: |
+              final $SECRET = "...";
+          - pattern: |
+              const $SECRET = "...";
+          - pattern: |
+              String $SECRET = "...";
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: (?i).*(?:api_key|apikey|secret|password|token|jwt).*
+      - pattern-not: |
+          $VAR = const String.fromEnvironment(...)
+      - pattern-not: |
+          $VAR = Platform.environment(...)
+    message: "Hardcoded secret in Dart/Flutter. Use --dart-define or Platform.environment."
+    languages: [dart]
+    severity: ERROR
+
+  # Dart insecure HTTP
+  - id: dart-insecure-http
+    patterns:
+      - pattern-either:
+          - pattern-regex: 'http://[a-zA-Z0-9]'
+          - pattern: |
+              Uri.parse("http://...")
+    message: "Insecure HTTP connection. Use HTTPS in production."
+    languages: [dart]
+    severity: WARNING
+
+  # Dart debugPrint left in
+  - id: dart-debug-print
+    pattern-either:
+      - pattern: debugPrint(...)
+      - pattern: print(...)
+    message: "Debug print left in production code."
+    languages: [dart]
+    severity: INFO
+
+  # --------- Go rules ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  # Hardcoded secret in Go
+  - id: go-hardcoded-secret-fallback
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if $VAR == "" { $VAR = "..."; }
+          - pattern: |
+              if $VAR == "" { $VAR = "..." }
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i).*(?:dsn|url|secret|password|token|key).*
+    message: "Hardcoded fallback secret in Go. Remove the fallback and require env var."
+    languages: [go]
+    severity: ERROR
+
+  # Go SQL injection
+  - id: go-sql-injection
+    pattern-either:
+      - pattern: |
+          db.Query(fmt.Sprintf(...))
+      - pattern: |
+          db.Exec(fmt.Sprintf(...))
+      - pattern: |
+          db.QueryRow(fmt.Sprintf(...))
+    message: "Potential SQL injection via fmt.Sprintf in query. Use parameterized queries ($1, $2)."
+    languages: [go]
+    severity: ERROR
+
+  # Go print to stderr/log
+  - id: go-debug-log
+    pattern: fmt.Println(...)
+    message: "fmt.Println in production code. Use structured logging."
+    languages: [go]
+    severity: INFO
+
+  # Go hardcoded JWT secret
+  - id: go-hardcoded-jwt-secret
+    pattern-regex: >-
+      (?i)(?:jwt[_-]?(?:secret|key|signing)|secret[_-]?key)\s*[=:]\s*["'][a-zA-Z0-9_\-]{8,}["']
+    message: "Hardcoded JWT secret. Use environment variable."
+    languages: [go]
+    severity: ERROR
+
+  # --------- JavaScript/TypeScript rules ------------------------------------------------------------------------------------------
+
+  # JS hardcoded secret
+  - id: js-hardcoded-secret
+    patterns:
+      - pattern-either:
+          - pattern: |
+              const $VAR = "...";
+          - pattern: |
+              let $VAR = "...";
+          - pattern: |
+              var $VAR = "...";
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i).*(?:api_key|apikey|secret|password|token|jwt).*
+      - pattern-not: |
+          $VAR = import.meta.env
+      - pattern-not: |
+          $VAR = process.env
+    message: "Hardcoded secret in JavaScript. Use process.env or import.meta.env."
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # JS innerHTML XSS risk
+  - id: js-innerhtml-xss
+    pattern-either:
+      - pattern: element.innerHTML = $VAR
+      - pattern: element.innerHTML += $VAR
+      - pattern: element.outerHTML = $VAR
+    message: "Potential XSS via innerHTML. Use textContent or sanitize input."
+    languages: [javascript, typescript]
+    severity: WARNING
+
+  # JS eval
+  - id: js-eval
+    pattern: eval(...)
+    message: "eval leads to code injection."
+    languages: [javascript, typescript]
+    severity: ERROR
+
+  # --------- General / config ------------------------------------------------------------------------------------------------------------------------------
+
+  # Hardcoded IP addresses in configs
+  - id: hardcoded-ip
+    patterns:
+      - pattern: '$IP = "..."'
+      - metavariable-regex:
+          metavariable: $IP
+          regex: \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}
+    message: "Hardcoded IP address. Use environment variable or config."
+    languages: [python, go, javascript, typescript, dart]
+    severity: INFO
+
+  # Hardcoded port
+  - id: hardcoded-port
+    pattern-regex: ':[0-9]{4,5}'
+    message: "Hardcoded port number. Consider using environment variable."
+    languages: [python, go, javascript, typescript]
+    severity: INFO

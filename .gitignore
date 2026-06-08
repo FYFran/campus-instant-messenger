@@ -1,0 +1,37 @@
+# Secrets
+.env
+*.key
+*.pem
+*.cert
+pet_config.json
+
+# Gitleaks binary
+.gitleaks/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Go
+vendor/
+campus_go/campus-app
+
+# Flutter
+build/
+.cocoapods/
+.metadata
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Logs
+*.log
+semgrep_logs/

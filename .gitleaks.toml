@@ -1,0 +1,207 @@
+﻿# Gitleaks configuration for Pete/Campus project
+# Docs: https://github.com/gitleaks/gitleaks
+
+title = "Pete Project Secret Scanner"
+
+# Allowlist: paths to skip scanning
+# Note: In TOML '''...''' literal strings, no escaping occurs.
+# On Windows file paths use backslash, so [/\\] matches both / and \.
+[allowlist]
+paths = [
+    '''\.git[/\\]''',
+    '''\.gitleaks[/\\]''',
+    '''node_modules[/\\]''',
+    '''vendor[/\\]''',
+    '''\.venv[/\\]''',
+    '''__pycache__[/\\]''',
+    '''\.pytest_cache[/\\]''',
+    '''build[/\\]''',
+    '''\.dart_tool[/\\]''',
+    '''\.flutter-plugins[/\\]''',
+    '''\.flutter_plugins''',
+    '''\.packages''',
+    '''pubspec\.lock''',
+    '''poetry\.lock''',
+    '''Cargo\.lock''',
+    '''kernel_blob\.bin''',
+    '''\.cache\.dill''',
+    '''\.track\.dill''',
+    '''\.semgrep_logs[/\\]''',
+    '''\.claude[/\\]backups[/\\]''',
+    '''\.claude[/\\]hooks[/\\]''',
+    '''\.claude[/\\]skills[/\\]''',
+    '''flutter_ohos[/\\]''',
+    '''hooks_runner''',
+    '''target[/\\]''',
+    '''headroom[/\\]''',
+    '''\.vscode[/\\]''',
+    '''\.env\.example''',
+    '''main\.dart\.js''',
+    '''\.dill''',
+    '''\.bin''',
+    '''pet_config\.json''',
+    '''wechat_pete\.log''',
+    '''\.log''',
+    '''superdesign-mcp-claude-code[/\\]''',
+    '''audit[/\\]''',
+]
+
+# Generic high-entropy string detection
+[[rules]]
+id = "high-entropy-base64"
+description = "High-entropy Base64 string (potential secret)"
+regex = '''(?i)(?:key|secret|password|token|auth|credential|api[_-]?key|access[_-]?key|secret[_-]?key|bearer|jwt|session|private[_-]?key)(?:\s*[=:]\s*|\s+)(['"'"])([a-zA-Z0-9+\/=]{20,})\b'''
+entropy = 4.5
+secret_group = 2
+
+[[rules]]
+id = "high-entropy-hex"
+description = "High-entropy hex string (potential secret)"
+regex = '''(?i)(?:key|secret|password|token|auth|credential|api[_-]?key|access[_-]?key|secret[_-]?key|bearer|jwt|session|private[_-]?key)(?:\s*[=:]\s*|\s+)(['"'"])([a-f0-9]{16,})\b'''
+entropy = 3.5
+secret_group = 2
+
+# API key patterns
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(?:api[_-]?key|apikey)(?:\s*[=:]\s*|\s+)(['"'"]?)([a-zA-Z0-9_\-]{16,64})\b'''
+secret_group = 2
+
+# JWT tokens
+[[rules]]
+id = "jwt-token"
+description = "JWT Token"
+regex = '''eyJ[a-zA-Z0-9_\-]{10,}\.eyJ[a-zA-Z0-9_\-]{10,}\.[a-zA-Z0-9_\-]{10,}'''
+tags = ["jwt", "token"]
+
+# AWS keys
+[[rules]]
+id = "aws-access-key"
+description = "AWS Access Key ID"
+regex = '''(?:AKIA|ASIA|AROA|AIDA|AIPA|ANPA|ANVA|APKA)[0-9A-Z]{16}'''
+tags = ["aws", "key"]
+
+[[rules]]
+id = "aws-secret-key"
+description = "AWS Secret Access Key"
+regex = '''(?i)aws[_-]?secret[_-]?access[_-]?key(?:\s*[=:]\s*|\s+)(['"'"]?)([a-zA-Z0-9\/+]{40})\b'''
+secret_group = 2
+tags = ["aws", "secret"]
+
+# GitHub tokens
+[[rules]]
+id = "github-pat"
+description = "GitHub Personal Access Token"
+regex = '''gh[pousr]_[A-Za-z0-9_]{36,}'''
+tags = ["github", "token"]
+
+[[rules]]
+id = "github-oauth"
+description = "GitHub OAuth Access Token"
+regex = '''gho_[A-Za-z0-9_]{36,}'''
+tags = ["github", "token"]
+
+# Generic private keys
+[[rules]]
+id = "private-key"
+description = "Private Key (RSA/EC/ED25519)"
+regex = '''-----BEGIN\s?(RSA|EC|DSA|OPENSSH|PRIVATE)\s?KEY-----'''
+tags = ["key", "private"]
+
+# Slack tokens
+[[rules]]
+id = "slack-token"
+description = "Slack Bot Token"
+regex = '''xox[baprs]-[0-9a-zA-Z]{10,}'''
+tags = ["slack", "token"]
+
+# Discord tokens
+[[rules]]
+id = "discord-token"
+description = "Discord Bot Token"
+regex = '''[MN][A-Za-z\d]{23}\.[A-Za-z\d]{6}\.[A-Za-z\d_\-]{27,}'''
+tags = ["discord", "token"]
+
+# Telegram tokens
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram Bot API Token"
+regex = '''[0-9]{8,10}:[a-zA-Z0-9_\-]{35}'''
+tags = ["telegram", "token"]
+
+# Database connection strings
+[[rules]]
+id = "postgres-url"
+description = "PostgreSQL Connection String"
+regex = '''postgres(?:ql)?:\/\/[a-zA-Z][a-zA-Z0-9_]*:[^@\s]+@'''
+tags = ["database", "postgres"]
+
+[[rules]]
+id = "mysql-url"
+description = "MySQL Connection String"
+regex = '''mysql:\/\/[a-zA-Z][a-zA-Z0-9_]*:[^@\s]+@'''
+tags = ["database", "mysql"]
+
+[[rules]]
+id = "redis-url"
+description = "Redis Connection String"
+regex = '''redis:\/\/[^@\s]+@'''
+tags = ["database", "redis"]
+
+# MongoDB
+[[rules]]
+id = "mongodb-url"
+description = "MongoDB Connection String"
+regex = '''mongodb(?:[\+srv])?:\/\/[a-zA-Z][a-zA-Z0-9_]*:[^@\s]+@'''
+tags = ["database", "mongodb"]
+
+# Generic password in URL (exclude file:// which is not a credential)
+[[rules]]
+id = "password-in-url"
+description = "Password in URL"
+regex = '''(?:https?|ftp|postgres(?:ql)?|mysql|redis|mongodb(?:[\+srv])?):\/\/[^:\s]+:[^@\s]+@'''
+tags = ["url", "password"]
+
+# JWT signing key hardcoded
+[[rules]]
+id = "jwt-secret-hardcoded"
+description = "Hardcoded JWT signing secret"
+regex = '''(?i)jwt[_-]?(?:secret|key|signing)[^=]{0,10}=\s*['"][a-zA-Z0-9_\-]{8,}['"]'''
+tags = ["jwt", "secret"]
+
+# DeepSeek API key
+[[rules]]
+id = "deepseek-api-key"
+description = "DeepSeek API Key"
+regex = '''sk-[a-zA-Z0-9]{20,}'''
+tags = ["deepseek", "api-key"]
+
+# OpenAI API key
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-proj-[a-zA-Z0-9_\-]{20,}'''
+tags = ["openai", "api-key"]
+
+# Google API key
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''AIza[0-9A-Za-z_\-]{35}'''
+tags = ["google", "api-key"]
+
+# Heroku API key
+[[rules]]
+id = "heroku-api-key"
+description = "Heroku API Key"
+regex = '''[hH][eE][rR][oO][kK][uU].*[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}'''
+tags = ["heroku", "api-key"]
+
+# Generic password assignment
+[[rules]]
+id = "password-assignment"
+description = "Password hardcoded in variable"
+regex = '''(?i)(?:password|passwd|pwd)\s*[=:]\s*['"'"'][^'"'"'\s]{6,}['"'"']'''
+tags = ["password"]
+
