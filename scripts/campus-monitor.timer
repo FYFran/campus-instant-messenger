@@ -1,0 +1,11 @@
+[Unit]
+Description=Campus app health monitor — runs every 2 minutes
+Requires=campus-monitor.service
+
+[Timer]
+OnCalendar=*:0/2
+Persistent=true
+RandomizedDelaySec=10
+
+[Install]
+WantedBy=timers.target

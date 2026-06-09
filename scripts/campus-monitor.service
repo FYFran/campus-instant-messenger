@@ -1,0 +1,15 @@
+[Unit]
+Description=Campus app health monitor check
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/campus-monitor.sh
+Environment=HEALTH_URL=http://localhost/api/health
+Environment=NTFY_TOPIC=pete-campus-CHANGEME
+Environment=NTFY_TOKEN=YOUR_NTFY_TOKEN
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

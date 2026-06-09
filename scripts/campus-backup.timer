@@ -1,0 +1,25 @@
+[Unit]
+Description=校园即时通 数据库定时备份
+Documentation=https://github.com/FYFran/campus-app
+RefuseManualStart=no
+RefuseManualStop=no
+
+[Timer]
+# 每小时整点运行
+OnCalendar=hourly
+# 每天凌晨3点（强制 daily 级备份）
+OnCalendar=*-*-* 03:00:00
+# 每周日4点（强制 weekly 级备份）
+OnCalendar=Sun *-*-* 04:00:00
+
+# 防止因前一次运行超时导致错过后续备份
+AccuracySec=1min
+# 系统启动后1分钟内不运行，避免启动风暴
+RandomizedDelaySec=30
+# 若错过计划时间（如关机），立即补跑
+Persistent=true
+# 同一 timer 不并行
+Unit=campus-backup.service
+
+[Install]
+WantedBy=timers.target

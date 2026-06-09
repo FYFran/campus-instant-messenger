@@ -1,0 +1,60 @@
+# Custom rules — loaded with: semgrep --config=.semgrep/
+rules:
+  # ---- Project-specific Python rules for campus app ----
+
+  # Bare except:pass — must log the error
+  - id: campus-bare-except-pass
+    pattern: |
+      except: pass
+    message: >-
+      Bare 'except: pass' swallows all errors. Use
+      'except Exception as e: logger.error(...)' instead.
+    languages: [python]
+    severity: ERROR
+
+  # Dict access without .get() — can cause KeyError
+  - id: campus-dict-bracket-access
+    pattern-either:
+      - pattern: |
+          $REQ["$KEY"]
+      - pattern: |
+          $REQ['$KEY']
+    message: >-
+      Use .get("$KEY") instead of ["$KEY"] to avoid KeyError
+      on missing keys. Pattern: req.get("key") or req.get("key", default).
+    languages: [python]
+    severity: WARNING
+
+  # SELECT * in SQL queries — fetch only needed columns
+  - id: campus-select-star
+    pattern-regex: SELECT\s+\*\s+FROM
+    message: >-
+      SELECT * fetches all columns. Specify only the columns needed
+      for performance and clarity.
+    languages: [python]
+    severity: WARNING
+
+  # Hardcoded password/secret comparison
+  - id: campus-hardcoded-compare
+    pattern-either:
+      - pattern: |
+          $VAR == "..."
+      - pattern: |
+          $VAR == '...'
+    metavariable-regex:
+      metavariable: $VAR
+      regex: (?i).*(?:password|passwd|secret|token|api_key|apikey|jwt).*
+    message: >-
+      Hardcoded secret comparison. Use a constant from environment
+      or config, not inline strings.
+    languages: [python]
+    severity: ERROR
+
+  # http:// URLs — should be https://
+  - id: campus-http-url
+    pattern-regex: 'https?://[a-zA-Z0-9]'
+    message: >-
+      Use HTTPS instead of HTTP. http:// is insecure for production.
+      Exception: localhost/127.0.0.1 only.
+    languages: [python, go, dart, javascript, typescript]
+    severity: WARNING

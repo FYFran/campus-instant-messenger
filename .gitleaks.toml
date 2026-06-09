@@ -1,7 +1,8 @@
 ﻿# Gitleaks configuration for Pete/Campus project
 # Docs: https://github.com/gitleaks/gitleaks
+# Extended with custom patterns for the campus app codebase
 
-title = "Pete Project Secret Scanner"
+title = "Pete Campus Security Scanner"
 
 # Allowlist: paths to skip scanning
 # Note: In TOML '''...''' literal strings, no escaping occurs.
@@ -205,3 +206,39 @@ description = "Password hardcoded in variable"
 regex = '''(?i)(?:password|passwd|pwd)\s*[=:]\s*['"'"'][^'"'"'\s]{6,}['"'"']'''
 tags = ["password"]
 
+# ---- Custom campus app patterns ----
+
+# Aliyun RAM access key (starts with LTAI)
+[[rules]]
+id = "aliyun-access-key"
+description = "Aliyun AccessKey ID"
+regex = '''LTAI[a-zA-Z0-9]{12,}'''
+tags = ["aliyun", "key"]
+
+# Aliyun secret key assignment
+[[rules]]
+id = "aliyun-secret-key"
+description = "Aliyun AccessKey Secret"
+regex = '''(?i)aliyun[_-]?(access[_-]?key|secret)[^=]{0,10}=\s*['"][a-zA-Z0-9]{20,}['"]'''
+tags = ["aliyun", "secret"]
+
+# 64-char hex JWT secret (used by campus Go backend)
+[[rules]]
+id = "jwt-hex-secret-64"
+description = "64-char hex JWT secret"
+regex = '''['"][a-f0-9]{64}['"]'''
+tags = ["jwt", "secret"]
+
+# Internal publish code (PUB-XXXXXX)
+[[rules]]
+id = "publish-code-token"
+description = "Publish code token (PUB- prefix)"
+regex = '''PUB-[A-Z0-9]{6}'''
+tags = ["campus", "publish-code"]
+
+# tzxy-related internal credentials
+[[rules]]
+id = "tzxy-internal-password"
+description = "tzxy-related internal credentials"
+regex = '''(?i)tzxy.*(?:password|secret|token|key)\s*[=:].*'''
+tags = ["campus", "tzxy"]

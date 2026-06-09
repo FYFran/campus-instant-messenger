@@ -1,14 +1,17 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var jwtSecret = func() []byte {
@@ -21,7 +24,16 @@ var jwtSecret = func() []byte {
 
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
+		origin := c.GetHeader("Origin")
+		allowedOrigins := map[string]bool{
+			"capacitor://localhost":  true,
+			"http://localhost":       true,
+			"http://139.196.50.134":  true,
+			"https://139.196.50.134": true,
+		}
+		if allowedOrigins[origin] {
+			c.Header("Access-Control-Allow-Origin", origin)
+		}
 		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type,Authorization")
 		if c.Request.Method == "OPTIONS" {
@@ -51,7 +63,7 @@ func GenerateToken(userID int, role string) (string, error) {
 	return token.SignedString(jwtSecret)
 }
 
-func JWT() gin.HandlerFunc {
+func JWT(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
@@ -73,8 +85,52 @@ func JWT() gin.HandlerFunc {
 			c.AbortWithStatusJSON(401, gin.H{"detail": "Token无效"})
 			return
 		}
+
+		// Verify user is still active
+		var isActive bool
+		err = db.QueryRow(context.Background(),
+			"SELECT COALESCE(is_active,true) FROM users WHERE id=$1", claims.UserID,
+		).Scan(&isActive)
+		if err != nil || !isActive {
+			c.AbortWithStatusJSON(401, gin.H{"detail": "账户已被禁用"})
+			return
+		}
+
 		c.Set("user_id", claims.UserID)
 		c.Set("role", claims.Role)
+		c.Set("token_iat", claims.IssuedAt.Time)
+		c.Next()
+	}
+}
+
+// RateLimit returns a Gin middleware that limits requests per IP.
+// Uses a sliding window: at most `requests` per `window` duration.
+func RateLimit(requests int, window time.Duration) gin.HandlerFunc {
+	var mu sync.Mutex
+	type entry struct {
+		count   int
+		resetAt time.Time
+	}
+	counters := make(map[string]*entry)
+
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		mu.Lock()
+		now := time.Now()
+		e, exists := counters[ip]
+		if !exists || now.After(e.resetAt) {
+			counters[ip] = &entry{count: 1, resetAt: now.Add(window)}
+			mu.Unlock()
+			c.Next()
+			return
+		}
+		e.count++
+		if e.count > requests {
+			mu.Unlock()
+			c.AbortWithStatusJSON(429, gin.H{"detail": "请求过于频繁，请稍后重试"})
+			return
+		}
+		mu.Unlock()
 		c.Next()
 	}
 }

@@ -4,6 +4,9 @@
 *.pem
 *.cert
 pet_config.json
+campus_net_config.json
+campus_app/server/config.json
+*.env
 
 # Gitleaks binary
 .gitleaks/

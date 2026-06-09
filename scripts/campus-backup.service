@@ -1,0 +1,24 @@
+[Unit]
+Description=校园即时通 数据库备份
+Documentation=https://github.com/FYFran/campus-app
+After=postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/app/scripts/backup.sh
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+Environment=PGHOST=localhost
+Environment=PGPORT=5432
+Environment=PGUSER=campus_admin
+Environment=PGDATABASE=campus_app
+Environment=BACKUP_DIR=/app/backups
+# 如需密码: 从 /app/.env 加载
+EnvironmentFile=-/app/.env
+# 防止 OOM — 限制 pg_dump 内存
+MemoryMax=512M
+# 超时 — 大库备份不超过30分钟
+TimeoutStartSec=1800
