@@ -34,6 +34,7 @@ if ($LASTEXITCODE -eq 0) { Write-Output "PASS: flutter analyze 0 errors" }
 else { Write-Error "FAIL: flutter analyze has errors"; exit 1 }
 ```
 
+**Also run dart MCP**: `dart analyze` for additional lint checks, `dart fix --dry-run` for auto-fixable issues.
 **What to check**: Count errors AND warnings. Warnings are acceptable but must be reviewed. 0 errors is mandatory.
 **Score**: 20 if 0 errors, 10 if 0 errors with <5 warnings, 0 if any errors.
 
@@ -91,6 +92,15 @@ semgrep --config=.semgrep\ --error 2>&1
 **What to check**: ERROR-level findings fail the gate. WARNING-level findings are advisory but must be reviewed.
 **Score**: 10 if 0 ERROR-level findings, 5 if WARNING-level only, 0 if any ERROR.
 
+### Check 6b — Nuclei Vulnerability Scan (Weight: 5)
+
+```powershell
+nuclei -u http://139.196.50.134 -severity critical,high,medium 2>&1
+```
+
+**What to check**: Any CRITICAL or HIGH finding blocks deploy. MEDIUM findings are warnings.
+**Score**: 5 if 0 CRITICAL/HIGH, 3 if MEDIUM-only findings, 0 if any CRITICAL/HIGH.
+
 ### Check 7 — Multi-Agent Consensus (Weight: 10)
 
 Run 2+ agents from the `.claude/agents/` directory and compare results:
@@ -132,7 +142,7 @@ Confirm the following are in place:
 ## Quality Score Calculation
 
 ```
-Score = (Check1 × 20 + Check2 × 20 + Check3 × 10 + Check4 × 10 + Check5 × 10 + Check6 × 10 + Check7 × 10 + Check8 × 5 + Check9 × 5) / 100
+Score = (Check1 × 20 + Check2 × 20 + Check3 × 10 + Check4 × 10 + Check5 × 10 + Check6 × 10 + Check6b × 5 + Check7 × 10 + Check8 × 5 + Check9 × 5) / 105
 ```
 
 **Thresholds:**
@@ -157,6 +167,7 @@ Score = (Check1 × 20 + Check2 × 20 + Check3 × 10 + Check4 × 10 + Check5 × 1
 4. Python Syntax: {PASS|FAIL} — {n}/{n} passed — Score: {n}/10
 5. Gitleaks: {PASS|FAIL} — {n} findings — Score: {n}/10
 6. Semgrep: {PASS|FAIL} — {n} ERROR, {n} WARNING — Score: {n}/10
+6b. Nuclei Scan: {PASS|FAIL} — {n} critical, {n} high, {n} medium — Score: {n}/5
 7. Agent Consensus: {PASS|FAIL} — {agents_used} — Score: {n}/10
 8. Fix Verification: {PASS|FAIL} — {details} — Score: {n}/5
 9. Rollback Ready: {PASS|FAIL} — {details} — Score: {n}/5

@@ -113,6 +113,8 @@ Run through ALL 13 categories below. If ANY category fails, the review verdict i
 - [ ] `dispose` calls `super.dispose()`?
 - [ ] Streams/subscriptions cancelled in `dispose`?
 - [ ] No `BuildContext` used across async gaps without checking `mounted`?
+- [ ] `dart analyze` run — 0 errors?
+- [ ] tree-sitter MCP: widget build methods under 100 lines, complexity within limits?
 
 ## Review Outcome Template
 ```

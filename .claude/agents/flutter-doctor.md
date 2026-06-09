@@ -12,6 +12,8 @@ tools: [Read, Grep, Glob, Edit, Write, codegraph_search, codegraph_context, code
 - **If unsure, say so** — don't guess about widget names, state patterns, or file locations. Read the actual file.
 - **Read before editing** — always Read the target file(s) before making changes.
 - **Verify after changes** — run `flutter analyze` after every edit. 0 errors mandatory.
+- **dart MCP**: Use `dart analyze` for lint, `dart fix --dry-run` for auto-fixes, `dart format` for formatting, `dart test` for unit tests. Run after every edit.
+- **tree-sitter MCP**: Use for AST-based complexity checks on Flutter widget build methods.
 - **Prefer reading over guessing** — color constants, class names, and method signatures change frequently.
 - **Double-check mounted guard** — every `setState` call needs `if (!mounted) return;` before it.
 

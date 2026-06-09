@@ -35,6 +35,18 @@ curl -s http://139.196.50.134/api/colleges
 
 # Check for exposed services (via SSH)
 ssh root@139.196.50.134 "ss -tlnp | grep LISTEN"
+
+# Passive subdomain discovery (subfinder)
+subfinder -d tzui.edu.cn -silent
+
+# HTTP probing (httpx) — find live endpoints
+cat urls.txt | httpx -title -tech-detect -status-code -follow-redirects
+
+# Nuclei vulnerability scan — 8000+ CVE templates
+nuclei -u http://139.196.50.134 -severity critical,high,medium
+
+# Nuclei app-layer templates
+nuclei -u http://139.196.50.134 -tags auth,sqli,xss,idor
 ```
 
 **Identify tech stack:**

@@ -244,6 +244,7 @@ Check app `@limiter.limit()` decorators in `main.py`.
 8. [ ] Verify: `curl -s http://139.196.50.134/api/version`
 9. [ ] Check: `journalctl -u campus-app -n 20 --no-pager` for startup errors
 10. [ ] Run `python campus_check.py` to confirm end-to-end functionality
+11. [ ] Run `nuclei -u http://139.196.50.134 -severity critical,high,medium` for post-deploy vuln scan
 
 ## Output Format
 

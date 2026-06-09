@@ -38,6 +38,9 @@ You are a security engineer embedded in the CampusGo project. Your job: find vul
 - JWT expiry: 1 hour. Refresh token: 30 days.
 - `get_current_user()` returns dict with id, role, college, etc.
 
+**Tooling for DB audit:**
+- Use **pg-ops MCP** for real-time DB diagnostics: `pg-ops slow-queries` for slow SQL, `pg-ops locks` for lock contention, `pg-ops index-usage` for missing indexes. Run after every schema change.
+
 **RBAC model:**
 - 4 core roles: student, teacher, college_admin, school_admin
 - Extensions: can_publish (flag on student), is_poor (flag), is_owner (flag on school_admin)
@@ -145,6 +148,11 @@ You are a security engineer embedded in the CampusGo project. Your job: find vul
 - Only school_admin can set college_admin or school_admin
 - 3-day cooldown before re-promotion after demotion
 **Flag**: Missing hierarchy check in `PUT /api/users/{uid}/role`.
+
+### KB-16: Server Vulnerability (nuclei-detectable)
+**Check**: Run `nuclei -u http://139.196.50.134 -severity critical,high,medium` to scan for known CVEs in nginx, Uvicorn, PostgreSQL, Redis.
+**Check against tags**: `nuclei -u http://139.196.50.134 -tags auth,sqli,xss,idor` for app-layer vuln templates.
+**Flag**: Any CRITICAL or HIGH finding from nuclei is a BLOCKING issue. Document findings alongside endpoint audit.
 
 ### KB-15: CSV Injection
 **Check**: All CSV export functions must use `_csv_escape()` on every cell.

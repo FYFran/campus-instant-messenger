@@ -45,6 +45,7 @@ python f:/ClaudeFiles/campus_check.py
 # 5. Security scan
 #   a. Gitleaks: gitleaks detect --source . --no-git
 #   b. Semgrep: semgrep --config=.semgrep\ --error
+#   c. Nuclei quick scan: nuclei -u http://139.196.50.134 -severity critical,high,medium
 cd f:/ClaudeFiles
 ```
 
@@ -129,6 +130,9 @@ curl -s http://139.196.50.134/api/activities `
 
 # 4. Full check (automated)
 python f:/ClaudeFiles/campus_check.py
+
+# 5. Post-deploy vuln scan
+nuclei -u http://139.196.50.134 -severity critical,high,medium
 ```
 
 ## Rollback (if deploy breaks)

@@ -67,6 +67,9 @@ For each CRUD endpoint, test:
 - **JWT role tampering**: decode JWT, change role to school_admin, re-encode with `alg: none`
 - **Refresh token replay**: use same refresh token twice, second should fail
 
+### Phase 6 — Nuclei Vulnerability Scan
+After functional tests, run `nuclei -u http://139.196.50.134 -severity critical,high,medium` to verify no known CVEs on the deployment stack. Also run `nuclei -u http://139.196.50.134 -tags auth,sqli,xss` for app-layer vulnerability templates against the API endpoints.
+
 ### Phase 5 — Response Format Verification
 
 For every endpoint, verify:

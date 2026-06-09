@@ -33,6 +33,10 @@ ssh root@139.196.50.134 "tail -50 /var/log/nginx/error.log"
 
 # Health check
 curl -s http://139.196.50.134/api/health
+
+# DB diagnostics (use pg-ops MCP)
+# pg-ops slow-queries — find slow SQL statements
+# pg-ops locks — detect lock contention and deadlocks
 ```
 If local dev: check `f:/ClaudeFiles/campus_app/server/` logs and console output.
 If local Python service: check `pete_doctor.py` diagnostic output.

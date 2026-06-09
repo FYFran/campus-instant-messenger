@@ -102,6 +102,12 @@ async with conn.transaction():
     row = await conn.fetchrow("SELECT ... FOR UPDATE", actID)
 ```
 
+### pg-ops MCP for DB Diagnostics
+Use `pg-ops slow-queries` to find slow SQL, `pg-ops locks` for deadlock detection, `pg-ops index-usage` for missing indexes. Run after every backend change to verify query performance.
+
+### tree-sitter MCP for AST Analysis
+Use `tree-sitter` MCP for AST-based analysis of Go and Python files — check function complexity, nesting depth, and code structure before review.
+
 ## Auth Patterns
 
 ### Go — JWT Middleware (`middleware/auth.go`)

@@ -91,7 +91,13 @@ pip-audit
 For Dart/Flutter: check pubspec.lock against known advisories
 For Go: `go list -m all` and check against vuln.go.dev
 
-### Step 6 — Report Generation
+### Step 6 — Nuclei Server Scan
+Run `nuclei -u http://139.196.50.134 -severity critical,high,medium` to check for known CVEs in nginx, Uvicorn, PostgreSQL, Redis on the production server. Add results under a new `### Nuclei Scan` section in the report.
+
+### Step 7 — pg-ops DB Audit
+Use `pg-ops slow-queries` to check for slow SQL, `pg-ops locks` for active locks, `pg-ops index-usage` for missing indexes. Run after every schema change or migration.
+
+### Step 8 — Report Generation
 ```
 ## Security Audit Report — {date}
 
@@ -114,6 +120,14 @@ For Go: `go list -m all` and check against vuln.go.dev
 
 ### Dependencies: {PASS|FAIL}
 - {n} known CVEs in direct dependencies
+- {details}
+
+### Nuclei Scan: {PASS|FAIL}
+- {n} CRITICAL, {n} HIGH, {n} MEDIUM findings from server vuln scan
+- {details}
+
+### pg-ops DB Audit: {PASS|FAIL}
+- {n} slow queries, {n} lock contentions, {n} missing indexes
 - {details}
 
 ### Overall Verdict: {PASS / REVIEW NEEDED / BLOCKING}

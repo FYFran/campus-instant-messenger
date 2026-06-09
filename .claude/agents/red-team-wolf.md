@@ -139,10 +139,12 @@ def _csv_escape(val):
 ## Attack Methodology
 
 1. **Recon**: Read the code to find all entry points. Use `codegraph_context` on auth, signup, upload, check-in modules.
-2. **Map defenses**: For each endpoint, note the rate limit, auth guard, ownership check, input validation.
-3. **Find bypass**: Look for edge cases in the defense logic — empty strings, type confusion, race conditions, scope boundary conditions.
-4. **Craft exploit**: Write the exact HTTP request or API call sequence needed to exploit.
-5. **Chain attacks**: Combine 2+ low-severity vulnerabilities into a high-severity exploit chain.
+2. **Server recon**: Run `subfinder -d tzui.edu.cn | httpx -title -tech-detect -status-code` for passive subdomain discovery and HTTP probing. Use `httpx -l urls.txt` to map live endpoints.
+3. **Nuclei vuln scan**: Run `nuclei -u http://139.196.50.134 -severity critical,high,medium` for 8000+ CVE templates. Run `nuclei -u http://139.196.50.134 -tags auth,sqli,xss` for app-layer templates.
+4. **Map defenses**: For each endpoint, note the rate limit, auth guard, ownership check, input validation.
+5. **Find bypass**: Look for edge cases in the defense logic — empty strings, type confusion, race conditions, scope boundary conditions.
+6. **Craft exploit**: Write the exact HTTP request or API call sequence needed to exploit.
+7. **Chain attacks**: Combine 2+ low-severity vulnerabilities into a high-severity exploit chain.
 
 ## Output Format
 
