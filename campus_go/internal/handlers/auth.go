@@ -1,12 +1,17 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"campus-go/internal/middleware"
+	"github.com/alexedwards/argon2id"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -76,14 +81,14 @@ func Login(db *pgxpool.Pool) gin.HandlerFunc {
 		var name, role, pwHash string
 		var canPublish bool
 		err := db.QueryRow(c.Request.Context(),
-			"SELECT id, name, role, password_hash, COALESCE(can_publish,false) FROM users WHERE student_id=$1",
+			"SELECT id, name, role, password_hash, COALESCE(can_publish,0)::boolean FROM users WHERE student_id=$1",
 			req.StudentID,
 		).Scan(&id, &name, &role, &pwHash, &canPublish)
 		if err != nil {
 			c.JSON(401, gin.H{"detail": "学号或密码错误"})
 			return
 		}
-		if bcrypt.CompareHashAndPassword([]byte(pwHash), []byte(req.Password)) != nil {
+		if !verifyPassword(pwHash, req.Password) {
 			c.JSON(401, gin.H{"detail": "学号或密码错误"})
 			return
 		}
@@ -93,8 +98,33 @@ func Login(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(500, gin.H{"detail": "服务器错误"})
 			return
 		}
-		c.JSON(200, gin.H{"token": token, "user": gin.H{"id": id, "name": name, "role": role, "can_publish": canPublish}})
+		// Generate refresh token (64-char hex)
+		rawRefresh := make([]byte, 32)
+		if _, err := rand.Read(rawRefresh); err != nil {
+			log.Printf("rand.Read error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+		refreshToken := hex.EncodeToString(rawRefresh)
+		refreshHash := sha256.Sum256([]byte(refreshToken))
+		_, err = db.Exec(c.Request.Context(),
+			"UPDATE users SET refresh_token_hash=$1, refresh_token_exp=$2 WHERE id=$3",
+			hex.EncodeToString(refreshHash[:]), time.Now().Add(30*24*time.Hour), id)
+		if err != nil {
+			log.Printf("refresh token store error: %v", err)
+			// non-fatal — login still works
+		}
+		c.JSON(200, gin.H{"token": token, "refresh_token": refreshToken, "user": gin.H{"id": id, "name": name, "role": role, "can_publish": canPublish}})
 	}
+}
+
+// verifyPassword checks a password against an Argon2id or bcrypt hash.
+func verifyPassword(hash, password string) bool {
+	if strings.HasPrefix(hash, "$argon2") {
+		ok, err := argon2id.ComparePasswordAndHash(password, hash)
+		return err == nil && ok
+	}
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
 func Register(db *pgxpool.Pool) gin.HandlerFunc {
@@ -106,6 +136,18 @@ func Register(db *pgxpool.Pool) gin.HandlerFunc {
 		}
 		if req.StudentID == "" || req.Name == "" || len(req.Password) < 6 {
 			c.JSON(400, gin.H{"detail": "学号、姓名必填，密码至少6位"})
+			return
+		}
+		if len(req.Password) > 72 {
+			c.JSON(400, gin.H{"detail": "密码不能超过72个字符"})
+			return
+		}
+		if len(req.Name) > 100 || len(req.ClassName) > 200 || len(req.College) > 200 {
+			c.JSON(400, gin.H{"detail": "姓名/班级/学院字段过长"})
+			return
+		}
+		if len(req.Phone) > 30 || len(req.QQ) > 30 {
+			c.JSON(400, gin.H{"detail": "手机号/QQ号字段过长"})
 			return
 		}
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -121,7 +163,7 @@ func Register(db *pgxpool.Pool) gin.HandlerFunc {
 		collegeAdminCode := os.Getenv("REG_COLLEGE_ADMIN_CODE")
 		superCode := os.Getenv("REG_SUPER_CODE")
 		switch {
-		case req.RegCode == teacherCode:
+		case teacherCode != "" && req.RegCode == teacherCode:
 			role = "teacher"
 		case collegeAdminCode != "" && req.RegCode == collegeAdminCode:
 			role = "college_admin"
@@ -158,31 +200,120 @@ func GetMe(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetInt("user_id")
 		var name, studentID, role, college, className, gender, grade, phone, qq string
-		var canPublish, isPoor bool
+		var canPublish, isPoor, showPhone, showQQ, isActive bool
 		var volunteerHours float64
+		var publisherOrgID *int
+		var createdAt time.Time
 		err := db.QueryRow(c.Request.Context(),
 			`SELECT name, student_id, role, COALESCE(college,''), COALESCE(class,''),
 				 COALESCE(gender,''), COALESCE(grade,''), COALESCE(phone,''), COALESCE(qq,''),
-				 COALESCE(can_publish,false), COALESCE(is_poor,false), COALESCE(volunteer_hours,0)
+				 COALESCE(can_publish,0)::boolean, COALESCE(is_poor,0)::boolean, COALESCE(volunteer_hours,0),
+				 COALESCE(show_phone,0)::boolean, COALESCE(show_qq,0)::boolean, publisher_org_id,
+				 created_at, COALESCE(is_active,true)::boolean
 				 FROM users WHERE id=$1`, userID,
-		).Scan(&name, &studentID, &role, &college, &className, &gender, &grade, &phone, &qq, &canPublish, &isPoor, &volunteerHours)
+		).Scan(&name, &studentID, &role, &college, &className, &gender, &grade, &phone, &qq, &canPublish, &isPoor, &volunteerHours,
+			&showPhone, &showQQ, &publisherOrgID, &createdAt, &isActive)
 		if err != nil {
 			log.Printf("GetMe query error: %v", err)
 			c.JSON(500, gin.H{"detail": "查询用户失败"})
 			return
 		}
-		c.JSON(200, gin.H{
+		resp := gin.H{
 			"id": userID, "name": name, "student_id": studentID,
 			"role": role, "college": college, "class_name": className, "class": className,
 			"gender": gender, "grade": grade, "phone": phone, "qq": qq,
 			"can_publish": canPublish, "is_poor": isPoor, "volunteer_hours": volunteerHours,
-		})
+			"show_phone": showPhone, "show_qq": showQQ, "publisher_org_id": publisherOrgID,
+			"created_at": createdAt.Format(time.RFC3339), "is_active": isActive,
+		}
+		// Compute publish_expires_at for student publishers
+		if canPublish && role == "student" {
+			var pubCreatedAt *time.Time
+			var durationDays int
+			err := db.QueryRow(c.Request.Context(),
+				"SELECT created_at, COALESCE(duration_days,30) FROM publish_codes WHERE used_by=$1 AND revoked=false ORDER BY created_at DESC LIMIT 1",
+				userID).Scan(&pubCreatedAt, &durationDays)
+			if err == nil && pubCreatedAt != nil {
+				exp := pubCreatedAt.Add(time.Duration(durationDays) * 24 * time.Hour)
+				resp["publish_expires_at"] = exp.Format(time.RFC3339)
+			}
+		}
+		c.JSON(200, resp)
 	}
 }
 
 func RefreshToken(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(501, gin.H{"detail": "请使用Python后端进行Token刷新，Go后端不支持安全刷新"})
+		var req struct {
+			RefreshToken string `json:"refresh_token"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil || len(req.RefreshToken) < 32 {
+			c.JSON(400, gin.H{"detail": "无效的refresh_token"})
+			return
+		}
+		// SHA256 hash the incoming refresh token
+		hash := sha256.Sum256([]byte(req.RefreshToken))
+		hashStr := hex.EncodeToString(hash[:])
+
+		// Begin transaction with FOR UPDATE to prevent race conditions
+		tx, err := db.Begin(c.Request.Context())
+		if err != nil {
+			log.Printf("RefreshToken begin tx error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+		defer tx.Rollback(c.Request.Context())
+
+		var userID int
+		var role string
+		err = tx.QueryRow(c.Request.Context(),
+			"SELECT id, role FROM users WHERE refresh_token_hash=$1 AND refresh_token_exp > NOW() FOR UPDATE",
+			hashStr,
+		).Scan(&userID, &role)
+		if err != nil {
+			if err == pgx.ErrNoRows {
+				c.JSON(401, gin.H{"detail": "refresh_token无效或已过期，请重新登录"})
+				return
+			}
+			log.Printf("RefreshToken query error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+
+		// Generate new access token
+		newToken, err := middleware.GenerateToken(userID, role)
+		if err != nil {
+			log.Printf("GenerateToken error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+
+		// Generate new refresh token (rotation)
+		rawRefresh := make([]byte, 32)
+		if _, err := rand.Read(rawRefresh); err != nil {
+			log.Printf("rand.Read error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+		newRefresh := hex.EncodeToString(rawRefresh)
+		newHash := sha256.Sum256([]byte(newRefresh))
+
+		_, err = tx.Exec(c.Request.Context(),
+			"UPDATE users SET refresh_token_hash=$1, refresh_token_exp=$2 WHERE id=$3",
+			hex.EncodeToString(newHash[:]), time.Now().Add(30*24*time.Hour), userID)
+		if err != nil {
+			log.Printf("refresh token update error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+
+		if err = tx.Commit(c.Request.Context()); err != nil {
+			log.Printf("RefreshToken commit error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+
+		c.JSON(200, gin.H{"token": newToken, "refresh_token": newRefresh})
 	}
 }
 

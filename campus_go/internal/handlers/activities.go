@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"strconv"
 	"time"
@@ -13,6 +14,18 @@ import (
 func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetInt("user_id")
+
+		// Pagination: default page=1, limit=20
+		page := 1
+		limit := 20
+		if p, err := strconv.Atoi(c.DefaultQuery("page", "1")); err == nil && p > 0 {
+			page = p
+		}
+		if l, err := strconv.Atoi(c.DefaultQuery("limit", "20")); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+		offset := (page - 1) * limit
+
 		rows, err := db.Query(c.Request.Context(),
 			`SELECT a.id, a.title, a.description, a.status, a.reward_type, a.signup_mode,
 				 a.max_participants, COALESCE(a.signup_count,0), a.hours, a.activity_date,
@@ -20,7 +33,7 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
 				 a.creator_name, a.created_at, a.gender_limit, a.signup_start,
 				 COALESCE(a.contact_qq,''), COALESCE(a.contact_phone,''), COALESCE(a.qq_group,''),
 				 EXISTS(SELECT 1 FROM signups WHERE activity_id=a.id AND user_id=$1) as signed_up
-				 FROM activities a WHERE a.status != 'draft' ORDER BY a.created_at DESC LIMIT 50`, userID)
+				 FROM activities a WHERE a.status != 'draft' ORDER BY a.created_at DESC LIMIT $2 OFFSET $3`, userID, limit, offset)
 		if err != nil {
 			log.Printf("ListActivities query error: %v", err)
 			c.JSON(500, gin.H{"detail": "查询活动失败"})
@@ -56,7 +69,7 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
 		if acts == nil {
 			acts = []gin.H{}
 		}
-		c.JSON(200, acts)
+		c.JSON(200, gin.H{"items": acts, "page": page, "limit": limit})
 	}
 }
 
@@ -261,10 +274,12 @@ func CancelSignup(db *pgxpool.Pool) gin.HandlerFunc {
 
 				// Auto-promote first waitlist to selected (no waitlist is OK)
 				var promotedUserID, promotedID int
-				_ = tx.QueryRow(c.Request.Context(),
+				if err := tx.QueryRow(c.Request.Context(),
 					"SELECT id, user_id FROM signups WHERE activity_id=$1 AND status='waitlist' ORDER BY signed_at ASC LIMIT 1",
 					actID,
-				).Scan(&promotedID, &promotedUserID)
+				).Scan(&promotedID, &promotedUserID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					log.Printf("CancelSignup waitlist query error: %v", err)
+				}
 				if promotedUserID > 0 {
 					_, err = tx.Exec(c.Request.Context(),
 						"UPDATE signups SET status='selected' WHERE id=$1", promotedID)
@@ -275,10 +290,14 @@ func CancelSignup(db *pgxpool.Pool) gin.HandlerFunc {
 					}
 					// Notify promoted student
 					var actTitle string
-					tx.QueryRow(c.Request.Context(), "SELECT title FROM activities WHERE id=$1", actID).Scan(&actTitle)
-					tx.Exec(c.Request.Context(),
+					if err := tx.QueryRow(c.Request.Context(), "SELECT title FROM activities WHERE id=$1", actID).Scan(&actTitle); err != nil {
+						log.Printf("CancelSignup promote title error: %v", err)
+					}
+					if _, err := tx.Exec(c.Request.Context(),
 						"INSERT INTO notifications (user_id, type, title, content) VALUES ($1,'lottery','候补中签', $2)",
-						promotedUserID, "你已候补中签活动「"+actTitle+"」，请等待发布者完结发放学时")
+						promotedUserID, "你已候补中签活动「"+actTitle+"」，请等待发布者完结发放学时"); err != nil {
+						log.Printf("CancelSignup promote notify error: %v", err)
+					}
 				}
 
 				if err = tx.Commit(c.Request.Context()); err != nil {
@@ -301,6 +320,9 @@ func CancelSignup(db *pgxpool.Pool) gin.HandlerFunc {
 		// Check deadline lock
 		if deadline != "" {
 			t, err := time.Parse("2006-01-02 15:04:05", deadline)
+			if err != nil {
+				log.Printf("CancelSignup deadline parse error for activity %d: %v (deadline=%q)", actID, err, deadline)
+			}
 			if err == nil && time.Now().After(t) {
 				if cancelDeadlineLock {
 					c.JSON(400, gin.H{"detail": "报名已截止且开启截止锁定，取消需发布者审批"})
@@ -312,7 +334,15 @@ func CancelSignup(db *pgxpool.Pool) gin.HandlerFunc {
 			}
 		}
 
-		tag, err := db.Exec(c.Request.Context(),
+		tx2, err := db.Begin(c.Request.Context())
+		if err != nil {
+			log.Printf("CancelSignup begin error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+		defer tx2.Rollback(c.Request.Context())
+
+		tag, err := tx2.Exec(c.Request.Context(),
 			"DELETE FROM signups WHERE activity_id=$1 AND user_id=$2", actID, userID)
 		if err != nil {
 			log.Printf("CancelSignup delete error: %v", err)
@@ -323,10 +353,17 @@ func CancelSignup(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(400, gin.H{"detail": "未报名"})
 			return
 		}
-		if _, err := db.Exec(c.Request.Context(),
+		if _, err := tx2.Exec(c.Request.Context(),
 			"UPDATE activities SET signup_count = (SELECT COUNT(*) FROM signups WHERE activity_id=$1) WHERE id=$1",
 			actID); err != nil {
 			log.Printf("CancelSignup count update error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+		if err = tx2.Commit(c.Request.Context()); err != nil {
+			log.Printf("CancelSignup commit error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
 		}
 		c.JSON(200, gin.H{"ok": true})
 	}

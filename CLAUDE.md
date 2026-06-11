@@ -1,12 +1,32 @@
 # CLAUDE.md — 皮特项目 | ⏰ 距交付: 23天
 ## 🔒 编译铁锁: 永远用 `python f:/ClaudeFiles/build_check.py` 替代 `flutter build apk` — 过不了检查就不让编
 ## 🔒 agent铁锁: 改代码前先调2个agent并行查 — 不许自己猜
-## 🔒 生产文件铁锁: 改代码前先确定生产部署的是哪个文件 — main.py≠main_remote.py, deploy.py决定谁在跑
+## 🔒 生产文件铁锁: 改代码前先确定生产部署的是哪个文件 — 仅 main.py，deploy.py部署main.py
 ## 🔒 密钥轮换铁锁: gitignore ≠ 安全 — .env里真实密钥必须实际轮换
 ## 🔒 回归铁锁: 每次修完后跑 campus_check.py 做功能验证，不只语法
 ## 🔒 MCP铁锁: 查代码结构 → codegraph MCP优先，不许自己grep。不改代码只理解 → Explore agent
 ## 🔒 Skill铁锁: 安全相关任务 → 先调security-auditor-supreme skill。bug排查 → 先调systematic-debugging
 ## 🔒 攻击铁锁: 修完代码 → 立刻红队攻击验证，不许等用户提醒
+
+## ⚡ 行为规则 (不是备忘录 — 是刻在骨子里的习惯)
+
+**每次动手前 3 秒**: 这个操作有没有一键命令？去 `f:/ClaudeFiles/justfile` 里找。
+
+**部署**: 永远用一个命令全自动完成，不手动分步操作。 `just deploy` 或 `python f:/ClaudeFiles/pete.py deploy`
+**测试**: 永远三管线全跑，不少一个。 `just test-all`
+**修代码**: 修完立刻格式化+分析+测试。 `just fix`
+**装手机**: 编译完直接装，不多操作。 `just phone`
+**状态**: 先看整体再看细节。 `just status`
+**回滚**: 出问题一秒回退。 `just rollback`
+**升级版本**: 一个命令同步所有版本号。 `just bump 1.0.6 23`
+
+**工具位置**:
+- 命令入口: `f:/ClaudeFiles/justfile` (just --list 看全部)
+- 控制台: `f:/ClaudeFiles/pete.py`
+- 管线: `campus_app/pipeline_frontend.sh`, `server/pipeline_backend.sh`, `campus_go/pipeline_go.sh`
+- 本地CI: `act` (56K星, GitHub Actions本地跑)
+
+**原则**: 能用 just/pete.py 就不手敲命令。just/pete.py 不消耗AI token。手敲命令容易出错且慢。
 
 ## 🧠 强制工具映射表（每次必查，不跳过）
 
@@ -22,30 +42,107 @@
 | 部署到服务器 | 先用deploy.py | 不许手写scp命令 |
 | 服务器debug | 用脚本文件(写到/tmp再执行) | 不许PowerShell -c内联 |
 
+## 🚀 发布铁律（每次编APK必过，少一步就不算发布）
+
+```
+第1步: bump版本号
+  - pubspec.yaml: version: X.Y.Z+BUILD
+  - lib/utils/update_service.dart: buildNumber = BUILD
+  - campus_app/server/main.py: version_code = BUILD + release_notes 更新
+
+第2步: just build 编译APK
+
+第3步: 部署APK — 必须用 app-arm64-v8a-release.apk (不是app-release.apk)
+  scp到 /app/static/app-release.apk
+
+第4步: 部署main.py到服务器 + systemctl restart campus-app
+
+第5步: python campus_check.py 验证11/11
+
+缺任一步 → 旧手机看不到更新 → 白编译
+```
+
 ## 🚀 Agent何时用（场景→Agent映射）
 
-| 场景 | Agent |
-|------|-------|
-| 读代码了解结构（不改） | Explore (subagent_type="Explore") |
-| 安全审计 | security-auditor |
-| 找bug | debugger |
-| 改1-2个文件 | caveman:cavecrew-builder |
-| 设计架构 | architect |
-| 代码审查 | code-reviewer |
-| 大规模重构 | refactor-master |
-| 跑测试 | test-generator |
-| 多文件并行任务 | 3-4个agent同时跑 |
+| 场景 | Agent | 策略 |
+|------|-------|------|
+| 读代码了解结构（不改） | Explore (subagent_type="Explore") | 单兵 |
+| 安全审计 | security-auditor | 单兵 |
+| 找bug | codegraph_context → debugger | 串行 |
+| 改1-2个文件 | caveman:cavecrew-builder | 单兵 |
+| 设计架构 | architect | 单兵 |
+| 代码审查 | code-reviewer | 单兵 |
+| 大规模重构 | refactor-master | 单兵 |
+| 跑测试 | test-generator | 单兵 |
+| 多文件并行任务 | 3-4个agent同时跑 | 并行 |
+
+### 🔗 自动组合（场景触发，不用手动选）
+
+| 触发场景 | 自动调用的Agent组合 | 策略 |
+|---------|-------------------|------|
+| 改完代码 | `code-reviewer` + `security-auditor` | 并行 |
+| 出bug | `codegraph_context` → `debugger` | 串行 |
+| 大改动前 | `Explore` 先看结构 → `architect` 出方案 | 串行 |
+| 部署前 | `campus_check` → `security_scan.sh` → `red-team-wolf` 攻击验证 | 串行 |
+| 服务器炸了 | `incident-commander` 主控 + `debugger` 查根因 | 并行 |
+| 红队武器库 | `just redteam` (quick) / `just redteam-full` (全武器) / `just redteam-api` | 单命令 |
+
+### 🔴 红队武器库 (redteam_toolkit/)
+
+| 武器 | 命令 | 用途 |
+|------|------|------|
+| Gitleaks | `just redteam` | 密钥泄露检测 |
+| Shinobi | `just redteam` | 10秒安全快扫 |
+| ApiPosture | `just redteam-api` | 124端点API安全巡检 |
+| Semgrep | `just redteam-full` | 多语言SAST |
+| Nuclei | `just redteam-api` | 漏洞模板扫描 |
+| GoSec | `just redteam-full` | Go安全扫描 |
+
+**论文前沿 (2025-2026):** Co-RedTeam (ICML'26), AutoRedTeamer (NeurIPS'25), Ferret (EMNLP'25), TreeTeaming (CVPR'26)
+**GitHub装备:** [api-vuln-scanner-v5](https://github.com/kethakav/api-vuln-scanner-v5), [flutter-security-toolkit](https://github.com/anousonephyakeo/flutter-security-toolkit), [AndroHunter](https://github.com/ynsmroztas/AndroHunter), [CyberStrike](https://github.com/CyberStrikeus/CyberStrike)
+
+### 💡 合并原则
+- agent/skill 是**提示词模板**，不是程序代码，不能物理合并
+- 合并会分散注意力 → 单任务专注效果更好
+- 真正的1+1>2 是**固化最佳搭配**，不是焊在一起
+- agent/skill 存于 `C:\Users\31704\.claude\agents\` 和 `skills\`，纯markdown，可读可改
 
 ## 一凡
 - 王一凡，泰州学院电气工程大一，学 Python，做闲鱼
 - 叫他"一凡"，熟了叫"凡哥"
 - 电脑上通过向日葵远程操作
 
+## 🔄 超级修复流水线（Super Fix — ReflexiCoder 自反思循环）
+
+每次改代码走 6 步，不跳：
+
+```
+第0步：搜三方向（Web搜索+顶级论文+GitHub）→ 不猜，先看别人怎么做的
+第1步：改前跑 campus_check.py → 看当前状态
+第2步：caveman:builder 改代码
+第3步：critic agent 批判（找崩溃点/简化方案/安全隐患/边界条件/异步竞态）
+第4步：根据批判逐条修复
+第5步：code-reviewer + security-auditor 并行重审
+第6步：campus_check + flutter analyze → 0 新增问题
+第7步：learn → 将教训写入 memory/bug-patterns.md
+      一凡说编再编 → 不许自己编
+```
+
+## 🧠 质量原则（2026 三源研究结论）
+
+1. **改前先写 3 句 spec** — 改什么、为什么、影响什么
+2. **不确定就先搜** — 网上搜+论文搜+GitHub搜，三源对比
+3. **多角度思考** — 不只做完，想：会崩吗？有更简单的吗？用户会困惑吗？
+4. **自批判先行** — 改完先让 critic agent 挑刺，再让人审
+5. **持久教训** — 修过的 bug 写入 bug-patterns.md，下次改代码前自动查
+6. **长任务分段 commit** — 每段结束清上下文再继续，防上下文溢出
+
 ## ⚡ 改代码铁律（每次改前端/后端必过，永不跳过）
 
 ```
+第0步：查 bug-patterns.md — 这个 bug 以前修过吗？
 第1步：改之前跑 python campus_check.py → 看当前状态
-第2步：调2-3个agent并行扫 → 代码审查+安全+流程debug
+第2步：调2-3个agent并行扫 → 代码审查+安全+critic
 第3步：根据agent报告修bug → 按根因修，不修表面
 第4步：改完再跑 campus_check.py → 确认0新增问题  
 第5步：flutter analyze → 0 errors

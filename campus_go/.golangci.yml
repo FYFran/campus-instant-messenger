@@ -1,0 +1,45 @@
+version: "2"
+run:
+  timeout: 3m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - gosec
+    - revive
+    - unused
+    - misspell
+    - unconvert
+    - ineffassign
+    - copyloopvar
+
+linters-settings:
+  gosec:
+    excludes:
+      - G104
+      - G404
+  revive:
+    rules:
+      - name: exported
+      - name: error-return
+      - name: error-strings
+      - name: indent-error-flow
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

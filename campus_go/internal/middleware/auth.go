@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -88,7 +87,7 @@ func JWT(db *pgxpool.Pool) gin.HandlerFunc {
 
 		// Verify user is still active
 		var isActive bool
-		err = db.QueryRow(context.Background(),
+		err = db.QueryRow(c.Request.Context(),
 			"SELECT COALESCE(is_active,true) FROM users WHERE id=$1", claims.UserID,
 		).Scan(&isActive)
 		if err != nil || !isActive {

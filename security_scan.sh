@@ -140,11 +140,73 @@ else
     echo -e "${YELLOW}  ~ No Flutter project at $FLUTTER_PROJECT, skipping${NC}"
 fi
 
+# ─── Step 4: Shinobi Quick Scan ─────────────────────────────
+echo -e "${YELLOW}[4/6] Shinobi — Quick Security Scan${NC}"
+
+if python -c "import shinobi_scan" 2>/dev/null; then
+    declare -a SHINOBI_TARGETS=("$ROOT/campus_app/server" "$ROOT/campus_go")
+    SHINOBI_CRIT=0
+    for target in "${SHINOBI_TARGETS[@]}"; do
+        [ ! -d "$target" ] && continue
+        local tname=$(basename "$target")
+        local out=$(python -m shinobi_scan "$target" --json 2>&1) || true
+        local crit=$(echo "$out" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('critical',0))" 2>/dev/null || echo 0)
+        if [ "$crit" -gt 0 ] 2>/dev/null; then
+            echo -e "${RED}  ✗ Shinobi $tname: $crit critical${NC}"
+            SHINOBI_CRIT=$((SHINOBI_CRIT + crit))
+        else
+            echo -e "${GREEN}  ✓ Shinobi $tname: 0 critical${NC}"
+        fi
+    done
+    [ "$SHINOBI_CRIT" -eq 0 ] || { ERRORS="$ERRORS shinobi_critical"; EXIT_CODE=1; }
+else
+    echo -e "${YELLOW}  ~ shinobi not installed, skipping${NC}"
+fi
+
+# ─── Step 5: ApiPosture ─────────────────────────────────────
+echo -e "${YELLOW}[5/6] ApiPosture — API Security Inspector${NC}"
+
+if command -v apiposture &>/dev/null; then
+    local ap_out=$(apiposture scan "$ROOT/campus_app/server/" --output json --fail-on critical 2>&1) || true
+    local ap_crit=$(echo "$ap_out" | python -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['severity_counts'].get('critical',0))" 2>/dev/null || echo '?')
+    local ap_high=$(echo "$ap_out" | python -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['severity_counts'].get('high',0))" 2>/dev/null || echo '?')
+    if [ "$ap_crit" = "0" ]; then
+        echo -e "${GREEN}  ✓ ApiPosture: 0 critical, $ap_high high${NC}"
+    elif [ "$ap_crit" = "?" ]; then
+        echo -e "${YELLOW}  ~ ApiPosture: parse error (check output)${NC}"
+    else
+        echo -e "${RED}  ✗ ApiPosture: $ap_crit critical, $ap_high high${NC}"
+        ERRORS="$ERRORS apiposture_critical"
+        EXIT_CODE=1
+    fi
+else
+    echo -e "${YELLOW}  ~ apiposture not installed, skipping${NC}"
+fi
+
+# ─── Step 6: GoSec (if Go code exists) ──────────────────────
+echo -e "${YELLOW}[6/6] GoSec — Go Security Scan${NC}"
+
+if [ -d "$ROOT/campus_go" ] && command -v gosec &>/dev/null; then
+    cd "$ROOT/campus_go"
+    if gosec -quiet -severity=medium ./... 2>&1; then
+        echo -e "${GREEN}  ✓ gosec: no medium+ issues${NC}"
+    else
+        echo -e "${RED}  ✗ gosec found issues${NC}"
+        ERRORS="$ERRORS gosec_findings"
+        EXIT_CODE=1
+    fi
+    cd "$ROOT"
+elif [ -d "$ROOT/campus_go" ]; then
+    echo -e "${YELLOW}  ~ gosec not installed — go install github.com/securego/gosec/v2/cmd/gosec@latest${NC}"
+else
+    echo -e "${YELLOW}  ~ No Go project, skipping${NC}"
+fi
+
 echo ""
 echo -e "${CYAN}──────────────────────────────────────────────${NC}"
 
 if [ $EXIT_CODE -eq 0 ]; then
-    echo -e "${GREEN}  ✅ All security checks passed!${NC}"
+    echo -e "${GREEN}  ✅ All 6 security checks passed!${NC}"
 else
     echo -e "${RED}  ❌ Security issues found:${NC}"
     for err in $ERRORS; do

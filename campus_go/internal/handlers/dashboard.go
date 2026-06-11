@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -122,7 +123,7 @@ func CollegeStudents(db *pgxpool.Pool) gin.HandlerFunc {
 		}
 
 		rows, err := db.Query(c.Request.Context(),
-			"SELECT id, name, student_id, COALESCE(class,'') FROM users WHERE college=$1 AND role='student'", college)
+			"SELECT id, name, student_id, COALESCE(class,''), COALESCE(volunteer_hours,0), COALESCE(is_poor,0)::boolean, COALESCE(college,''), role FROM users WHERE college=$1 AND role='student'", college)
 		if err != nil {
 			log.Printf("CollegeStudents query error: %v", err)
 			c.JSON(500, gin.H{"detail": "查询学生失败"})
@@ -132,12 +133,14 @@ func CollegeStudents(db *pgxpool.Pool) gin.HandlerFunc {
 		var students []gin.H
 		for rows.Next() {
 			var id int
-			var name, sid, cls string
-			if err := rows.Scan(&id, &name, &sid, &cls); err != nil {
+			var name, sid, cls, college, role string
+			var volunteerHours float64
+			var isPoor bool
+			if err := rows.Scan(&id, &name, &sid, &cls, &volunteerHours, &isPoor, &college, &role); err != nil {
 				log.Printf("CollegeStudents scan error: %v", err)
 				continue
 			}
-			students = append(students, gin.H{"id": id, "name": name, "student_id": sid, "class_name": cls})
+			students = append(students, gin.H{"id": id, "name": name, "student_id": sid, "class_name": cls, "volunteer_hours": volunteerHours, "is_poor": isPoor, "college": college, "role": role})
 		}
 		if students == nil {
 			students = []gin.H{}
@@ -215,10 +218,62 @@ func GetMySignups(db *pgxpool.Pool) gin.HandlerFunc {
 func GetMyStats(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetInt("user_id")
-		var volunteer, activityCount float64
-		db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1", userID).Scan(&volunteer)
-		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM signups WHERE user_id=$1", userID).Scan(&activityCount)
-		c.JSON(200, gin.H{"volunteer": volunteer, "volunteer_convertible": 0, "community": 0, "activity_count": activityCount, "trend": 0})
+
+		// Query total volunteer hours from certificates
+		var totalHours float64
+		if err := db.QueryRow(c.Request.Context(),
+			"SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1", userID).Scan(&totalHours); err != nil {
+			log.Printf("GetMyStats totalHours error: %v", err)
+		}
+
+		// Query total signups count
+		var totalSignups int
+		if err := db.QueryRow(c.Request.Context(),
+			"SELECT COUNT(*) FROM signups WHERE user_id=$1", userID).Scan(&totalSignups); err != nil {
+			log.Printf("GetMyStats totalSignups error: %v", err)
+		}
+
+		// Query total selected (selected or checked_in)
+		var totalSelected int
+		if err := db.QueryRow(c.Request.Context(),
+			"SELECT COUNT(*) FROM signups WHERE user_id=$1 AND status IN ('selected','checked_in')", userID).Scan(&totalSelected); err != nil {
+			log.Printf("GetMyStats totalSelected error: %v", err)
+		}
+
+		// Compute select_rate
+		selectRate := "0%"
+		if totalSignups > 0 {
+			rate := float64(totalSelected) / float64(totalSignups) * 100
+			selectRate = fmt.Sprintf("%.1f%%", rate)
+		}
+
+		// Compute community hours (only for is_poor students)
+		var communityHours float64
+		var isPoor bool
+		if err := db.QueryRow(c.Request.Context(),
+			"SELECT COALESCE(is_poor,0)::boolean FROM users WHERE id=$1", userID).Scan(&isPoor); err != nil {
+			log.Printf("GetMyStats isPoor error: %v", err)
+		}
+		if isPoor {
+			if err := db.QueryRow(c.Request.Context(),
+				"SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1", userID).Scan(&communityHours); err != nil {
+				log.Printf("GetMyStats communityHours error: %v", err)
+			}
+		}
+
+		c.JSON(200, gin.H{
+			// Python-style fields (new, primary)
+			"total_hours":          totalHours,
+			"total_signups":        totalSignups,
+			"total_selected":       totalSelected,
+			"select_rate":          selectRate,
+			"volunteer":            totalHours,
+			"volunteer_convertible": 0,
+			"community":            communityHours,
+			// Go-style fields (backward compatibility)
+			"activity_count":       float64(totalSignups),
+			"trend":                0,
+		})
 	}
 }
 
