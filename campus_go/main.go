@@ -20,10 +20,16 @@ func main() {
 	r.Use(middleware.CORS())
 	// Rate limiting is handled by nginx reverse proxy in production
 
+	// Start WebSocket hub
+	go handlers.Hub.Run()
+
 	api := r.Group("/api")
 	{
 		api.GET("/version", handlers.Version)
 		api.GET("/colleges", handlers.GetColleges(db))
+		api.GET("/notices", handlers.ListNotices(db))
+		api.GET("/health", handlers.HealthCheck(db))
+		api.POST("/upload", handlers.UploadImage())
 
 		auth := api.Group("/auth")
 		{
@@ -32,23 +38,39 @@ func main() {
 
 		api.POST("/login", handlers.Login(db))
 		api.POST("/register", handlers.Register(db))
+		api.POST("/token/refresh", handlers.RefreshToken(db)) // 不需要JWT — refresh_token自身就是凭证
 
 		protected := api.Group("")
 		protected.Use(middleware.JWT(db))
 		protected.Use(middleware.RateLimit(60, time.Minute))
 		{
 			protected.GET("/me", handlers.GetMe(db))
-			protected.POST("/token/refresh", handlers.RefreshToken(db))
 			protected.GET("/activities", handlers.ListActivities(db))
 			protected.GET("/activities/:id", handlers.GetActivity(db))
+			protected.POST("/activities", handlers.CreateActivity(db))
 			protected.POST("/activities/:id/signup", handlers.Signup(db))
-			protected.POST("/activities/:id/cancel", handlers.CancelSignup(db))
+			protected.POST("/activities/:id/cancel-signup", handlers.CancelSignup(db))
+			protected.POST("/activities/:id/approve", handlers.ApproveActivity(db))
+			protected.POST("/activities/:id/reject", handlers.RejectActivity(db))
+			protected.POST("/activities/:id/modify", handlers.ModifyActivity(db))
+			protected.GET("/activities/pending-approvals", handlers.GetPendingApprovals(db))
+			protected.POST("/notices", handlers.CreateNotice(db))
 			protected.GET("/college/dashboard", handlers.CollegeDashboard(db))
 			protected.GET("/school/dashboard", handlers.SchoolDashboard(db))
 			protected.GET("/college/students", handlers.CollegeStudents(db))
 			protected.GET("/notifications", handlers.GetNotifications(db))
 			protected.GET("/my-signups", handlers.GetMySignups(db))
 			protected.GET("/my-stats", handlers.GetMyStats(db))
+			protected.GET("/users", handlers.ListUsers(db))
+			protected.GET("/config/codes", handlers.GetConfigCodes(db))
+			api.GET("/ws", handlers.HandleWS)
+			// Publish permission requests
+			protected.GET("/available-reviewers", handlers.GetAvailableReviewers(db))
+			protected.POST("/publish-requests", handlers.CreatePublishRequest(db))
+			protected.GET("/publish-requests/my", handlers.GetMyPublishRequests(db))
+			protected.POST("/publish-requests/:id/withdraw", handlers.WithdrawPublishRequest(db))
+			protected.GET("/publish-requests/pending", handlers.GetPendingReviews(db))
+			protected.POST("/publish-requests/:id/review", handlers.ReviewPublishRequest(db))
 		}
 	}
 
@@ -56,6 +78,6 @@ func main() {
 	if port == "" {
 		port = "9501"
 	}
-	log.Printf("Go backend starting on :%s", port)
+	log.Printf("Go backend starting on port %s", port)
 	log.Fatal(r.Run(":" + port))
 }

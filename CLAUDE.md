@@ -1,4 +1,6 @@
 # CLAUDE.md — 皮特项目 | ⏰ 距交付: 23天
+## 🔒 改代码铁律: 改代码是让程序更好，不是单纯补漏洞，不乱删设计，只改最少行
+## 🔒 OTA更新铁锁: 永远用FileProvider+Intent安装APK，open_filex在Android 14上无法触发安装
 ## 🔒 编译铁锁: 永远用 `python f:/ClaudeFiles/build_check.py` 替代 `flutter build apk` — 过不了检查就不让编
 ## 🔒 agent铁锁: 改代码前先调2个agent并行查 — 不许自己猜
 ## 🔒 生产文件铁锁: 改代码前先确定生产部署的是哪个文件 — 仅 main.py，deploy.py部署main.py

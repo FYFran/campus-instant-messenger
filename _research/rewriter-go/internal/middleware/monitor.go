@@ -10,19 +10,24 @@ import (
 // Zero external dependencies — pure in-memory counters.
 
 var (
-	apiErrors   atomic.Int64  // total non-200 responses
-	apiRequests atomic.Int64  // total requests tracked
-	chatErrors  atomic.Int64  // DeepSeek API failures
-	rateLimited atomic.Int64  // 429 responses served
-	activeUsers sync.Map      // userID → lastSeen (for active user count)
-	startTime   = time.Now()
+	apiErrors4xx atomic.Int64  // 4xx client errors (expected, not server fault)
+	apiErrors5xx atomic.Int64  // 5xx server errors (real problems)
+	apiRequests  atomic.Int64  // total requests tracked
+	chatErrors   atomic.Int64  // DeepSeek API failures
+	rateLimited  atomic.Int64  // 429 responses served
+	activeUsers  sync.Map      // userID → lastSeen (for active user count)
+	startTime    = time.Now()
 )
 
 // TrackRequest records an API request outcome for error rate calculation.
+// 4xx = client errors (expected: bad auth, dupes, validation). Not server fault.
+// 5xx = server errors (real problems). Only 5xx triggers HIGH_ERROR_RATE alert.
 func TrackRequest(statusCode int) {
 	apiRequests.Add(1)
-	if statusCode >= 400 {
-		apiErrors.Add(1)
+	if statusCode >= 500 {
+		apiErrors5xx.Add(1)
+	} else if statusCode >= 400 {
+		apiErrors4xx.Add(1)
 	}
 	if statusCode == 429 {
 		rateLimited.Add(1)
@@ -41,8 +46,10 @@ func TrackActiveUser(userID int64) {
 type HealthSnapshot struct {
 	UptimeSeconds   int64   `json:"uptime_seconds"`
 	TotalRequests   int64   `json:"total_requests"`
+	ErrorCount4xx   int64   `json:"error_count_4xx"`
+	ErrorCount5xx   int64   `json:"error_count_5xx"`
 	ErrorCount      int64   `json:"error_count"`
-	ErrorRate       float64 `json:"error_rate_pct"`
+	ErrorRate       float64 `json:"error_rate_pct"`    // 5xx only — real server errors
 	ChatErrors      int64   `json:"chat_errors"`
 	RateLimited     int64   `json:"rate_limited"`
 	ActiveUsers5Min int     `json:"active_users_5min"`
@@ -51,10 +58,12 @@ type HealthSnapshot struct {
 
 func HealthSnapshotNow() HealthSnapshot {
 	total := apiRequests.Load()
-	errs := apiErrors.Load()
+	errs4xx := apiErrors4xx.Load()
+	errs5xx := apiErrors5xx.Load()
+	totalErrs := errs4xx + errs5xx
 	var rate float64
 	if total > 0 {
-		rate = float64(errs) / float64(total) * 100
+		rate = float64(errs5xx) / float64(total) * 100
 	}
 
 	now := time.Now()
@@ -73,7 +82,9 @@ func HealthSnapshotNow() HealthSnapshot {
 	return HealthSnapshot{
 		UptimeSeconds:   int64(now.Sub(startTime).Seconds()),
 		TotalRequests:   total,
-		ErrorCount:      errs,
+		ErrorCount4xx:   errs4xx,
+		ErrorCount5xx:   errs5xx,
+		ErrorCount:      totalErrs,
 		ErrorRate:       rate,
 		ChatErrors:      chatErrors.Load(),
 		RateLimited:     rateLimited.Load(),
@@ -187,10 +198,11 @@ func PredictTrend() TrendPrediction {
 }
 
 // Alerts checks if any thresholds are exceeded. Returns warning messages.
+// HIGH_ERROR_RATE uses 5xx only — 4xx are client errors (bad auth, dupes, scanners), not server fault.
 func Alerts(snap HealthSnapshot) []string {
 	var alerts []string
 
-	if snap.ErrorRate > 10 && snap.TotalRequests > 50 {
+	if snap.ErrorRate > 10 && snap.ErrorCount5xx > 3 {
 		alerts = append(alerts, "HIGH_ERROR_RATE")
 	}
 	if snap.ChatErrors > 20 {
@@ -198,6 +210,9 @@ func Alerts(snap HealthSnapshot) []string {
 	}
 	if snap.RateLimited > 100 {
 		alerts = append(alerts, "UNUSUAL_TRAFFIC")
+	}
+	if snap.ErrorCount4xx > snap.TotalRequests/2 && snap.TotalRequests > 50 {
+		alerts = append(alerts, "SCANNER_NOISE") // mostly 4xx = likely scanner/bot traffic
 	}
 
 	// Capacity trend alerts

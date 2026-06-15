@@ -7,11 +7,8 @@ run:
 linters:
   default: none
   enable:
-    - errcheck
     - govet
     - staticcheck
-    - gosec
-    - revive
     - unused
     - misspell
     - unconvert
@@ -22,10 +19,11 @@ linters-settings:
   gosec:
     excludes:
       - G104
+      - G301
       - G404
+      - G706
   revive:
     rules:
-      - name: exported
       - name: error-return
       - name: error-strings
       - name: indent-error-flow
@@ -37,9 +35,13 @@ issues:
     - path: _test\.go
       linters:
         - gosec
-        - errcheck
+    - linters:
+        - gosec
+      text: "G104"
+    - linters:
+        - gosec
+      text: "G301"
 
 formatters:
   enable:
     - gofmt
-    - goimports

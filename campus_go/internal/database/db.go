@@ -18,10 +18,11 @@ func Connect() *pgxpool.Pool {
 	if err != nil {
 		log.Fatalf("parse db config: %v", err)
 	}
-	config.MaxConns = 50
-	config.MinConns = 5
+	config.MaxConns = 80 // 峰值并发2000 × 50ms avg RT / 1000 × 1.2系数
+	config.MinConns = 20 // 预热，消除冷启动毛刺
 	config.MaxConnLifetime = 30 * time.Minute
-	config.MaxConnIdleTime = 10 * time.Minute
+	config.MaxConnIdleTime = 5 * time.Minute
+	config.HealthCheckPeriod = 30 * time.Second
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

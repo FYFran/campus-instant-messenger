@@ -44,13 +44,13 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plan, balance, err := h.getBalance(r.Context(), userID)
+	packType, flashBal, proBal, err := h.getBalance(r.Context(), userID)
 	if err != nil {
 		writeJSON(w, 500, "Gagal memeriksa kuota")
 		return
 	}
 
-	isFree := plan == "gratis" || (plan == "" && balance <= 0)
+	isFree := packType == "gratis" && flashBal <= 0 && proBal <= 0
 
 	// Free tier: 3 requests/day, max 2000 chars, Flash only.
 	if isFree {
@@ -70,8 +70,13 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 		req.Model = "deepseek-v4-flash"
 	}
 
-	if req.Model == "deepseek-v4-pro" && balance <= 0 {
-		writeJSON(w, 403, "Model Pro butuh token. Beli paket Pro mulai Rp 399.000.")
+	if req.Model == "deepseek-v4-pro" && proBal <= 0 {
+		writeJSON(w, 403, "Pro token habis. Upgrade ke Ultimate atau Pro untuk akses model Pro.")
+		return
+	}
+	// Pre-flight balance check for Flash model — prevent cost leak
+	if !isFree && req.Model == "deepseek-v4-flash" && flashBal <= 0 && proBal <= 0 {
+		writeJSON(w, 403, "Token habis. Beli paket untuk melanjutkan.")
 		return
 	}
 
@@ -81,6 +86,15 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 		h.DB.QueryRowContext(r.Context(),
 			"INSERT INTO conversations(user_id, title) VALUES(?,?) RETURNING id",
 			userID, truncate(req.Message, 40)).Scan(&convID)
+	} else {
+		// Verify conversation belongs to authenticated user
+		var ownerID int64
+		err := h.DB.QueryRowContext(r.Context(),
+			"SELECT user_id FROM conversations WHERE id=?", convID).Scan(&ownerID)
+		if err != nil || ownerID != userID {
+			writeJSON(w, 404, "Percakapan tidak ditemukan")
+			return
+		}
 	}
 
 	h.DB.ExecContext(r.Context(),
@@ -147,10 +161,53 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 		if cost < 50 {
 			cost = 50
 		}
-		// Atomic deduction: only deduct if balance >= cost. Prevents double-spend races.
-		h.DB.ExecContext(r.Context(),
-			"UPDATE subscriptions SET token_balance=token_balance-? WHERE user_id=? AND status=1 AND token_balance>=?",
-			cost, userID, cost)
+
+		if req.Model == "deepseek-v4-flash" {
+			// Prefer flash_balance, fallback to pro_balance at 5:1 conversion
+			res, err := h.DB.ExecContext(r.Context(),
+				"UPDATE subscriptions SET flash_balance=flash_balance-? WHERE user_id=? AND status=1 AND flash_balance>=?",
+				cost, userID, cost)
+			if err != nil {
+				slog.Error("deduct flash", "user", userID, "error", err)
+				writeJSON(w, 500, "Gagal memproses token")
+				return
+			}
+			n, _ := res.RowsAffected()
+			if n == 0 {
+				// Flash insufficient — try Pro at 5:1 rate (1 Pro = 5 Flash)
+				proCost := cost / 5
+				if proCost < 1 {
+					proCost = 1
+				}
+				res2, err2 := h.DB.ExecContext(r.Context(),
+					"UPDATE subscriptions SET pro_balance=pro_balance-? WHERE user_id=? AND status=1 AND pro_balance>=?",
+					proCost, userID, proCost)
+				if err2 != nil {
+					slog.Error("deduct pro fallback", "user", userID, "error", err2)
+					writeJSON(w, 500, "Gagal memproses token")
+					return
+				}
+				n2, _ := res2.RowsAffected()
+				if n2 == 0 {
+					writeJSON(w, 403, "Token habis. Beli paket untuk melanjutkan.")
+					return
+				}
+			}
+		} else if req.Model == "deepseek-v4-pro" {
+			res, err := h.DB.ExecContext(r.Context(),
+				"UPDATE subscriptions SET pro_balance=pro_balance-? WHERE user_id=? AND status=1 AND pro_balance>=?",
+				cost, userID, cost)
+			if err != nil {
+				slog.Error("deduct pro", "user", userID, "error", err)
+				writeJSON(w, 500, "Gagal memproses token")
+				return
+			}
+			n, _ := res.RowsAffected()
+			if n == 0 {
+				writeJSON(w, 403, "Pro token habis. Upgrade ke Ultimate atau Pro untuk akses model Pro.")
+				return
+			}
+		}
 		TrackCostInChat(req.Model, len(req.Message), len(fullResp))
 	}
 
@@ -163,16 +220,14 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *ChatHandler) getBalance(ctx context.Context, userID int64) (string, int64, error) {
-	var plan string
-	var balance int64
-	err := h.DB.QueryRowContext(ctx,
-		"SELECT plan, COALESCE(token_balance,0) FROM subscriptions WHERE user_id=? AND status=1 ORDER BY id DESC LIMIT 1",
-		userID).Scan(&plan, &balance)
+func (h *ChatHandler) getBalance(ctx context.Context, userID int64) (packType string, flashBal int64, proBal int64, err error) {
+	err = h.DB.QueryRowContext(ctx,
+		"SELECT COALESCE(pack_type,'gratis'), COALESCE(flash_balance,0), COALESCE(pro_balance,0) FROM subscriptions WHERE user_id=? AND status=1 ORDER BY id DESC LIMIT 1",
+		userID).Scan(&packType, &flashBal, &proBal)
 	if err != nil {
-		return "gratis", 0, nil
+		return "gratis", 0, 0, nil
 	}
-	return plan, balance, nil
+	return
 }
 
 func (h *ChatHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
@@ -181,7 +236,7 @@ func (h *ChatHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 401, "Silakan login terlebih dahulu")
 		return
 	}
-	plan, balance, err := h.getBalance(r.Context(), userID)
+	packType, flashBal, proBal, err := h.getBalance(r.Context(), userID)
 	if err != nil {
 		writeJSON(w, 500, "Gagal memeriksa saldo")
 		return
@@ -192,27 +247,13 @@ func (h *ChatHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 		"SELECT COUNT(*) FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id=?) AND role='user' AND created_at>=?",
 		userID, today).Scan(&freeUsed)
 
-	weight := modelWeight
-	packs := make([]map[string]interface{}, 0)
-	order := []string{"flash_500k", "flash_1m5", "flash_4m", "pro_500k", "pro_2m", "pro_5m"}
-	for _, key := range order {
-		pk := tokenPacks[key]
-		packs = append(packs, map[string]interface{}{
-			"id":     key,
-			"name":   pk.Name,
-			"amount": pk.Amount,
-			"tokens": pk.Tokens,
-			"model":  pk.Model,
-		})
-	}
-
 	writeJSON(w, 200, map[string]interface{}{
-		"plan":         plan,
-		"balance":      balance,
-		"free_used":    freeUsed,
-		"free_limit":   3,
-		"model_weight": weight,
-		"packs":        packs,
+		"plan":          packType,
+		"flash_balance": flashBal,
+		"pro_balance":   proBal,
+		"free_used":     freeUsed,
+		"free_limit":    3,
+		"model_weight":  modelWeight,
 	})
 }
 

@@ -1,57 +1,61 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Masuk — TokenLine</title>
 <link rel="icon" href="/favicon.svg">
 <style>
-:root{--acc:#6366f1;--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;--card:#fff;--hair:#e5e7eb;--err:#e94560}
-@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--fg:#f0f0f0;--muted:#999;--card:#1a1a1a;--hair:#2a2a2a}}
-body{font:400 15px/1.6 system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}
-.card{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:2rem;width:100%;max-width:380px}
-h1{font-size:1.4rem;margin:0 0 .25rem}h1 span{color:var(--acc)}
-p.desc{color:var(--muted);font-size:.85rem;margin:0 0 1.5rem}
-label{display:block;font-size:.8rem;margin-bottom:.25rem;color:var(--muted)}
-input{width:100%;padding:.65rem .75rem;border:1px solid var(--hair);border-radius:8px;font-size:.95rem;background:var(--bg);color:var(--fg);box-sizing:border-box;margin-bottom:1rem}
-input:focus{outline:none;border-color:var(--acc)}
-button{width:100%;padding:.7rem;background:var(--acc);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
-button:disabled{opacity:.5}
-.err{color:var(--err);font-size:.8rem;margin-bottom:.75rem;display:none}
-.link{text-align:center;margin-top:1rem;font-size:.85rem;color:var(--muted)}
-.link a{color:var(--acc);text-decoration:none}
+:root{--bg:#faf9f6;--card:#fff;--accent:#1a1c2c;--gold:#b8975a;--muted:rgba(26,28,44,.45);--hair:rgba(0,0,0,.06)}
+*{font-family:'Inter',system-ui,-apple-system,sans-serif;box-sizing:border-box}
+body{background:var(--bg);color:var(--accent);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;margin:0;line-height:1.5}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(120,120,160,.03) 0%,transparent 100%),radial-gradient(ellipse 40% 50% at 80% 80%,rgba(180,160,120,.02) 0%,transparent 100%);pointer-events:none;z-index:-1}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:1.5rem;padding:2.5rem;max-width:400px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.03),0 8px 28px rgba(0,0,0,.05)}
+.logo{width:3rem;height:3rem;border-radius:.75rem;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;margin:0 auto 1.25rem}
+h1{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;text-align:center;margin:0 0 .25rem}
+p.desc{color:var(--muted);font-size:.85rem;text-align:center;margin:0 0 1.75rem}
+label{display:block;font-size:.75rem;font-weight:600;color:rgba(26,28,44,.45);margin-bottom:.3rem}
+input{width:100%;padding:.8rem .9rem;border:1px solid var(--hair);border-radius:.75rem;font-size:.9rem;background:var(--bg);color:var(--accent);font-family:inherit;margin-bottom:1rem;transition:all .2s;outline:none}
+input:focus{border-color:rgba(26,28,44,.25);box-shadow:0 0 0 3px rgba(26,28,44,.04)}
+.btn{width:100%;padding:.8rem;border-radius:999px;font-weight:600;font-size:.9rem;cursor:pointer;border:none;transition:all .2s}
+.btn-dark{background:var(--accent);color:#fff}.btn-dark:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(26,28,44,.18)}
+.btn:disabled{opacity:.5;transform:none;box-shadow:none}
+.msg{font-size:.8rem;padding:.7rem;border-radius:.75rem;margin-bottom:1rem;display:none}
+.msg.err{display:block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.link{text-align:center;margin-top:1rem;font-size:.8rem;color:var(--muted)}
+.link a{color:var(--accent);text-decoration:none;font-weight:600}.link a:hover{color:var(--gold)}
+.spinner{display:none;width:1rem;height:1rem;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}.loading .spinner{display:inline-block}.loading .btn-text{display:none}@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="card">
-<h1>Masuk ke <span>TokenLine</span></h1>
-<p class="desc">Lanjutkan chat AI-mu</p>
-<div class="err" id="err"></div>
-<form id="form" onsubmit="login(event)">
-<label>Email</label>
-<input type="email" id="email" placeholder="kamu@email.com" required autofocus>
-<label>Password</label>
-<input type="password" id="pw" placeholder="••••••" required>
-<button type="submit" id="btn">Masuk</button>
-</form>
-<div class="link">Belum punya akun? <a href="/register.html">Daftar gratis</a></div>
-<div class="link" style="margin-top:.25rem"><a href="/reset-password.html">Lupa Password?</a></div>
+  <div class="logo">T</div>
+  <h1>Selamat Datang</h1>
+  <p class="desc">Masuk ke akun TokenLine kamu</p>
+  <div class="msg err" id="err"></div>
+  <form onsubmit="login(event)">
+    <label>Email</label>
+    <input type="email" id="email" placeholder="kamu@email.com" required autofocus>
+    <label>Password</label>
+    <input type="password" id="pw" placeholder="••••••" required>
+    <button type="submit" class="btn btn-dark" id="btn"><span class="btn-text">Masuk</span><span class="spinner"></span></button>
+  </form>
+  <div class="link">Belum punya akun? <a href="/register.html">Daftar gratis</a></div>
+  <div class="link" style="margin-top:.25rem"><a href="/reset-password.html">Lupa Password?</a></div>
 </div>
 <script>
 async function login(e){
-e.preventDefault();
-var em=document.getElementById('email').value.trim();
-var pw=document.getElementById('pw').value;
-var err=document.getElementById('err');
-var btn=document.getElementById('btn');
-err.style.display='none';btn.disabled=true;btn.textContent='Masuk...';
-try{
-var r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});
-var d=await r.json();
-if(!r.ok){err.textContent=d.message||'Email atau password salah';err.style.display='block';btn.disabled=false;btn.textContent='Masuk';return}
-var t=d.token||d.data?.token;
-if(t){localStorage.setItem('tl_tok',t);location.href='/chat/'}
-}catch(ex){err.textContent='Koneksi gagal. Coba lagi.';err.style.display='block';btn.disabled=false;btn.textContent='Masuk'}
+  e.preventDefault();
+  var em=document.getElementById('email').value.trim(),pw=document.getElementById('pw').value;
+  var err=document.getElementById('err'),btn=document.getElementById('btn');
+  err.style.display='none';btn.classList.add('loading');btn.disabled=true;
+  try{
+    var r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});
+    var d=await r.json();
+    if(!r.ok){err.textContent=d.message||'Email atau password salah';err.style.display='block';btn.classList.remove('loading');btn.disabled=false;return}
+    var t=d.token||d.data?.token;
+    if(t){localStorage.setItem('tl_tok',t);location.href='/chat/'}
+  }catch(ex){err.textContent='Koneksi gagal. Coba lagi.';err.style.display='block';btn.classList.remove('loading');btn.disabled=false}
 }
 </script>
 </body>

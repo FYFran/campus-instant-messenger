@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -28,26 +27,10 @@ func CollegeDashboard(db *pgxpool.Pool) gin.HandlerFunc {
 
 		var students, teachers, activities int
 		var totalHours float64
-		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE college=$1 AND role='student'", college).Scan(&students); err != nil {
-			log.Printf("CollegeDashboard student count error: %v", err)
-			c.JSON(500, gin.H{"detail": "查询失败"})
-			return
-		}
-		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE college=$1 AND role='teacher'", college).Scan(&teachers); err != nil {
-			log.Printf("CollegeDashboard teacher count error: %v", err)
-			c.JSON(500, gin.H{"detail": "查询失败"})
-			return
-		}
-		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM activities WHERE college=$1", college).Scan(&activities); err != nil {
-			log.Printf("CollegeDashboard activities count error: %v", err)
-			c.JSON(500, gin.H{"detail": "查询失败"})
-			return
-		}
-		if err := db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id IN (SELECT id FROM users WHERE college=$1)", college).Scan(&totalHours); err != nil {
-			log.Printf("CollegeDashboard total hours error: %v", err)
-			c.JSON(500, gin.H{"detail": "查询失败"})
-			return
-		}
+		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE college=$1 AND role='student'", college).Scan(&students)
+		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE college=$1 AND role='teacher'", college).Scan(&teachers)
+		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM activities WHERE college=$1", college).Scan(&activities)
+		db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id IN (SELECT id FROM users WHERE college=$1)", college).Scan(&totalHours)
 
 		c.JSON(200, gin.H{
 			"college": college, "students": students, "teachers": teachers,
@@ -65,39 +48,20 @@ func SchoolDashboard(db *pgxpool.Pool) gin.HandlerFunc {
 		}
 		var totalStudents, totalActs int
 		var totalHours float64
-		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE role='student'").Scan(&totalStudents); err != nil {
-			log.Printf("SchoolDashboard student count error: %v", err)
-			c.JSON(500, gin.H{"detail": "查询失败"})
-			return
-		}
-		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM activities").Scan(&totalActs); err != nil {
-			log.Printf("SchoolDashboard activity count error: %v", err)
-			c.JSON(500, gin.H{"detail": "查询失败"})
-			return
-		}
-		if err := db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates").Scan(&totalHours); err != nil {
-			log.Printf("SchoolDashboard total hours error: %v", err)
-			c.JSON(500, gin.H{"detail": "查询失败"})
-			return
-		}
+		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE role='student'").Scan(&totalStudents)
+		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM activities").Scan(&totalActs)
+		db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates").Scan(&totalHours)
 
-		rows, err := db.Query(c.Request.Context(),
+		rows, _ := db.Query(c.Request.Context(),
 			"SELECT college, COUNT(*) FROM users WHERE role='student' AND college != '' GROUP BY college ORDER BY COUNT(*) DESC")
-		if err != nil {
-			log.Printf("SchoolDashboard query error: %v", err)
-			c.JSON(500, gin.H{"detail": "查询失败"})
-			return
-		}
 		defer rows.Close()
 		var colleges []gin.H
 		for rows.Next() {
 			var c string
 			var cnt int
-			if err := rows.Scan(&c, &cnt); err != nil {
-				log.Printf("SchoolDashboard scan error: %v", err)
-				continue
+			if rows.Scan(&c, &cnt) == nil {
+				colleges = append(colleges, gin.H{"college": c, "cnt": cnt})
 			}
-			colleges = append(colleges, gin.H{"college": c, "cnt": cnt})
 		}
 		if colleges == nil {
 			colleges = []gin.H{}
@@ -184,9 +148,9 @@ func GetMySignups(db *pgxpool.Pool) gin.HandlerFunc {
 		userID := c.GetInt("user_id")
 		rows, err := db.Query(c.Request.Context(),
 			`SELECT s.activity_id, a.title as activity_title, s.status, a.status as act_status,
-				 a.reward_type, a.hours, a.college
-				 FROM signups s JOIN activities a ON s.activity_id=a.id
-				 WHERE s.user_id=$1 ORDER BY s.signed_at DESC`, userID)
+			 a.reward_type, a.hours
+			 FROM signups s JOIN activities a ON s.activity_id=a.id
+			 WHERE s.user_id=$1 ORDER BY s.signed_at DESC`, userID)
 		if err != nil {
 			log.Printf("GetMySignups query error: %v", err)
 			c.JSON(500, gin.H{"detail": "查询报名记录失败"})
@@ -196,16 +160,16 @@ func GetMySignups(db *pgxpool.Pool) gin.HandlerFunc {
 		var signups []gin.H
 		for rows.Next() {
 			var actID int
-			var actTitle, status, actStatus, rewardType, college string
+			var actTitle, status, actStatus, rewardType string
 			var hours float64
-			if err := rows.Scan(&actID, &actTitle, &status, &actStatus, &rewardType, &hours, &college); err != nil {
+			if err := rows.Scan(&actID, &actTitle, &status, &actStatus, &rewardType, &hours); err != nil {
 				log.Printf("GetMySignups scan error: %v", err)
 				continue
 			}
 			signups = append(signups, gin.H{
 				"activity_id": actID, "activity_title": actTitle,
 				"status": status, "act_status": actStatus,
-				"reward_type": rewardType, "hours": hours, "college": college,
+				"reward_type": rewardType, "hours": hours,
 			})
 		}
 		if signups == nil {
@@ -218,61 +182,22 @@ func GetMySignups(db *pgxpool.Pool) gin.HandlerFunc {
 func GetMyStats(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetInt("user_id")
-
-		// Query total volunteer hours from certificates
 		var totalHours float64
-		if err := db.QueryRow(c.Request.Context(),
-			"SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1", userID).Scan(&totalHours); err != nil {
-			log.Printf("GetMyStats totalHours error: %v", err)
-		}
-
-		// Query total signups count
+		db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1", userID).Scan(&totalHours)
 		var totalSignups int
-		if err := db.QueryRow(c.Request.Context(),
-			"SELECT COUNT(*) FROM signups WHERE user_id=$1", userID).Scan(&totalSignups); err != nil {
-			log.Printf("GetMyStats totalSignups error: %v", err)
-		}
-
-		// Query total selected (selected or checked_in)
+		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM signups WHERE user_id=$1", userID).Scan(&totalSignups)
 		var totalSelected int
-		if err := db.QueryRow(c.Request.Context(),
-			"SELECT COUNT(*) FROM signups WHERE user_id=$1 AND status IN ('selected','checked_in')", userID).Scan(&totalSelected); err != nil {
-			log.Printf("GetMyStats totalSelected error: %v", err)
-		}
-
-		// Compute select_rate
+		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM signups WHERE user_id=$1 AND status IN ('selected','checked_in')", userID).Scan(&totalSelected)
 		selectRate := "0%"
 		if totalSignups > 0 {
-			rate := float64(totalSelected) / float64(totalSignups) * 100
-			selectRate = fmt.Sprintf("%.1f%%", rate)
+			selectRate = fmt.Sprintf("%.1f%%", float64(totalSelected)/float64(totalSignups)*100)
 		}
-
-		// Compute community hours (only for is_poor students)
-		var communityHours float64
-		var isPoor bool
-		if err := db.QueryRow(c.Request.Context(),
-			"SELECT COALESCE(is_poor,0)::boolean FROM users WHERE id=$1", userID).Scan(&isPoor); err != nil {
-			log.Printf("GetMyStats isPoor error: %v", err)
-		}
-		if isPoor {
-			if err := db.QueryRow(c.Request.Context(),
-				"SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1", userID).Scan(&communityHours); err != nil {
-				log.Printf("GetMyStats communityHours error: %v", err)
-			}
-		}
-
 		c.JSON(200, gin.H{
-			// Python-style fields (new, primary)
-			"total_hours":          totalHours,
-			"total_signups":        totalSignups,
-			"total_selected":       totalSelected,
-			"select_rate":          selectRate,
-			"volunteer":            totalHours,
-			"volunteer_convertible": 0,
-			"community":            communityHours,
-			// Go-style fields (backward compatibility)
-			"activity_count":       float64(totalSignups),
-			"trend":                0,
+			"total_hours":    totalHours,
+			"total_signups":  totalSignups,
+			"total_selected": totalSelected,
+			"select_rate":    selectRate,
+			"volunteer":      totalHours,
 		})
 	}
 }
@@ -290,15 +215,13 @@ func GetColleges(db *pgxpool.Pool) gin.HandlerFunc {
 		for rows.Next() {
 			var id int
 			var name string
-			if err := rows.Scan(&id, &name); err != nil {
-				log.Printf("GetColleges scan error: %v", err)
-				continue
+			if rows.Scan(&id, &name) == nil {
+				cols = append(cols, gin.H{"id": id, "name": name})
 			}
-			cols = append(cols, gin.H{"id": id, "name": name})
 		}
 		if cols == nil {
 			cols = []gin.H{}
 		}
-		c.JSON(http.StatusOK, cols)
+		c.JSON(200, cols)
 	}
 }

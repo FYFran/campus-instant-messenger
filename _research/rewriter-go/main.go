@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"log"
 	"log/slog"
 	"net/http"
@@ -28,6 +30,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("db: %v", err)
 	}
+	syscall.Umask(0077) // restrict WAL/SHM file permissions to owner-only
 	schemaPath := filepath.Join(filepath.Dir(cfg.DBPath), "..", "sql", "schema.sql")
 	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
 		schemaPath = "/app/rewriter-go/sql/schema.sql" // production fallback
@@ -54,6 +57,7 @@ func main() {
 	tmplH := &handler.TemplateHandler{DB: database}
 	handler.InitDodo()
 	handler.InitOTP()
+	handler.InitMidtrans()
 
 	// Cost tracker — monitors API spend, predicts burn rate
 	costTracker := handler.NewCostTracker(database)
@@ -62,6 +66,17 @@ func main() {
 	// Revenue tracker — monitors cash flow + New API health
 	revenueTracker := handler.NewRevenueTracker(database)
 	handler.GlobalRevenue = revenueTracker
+
+	// Balance monitor — tracks YunPian/Dodo/DeepSeek balances + alerts
+	balanceMon := handler.NewBalanceMonitor(database)
+	handler.GlobalBalance = balanceMon
+	go func() {
+		balanceMon.RefreshAll() // initial load
+		for {
+			time.Sleep(5 * time.Minute)
+			balanceMon.RefreshAll()
+		}
+	}()
 
 	// New API health check (every 60s) + periodic DB refresh (every 5min)
 	go func() {
@@ -129,6 +144,9 @@ func main() {
 			"db":                dbOK,
 			"uptime_hours":      snap.UptimeSeconds / 3600,
 			"error_rate_pct":    snap.ErrorRate,
+			"error_count_4xx":   snap.ErrorCount4xx,
+			"error_count_5xx":   snap.ErrorCount5xx,
+			"total_requests":    snap.TotalRequests,
 			"chat_errors":       snap.ChatErrors,
 			"rate_limited":      snap.RateLimited,
 			"active_users_5m":   snap.ActiveUsers5Min,
@@ -143,6 +161,19 @@ func main() {
 		if revenueTracker != nil {
 			resp = revenueTracker.EnrichHealth(resp)
 		}
+		// SSL cert expiry
+		if certData, err := os.ReadFile("/app/rewriter-go/cert.pem"); err == nil {
+			block, _ := pem.Decode(certData)
+			if block != nil {
+				if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
+					daysLeft := int(time.Until(cert.NotAfter).Hours() / 24)
+					resp["ssl_cert"] = map[string]interface{}{
+						"expires_at": cert.NotAfter.Format("2006-01-02"),
+						"days_left":  daysLeft,
+					}
+				}
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		if status == "degraded" {
 			w.WriteHeader(503)
@@ -155,9 +186,33 @@ func main() {
 	mux.HandleFunc("GET /api/chat/history", chain(userH.History, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("GET /api/packs", chain(payH.ListPacks, middleware.RateLimit(pubLimiter)))
 	mux.HandleFunc("GET /api/templates", chain(tmplH.List, middleware.RateLimit(pubLimiter)))
+	mux.HandleFunc("GET /api/citation/search", chain(handler.SearchCitations, middleware.RateLimit(pubLimiter)))
 	mux.HandleFunc("POST /api/export", chain(exportH.Export, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
+	mux.HandleFunc("POST /api/upload", chain(handler.UploadHandler, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(authLimiter)))
 	mux.HandleFunc("POST /api/payment/create", chain(payH.Create, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("POST /api/payment/callback", payH.Callback)
+	mux.HandleFunc("POST /api/payment/midtrans-callback", payH.MidtransCallback)
+	mux.HandleFunc("GET /api/payment/methods", func(w http.ResponseWriter, r *http.Request) {
+		methods := []map[string]interface{}{}
+		if handler.MidtransAvailable() {
+			methods = append(methods, map[string]interface{}{
+				"id":          "midtrans",
+				"name":        "Midtrans",
+				"channels":    []string{"gopay", "qris", "shopeepay", "bank_transfer", "echannel", "cstore"},
+				"description": "GoPay, OVO, DANA, QRIS, transfer bank, Indomaret/Alfamart",
+			})
+		}
+		if handler.DodoAvailable() {
+			methods = append(methods, map[string]interface{}{
+				"id":          "dodo",
+				"name":        "Dodo Payments",
+				"channels":    []string{"card", "ewallet"},
+				"description": "Kartu kredit/debit, e-wallet internasional",
+			})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(methods)
+	})
 	mux.HandleFunc("GET /api/me", chain(userH.Me, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("GET /api/me/balance", chain(chatH.GetBalance, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("POST /api/auth/send-otp", chain(authH.SendOTP, middleware.Auth(cfg.JWTSecret)))
@@ -168,7 +223,6 @@ func main() {
 	mux.HandleFunc("POST /api/auth/reset-password", chain(authH.ResetPassword, middleware.RateLimit(authLimiter)))
 	mux.HandleFunc("GET /api/me/stats", chain(userH.Stats, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("POST /api/feedback", chain(handler.FeedbackHandler, middleware.RateLimit(authLimiter)))
-	mux.HandleFunc("POST /api/me/refund", chain(userH.RequestRefund, middleware.Auth(cfg.JWTSecret)))
 
 	// Admin routes — password-protected, exposes financial/ops data
 	adminMux := http.NewServeMux()
@@ -176,6 +230,7 @@ func main() {
 	adminMux.HandleFunc("GET /api/admin/balance", handler.AdminDeepSeekBalance)
 	adminMux.HandleFunc("GET /api/admin/revenue", revenueTracker.StatusHandler)
 	adminMux.HandleFunc("GET /api/admin/dashboard", handler.AdminDashboard)
+	adminMux.HandleFunc("GET /api/admin/balances", handler.AdminBalanceHandler)
 	mux.Handle("/api/admin/", handler.AdminAuth(adminMux))
 
 	// Monitoring wrapper
@@ -249,6 +304,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 		if origin == "https://tokenline.top" || origin == "https://www.tokenline.top" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")

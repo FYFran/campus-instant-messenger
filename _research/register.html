@@ -1,64 +1,119 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Daftar — TokenLine</title>
 <link rel="icon" href="/favicon.svg">
 <style>
-:root{--acc:#6366f1;--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;--card:#fff;--hair:#e5e7eb;--err:#e94560}
-@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--fg:#f0f0f0;--muted:#999;--card:#1a1a1a;--hair:#2a2a2a}}
-body{font:400 15px/1.6 system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}
-.card{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:2rem;width:100%;max-width:380px}
-h1{font-size:1.4rem;margin:0 0 .25rem}h1 span{color:var(--acc)}
-p.desc{color:var(--muted);font-size:.85rem;margin:0 0 1.5rem}
-label{display:block;font-size:.8rem;margin-bottom:.25rem;color:var(--muted)}
-input{width:100%;padding:.65rem .75rem;border:1px solid var(--hair);border-radius:8px;font-size:.95rem;background:var(--bg);color:var(--fg);box-sizing:border-box;margin-bottom:1rem}
-input:focus{outline:none;border-color:var(--acc)}
-button{width:100%;padding:.7rem;background:var(--acc);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
-button:disabled{opacity:.5}
-.err{color:var(--err);font-size:.8rem;margin-bottom:.75rem;display:none}
-.link{text-align:center;margin-top:1rem;font-size:.85rem;color:var(--muted)}
-.link a{color:var(--acc);text-decoration:none}
+:root{--bg:#faf9f6;--card:#fff;--accent:#1a1c2c;--gold:#b8975a;--muted:rgba(26,28,44,.45);--hair:rgba(0,0,0,.06)}
+*{font-family:'Inter',system-ui,-apple-system,sans-serif;box-sizing:border-box}
+body{background:var(--bg);color:var(--accent);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;margin:0;line-height:1.5}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(120,120,160,.03) 0%,transparent 100%),radial-gradient(ellipse 40% 50% at 80% 80%,rgba(180,160,120,.02) 0%,transparent 100%);pointer-events:none;z-index:-1}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:1.5rem;padding:2.5rem;max-width:420px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.03),0 8px 28px rgba(0,0,0,.05)}
+.logo{width:3rem;height:3rem;border-radius:.75rem;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;margin:0 auto 1.25rem}
+h1{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;text-align:center;margin:0}
+h1 span{color:var(--gold)}
+p.desc{color:var(--muted);font-size:.85rem;text-align:center;margin:.25rem 0 1.75rem}
+label{display:block;font-size:.75rem;font-weight:600;color:rgba(26,28,44,.45);margin-bottom:.3rem}
+input:not([type=checkbox]){width:100%;padding:.8rem .9rem;border:1px solid var(--hair);border-radius:.75rem;font-size:.9rem;background:var(--bg);color:var(--accent);font-family:inherit;margin-bottom:1rem;transition:all .2s;outline:none}
+input:focus{border-color:rgba(26,28,44,.25);box-shadow:0 0 0 3px rgba(26,28,44,.04)}
+input[type=checkbox]{width:auto;margin-top:.2rem;flex-shrink:0}
+.btn{width:100%;padding:.8rem;border-radius:999px;font-weight:600;font-size:.9rem;cursor:pointer;border:none;transition:all .2s}
+.btn-dark{background:var(--accent);color:#fff}.btn-dark:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(26,28,44,.18)}
+.btn:disabled{opacity:.5;transform:none;box-shadow:none}
+.btn-ghost{background:transparent;color:var(--muted);margin-top:.5rem;font-weight:400;font-size:.8rem}
+.msg{font-size:.8rem;padding:.7rem;border-radius:.75rem;margin-bottom:1rem;display:none}
+.msg.err{display:block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.msg.ok{display:block;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.link{text-align:center;margin-top:1rem;font-size:.8rem;color:var(--muted)}
+.link a{color:var(--accent);text-decoration:none;font-weight:600}.link a:hover{color:var(--gold)}
+.hint{font-size:.7rem;color:var(--muted);margin:-.5rem 0 .5rem}
+.check-row{display:flex;align-items:flex-start;gap:.5rem;font-size:.78rem;line-height:1.5;margin-bottom:1rem;cursor:pointer}
+.check-row a{color:var(--gold);text-decoration:none}
 </style>
 </head>
 <body>
 <div class="card">
-<h1>Daftar <span>TokenLine</span></h1>
-<p class="desc">AI berbahasa Indonesia, mulai dari Rp 5.000</p>
-<div class="err" id="err"></div>
-<form id="form" onsubmit="register(event)">
-<label>Email</label>
-<input type="email" id="email" placeholder="kamu@email.com" required autofocus>
-<label>Password (minimal 6 karakter)</label>
-<input type="password" id="pw" placeholder="••••••" minlength="6" required>
-<label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.78rem;line-height:1.5;margin-bottom:1rem;cursor:pointer">
-  <input type="checkbox" id="agree" style="width:auto;margin-top:.2rem;flex-shrink:0" required>
-  <span>Saya setuju dengan <a href="/tos.html" target="_blank">Syarat & Ketentuan</a>, <a href="/privacy.html" target="_blank">Kebijakan Privasi</a>, dan <a href="/refund.html" target="_blank">Kebijakan Refund</a> TokenLine.</span>
-</label>
-<button type="submit" id="btn">Daftar Gratis</button>
-</form>
-<div class="link">Sudah punya akun? <a href="/login.html">Masuk</a></div>
+  <div class="logo">T</div>
+  <h1>Daftar <span>TokenLine</span></h1>
+  <p class="desc">Asisten menulis AI untuk Indonesia</p>
+
+  <div id="step-register">
+    <div class="msg err" id="err"></div>
+    <form onsubmit="register(event)">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="kamu@email.com" required autofocus>
+      <label>Password (minimal 6 karakter)</label>
+      <input type="password" id="pw" placeholder="••••••" minlength="6" required>
+      <label>Nomor Telepon</label>
+      <input type="tel" id="phone" placeholder="628xxxxxxxxxx" pattern="628[0-9]{8,12}">
+      <p class="hint">Opsional — diperlukan untuk reset password</p>
+      <div class="check-row">
+        <input type="checkbox" id="agree" required>
+        <span>Saya setuju dengan <a href="/tos.html" target="_blank">Syarat & Ketentuan</a>, <a href="/privacy.html" target="_blank">Privasi</a>, dan <a href="/refund.html" target="_blank">Refund</a>.</span>
+      </div>
+      <button type="submit" class="btn btn-dark" id="btn">Daftar Gratis</button>
+    </form>
+  </div>
+
+  <div id="step-otp" style="display:none">
+    <p class="desc" id="otp-desc">Kode verifikasi dikirim ke nomor Anda</p>
+    <div class="msg err" id="otp-err"></div>
+    <label>Kode Verifikasi (6 digit)</label>
+    <input type="text" id="otp-code" placeholder="123456" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    <button class="btn btn-dark" onclick="verifyOTP()" id="otp-btn">Verifikasi</button>
+    <button class="btn btn-ghost" onclick="skipOTP()">Nanti saja → Langsung ke chat</button>
+  </div>
+
+  <div class="link">Sudah punya akun? <a href="/login.html">Masuk</a></div>
 </div>
+
 <script>
+var authToken = '';
+function S(el,msg){el.textContent=msg;el.style.display='block'}
+function H(el){el.style.display='none'}
+
 async function register(e){
-e.preventDefault();
-var em=document.getElementById('email').value.trim();
-var pw=document.getElementById('pw').value;
-var err=document.getElementById('err');
-var btn=document.getElementById('btn');
-if(pw.length<6){err.textContent='Password minimal 6 karakter';err.style.display='block';return}
-	if(!document.getElementById('agree').checked){err.textContent='Anda harus menyetujui Syarat & Ketentuan';err.style.display='block';return}
-err.style.display='none';btn.disabled=true;btn.textContent='Mendaftar...';
-var ref=new URLSearchParams(location.search).get('ref')||'';
-try{
-var r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw,ref:ref})});
-var d=await r.json();
-if(!r.ok){err.textContent=d.message||'Gagal mendaftar';err.style.display='block';btn.disabled=false;btn.textContent='Daftar Gratis';return}
-var t=d.token||d.data?.token;
-if(t){localStorage.setItem('tl_tok',t);location.href='/chat/'}
-}catch(ex){err.textContent='Koneksi gagal. Coba lagi.';err.style.display='block';btn.disabled=false;btn.textContent='Daftar Gratis'}
+  e.preventDefault();
+  var em=document.getElementById('email').value.trim(),pw=document.getElementById('pw').value;
+  var phone=document.getElementById('phone').value.trim(),err=document.getElementById('err'),btn=document.getElementById('btn');
+  if(pw.length<6){S(err,'Password minimal 6 karakter');return}
+  if(!document.getElementById('agree').checked){S(err,'Anda harus menyetujui Syarat & Ketentuan');return}
+  if(phone&&!phone.match(/^628\d{8,12}$/)){S(err,'Format nomor: 628xxxxxxxxxx');return}
+  H(err);btn.disabled=true;btn.textContent='Mendaftar...';
+  var ref=new URLSearchParams(location.search).get('ref')||'';
+  try{
+    var r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw,ref:ref})});
+    var d=await r.json();
+    if(!r.ok){S(err,d.message||'Gagal mendaftar');btn.disabled=false;btn.textContent='Daftar Gratis';return}
+    authToken=d.token||(d.data&&d.data.token);
+    if(!authToken){S(err,'Gagal mendapatkan token');btn.disabled=false;btn.textContent='Daftar Gratis';return}
+    localStorage.setItem('tl_tok',authToken);
+    if(phone){
+      document.getElementById('step-register').style.display='none';
+      document.getElementById('step-otp').style.display='block';
+      document.getElementById('otp-desc').textContent='Kode verifikasi dikirim ke '+phone;
+      var sr=await fetch('/api/auth/send-otp',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({phone:phone})});
+      var sd=await sr.json();
+      if(!sr.ok)S(document.getElementById('otp-err'),sd.message||'Gagal mengirim kode. Coba nanti.');
+    }else{location.href='/chat/'}
+  }catch(ex){S(err,'Koneksi gagal. Coba lagi.');btn.disabled=false;btn.textContent='Daftar Gratis'}
 }
+
+async function verifyOTP(){
+  var code=document.getElementById('otp-code').value.trim(),oerr=document.getElementById('otp-err'),obtn=document.getElementById('otp-btn');
+  if(code.length!==6){S(oerr,'Kode harus 6 digit');return}
+  H(oerr);obtn.disabled=true;obtn.textContent='Memverifikasi...';
+  try{
+    var r=await fetch('/api/auth/verify-otp',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({otp:code})});
+    var d=await r.json();
+    if(r.ok)location.href='/chat/';
+    else{S(oerr,d.message||'Kode salah');obtn.disabled=false;obtn.textContent='Verifikasi'}
+  }catch(ex){S(oerr,'Koneksi gagal');obtn.disabled=false;obtn.textContent='Verifikasi'}
+}
+
+function skipOTP(){location.href='/chat/'}
 </script>
 </body>
 </html>

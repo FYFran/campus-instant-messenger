@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     expires_at TEXT NOT NULL,
     daily_used INTEGER DEFAULT 0,
     token_balance INTEGER DEFAULT 0,
+    flash_balance INTEGER DEFAULT 0,
+    pro_balance INTEGER DEFAULT 0,
+    pack_type TEXT DEFAULT 'flash',
     last_reset_date TEXT DEFAULT '',
     status INTEGER DEFAULT 1
 );
@@ -33,6 +36,7 @@ CREATE TABLE IF NOT EXISTS payments (
     xendit_invoice_id TEXT UNIQUE,
     plan TEXT NOT NULL,
     amount INTEGER NOT NULL,
+    pack_type TEXT DEFAULT 'flash',
     status TEXT DEFAULT 'pending',
     created_at TEXT DEFAULT (datetime('now')),
     paid_at TEXT

@@ -72,7 +72,8 @@ func (h *ExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var m msg
 		rows.Scan(&m.Role, &m.Content, &m.Model, &m.CreatedAt)
-		// Simple markdown-to-HTML conversion
+		// HTML-escape user content first (XSS protection), then convert markdown
+		m.Content = template.HTMLEscapeString(m.Content)
 		m.Content = simpleMarkdownToHTML(m.Content)
 		messages = append(messages, m)
 	}

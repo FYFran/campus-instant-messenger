@@ -2,6 +2,10 @@
 # 用法: just <命令>
 #       python pete.py <命令>  (等效)
 
+# 一键发布：版本Bump→编译Go→编译Flutter→部署→装手机
+release:
+    bash scripts/release.sh
+
 default:
     @just --list
 
@@ -24,8 +28,6 @@ selfcheck:
 # ── 测试 ──
 test-all:
     python pete.py test
-test-e2e:
-    python test_e2e.py
 test-fuzz:
     python test_fuzz.py
 test-cross:
@@ -42,6 +44,39 @@ build:
     python pete.py build
 phone: build
     python pete.py phone
+
+# ── 主控管线 ──
+pipeline:
+    bash pipeline_master.sh --full
+pipeline-quick:
+    bash pipeline_master.sh --quick
+pipeline-deploy:
+    bash pipeline_master.sh --deploy
+pipeline-provenance:
+    bash pipeline_provenance.sh
+# ── Git hooks ──
+hooks:
+    lefthook run pre-commit
+hooks-all:
+    lefthook run pre-push
+# ── 蓝绿部署 ──
+deploy-bg:
+    bash deploy_blue_green.sh
+# ── 测试 ──
+test-e2e:
+    bash e2e_user_flow.sh
+test-load:
+    bash load_test.sh 50 200
+test-contract:
+    python api_contract_test.py
+test-schema:
+    python schema_validate.py
+test-migration:
+    bash migration_test.sh
+test-go:
+    cd campus_go && JWT_SECRET=test DATABASE_URL=postgres://test go test ./... -count=1
+# ── 全量测试 ──
+test-all-extended: test-e2e test-load test-contract test-schema test-migration test-go
 
 # ── 部署 ──
 deploy:

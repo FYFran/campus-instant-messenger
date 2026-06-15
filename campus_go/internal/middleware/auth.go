@@ -33,7 +33,7 @@ func CORS() gin.HandlerFunc {
 		if allowedOrigins[origin] {
 			c.Header("Access-Control-Allow-Origin", origin)
 		}
-		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type,Authorization")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
@@ -44,15 +44,17 @@ func CORS() gin.HandlerFunc {
 }
 
 type Claims struct {
-	UserID int    `json:"user_id"`
-	Role   string `json:"role"`
+	UserID       int    `json:"user_id"`
+	Role         string `json:"role"`
+	TokenVersion int    `json:"ver"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID int, role string) (string, error) {
+func GenerateToken(userID int, role string, tokenVersion int) (string, error) {
 	claims := Claims{
-		UserID: userID,
-		Role:   role,
+		UserID:       userID,
+		Role:         role,
+		TokenVersion: tokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -60,6 +62,24 @@ func GenerateToken(userID int, role string) (string, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
+}
+
+// ParseToken validates a JWT token string and returns the claims
+func ParseToken(tokenStr string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+	return claims, nil
 }
 
 func JWT(db *pgxpool.Pool) gin.HandlerFunc {
@@ -85,13 +105,18 @@ func JWT(db *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 
-		// Verify user is still active
+		// Verify user is still active + single-device enforcement
 		var isActive bool
+		var dbTokenVersion int
 		err = db.QueryRow(c.Request.Context(),
-			"SELECT COALESCE(is_active,true) FROM users WHERE id=$1", claims.UserID,
-		).Scan(&isActive)
+			"SELECT COALESCE(is_active,true), COALESCE(token_version,0) FROM users WHERE id=$1", claims.UserID,
+		).Scan(&isActive, &dbTokenVersion)
 		if err != nil || !isActive {
 			c.AbortWithStatusJSON(401, gin.H{"detail": "账户已被禁用"})
+			return
+		}
+		if claims.TokenVersion > 0 && dbTokenVersion != claims.TokenVersion {
+			c.AbortWithStatusJSON(401, gin.H{"detail": "您的账号已在其他设备登录，请重新登录"})
 			return
 		}
 

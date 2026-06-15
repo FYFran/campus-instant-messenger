@@ -322,7 +322,8 @@ body {
         <button onclick="document.getElementById('file-input').click()" class="flex-shrink-0 p-3 rounded-2xl text-black/18 hover:text-black/40 hover:bg-black/[0.03] transition-all ml-1" title="Lampirkan file">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
         </button>
-        <input type="file" id="file-input" class="hidden" accept=".txt,.doc,.docx,.pdf">
+        <input type="file" id="file-input" class="hidden" accept=".txt,.doc,.docx,.pdf" onchange="handleFileUpload(event)">
+        <div id="file-preview" class="hidden px-3 py-2 mx-2 mb-1 bg-black/[0.02] rounded-xl text-[12px] text-black/50 flex items-center gap-2"></div>
         <textarea id="textin" rows="1" class="flex-1 resize-none text-[14px] leading-[1.7] outline-none placeholder:text-black/16 py-3.5 bg-transparent tracking-[0.005em]" placeholder="Mulai menulis... pilih mode di sidebar kiri untuk hasil terbaik" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
         <div class="flex items-center gap-1.5 mr-1">
           <button onclick="send()" id="sendbtn" class="flex-shrink-0 p-3 rounded-2xl accent-btn disabled:opacity-30 disabled:transform-none disabled:cursor-default" disabled>
@@ -452,6 +453,33 @@ var activeConvId = null;
 var convTimestamps = {};
 var userData = null;
 var isStreaming = false;
+var uploadedText = '';
+var uploadedFilename = '';
+
+async function handleFileUpload(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var preview = document.getElementById('file-preview');
+  preview.classList.remove('hidden');
+  preview.innerHTML = '<span class="animate-pulse">Mengunggah ' + file.name + '...</span>';
+  var fd = new FormData();
+  fd.append('file', file);
+  try {
+    var r = await fetch(BASE + '/api/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN }, body: fd });
+    var d = await r.json();
+    if (!r.ok) { preview.innerHTML = '<span style=\"color:#c62828\">Gagal: ' + (d.message || 'error') + '</span>'; return; }
+    uploadedText = d.text;
+    uploadedFilename = d.filename;
+    preview.innerHTML = '<span>Lampiran: <strong>' + d.filename + '</strong> (' + (d.text||'').length + ' karakter)</span> <button onclick=\"clearUpload()\" style=\"background:none;border:none;cursor:pointer;color:#999\">x</button>';
+  } catch(ex) { preview.innerHTML = '<span style=\"color:#c62828\">Koneksi gagal</span>'; }
+}
+
+function clearUpload() {
+  uploadedText = '';
+  uploadedFilename = '';
+  document.getElementById('file-preview').classList.add('hidden');
+  document.getElementById('file-input').value = '';
+}
 
 // Init send btn state
 ti.addEventListener('input', function() {
@@ -744,7 +772,25 @@ async function send() {
   // Apply mode prefix
   var modeBtn = document.querySelector('.mode-item.active');
   var modePrompt = modeBtn ? (modeBtn.dataset.prompt || '') : '';
-  var finalMessage = modePrompt ? modePrompt + t : t;
+  var prefix = '';
+  if (uploadedText) { prefix = '[File: ' + uploadedFilename + ']\n' + uploadedText + '\n\n---\nInstruksi: '; }
+  // Riset mode: auto-search CrossRef for real citations
+  if (activeMode === 'riset' && !uploadedText) {
+    try {
+      var cr = await fetch(BASE + '/api/citation/search?q=' + encodeURIComponent(t.substring(0, 200)));
+      if (cr.ok) {
+        var cd = await cr.json();
+        if (cd.results && cd.results.length > 0) {
+          prefix = 'Referensi akademik terkait (dari CrossRef):\n';
+          cd.results.forEach(function(r, i) { prefix += (i+1) + '. ' + r.apa + '\n'; });
+          prefix += '\nGunakan referensi di atas untuk mendukung riset. ';
+          prefix += 'Jika ada klaim spesifik, sebutkan sumbernya.\n\nPertanyaan pengguna: ';
+        }
+      }
+    } catch(ex) { /* citation fetch failed, continue without */ }
+  }
+  var finalMessage = prefix ? prefix + t : t;
+  finalMessage = modePrompt ? modePrompt + finalMessage : finalMessage;
 
   if (!conversations[activeConvId]) newChat();
   if (!conversations[activeConvId].msgs.length) ls.style.display = 'none';
@@ -755,6 +801,7 @@ async function send() {
   ti.value = '';
   ti.style.height = 'auto';
   bt.disabled = true;
+  clearUpload();
   ub.classList.add('hidden');
 
   // Typing indicator

@@ -80,7 +80,7 @@
 
     <!-- Nav -->
     <nav class="flex-1 px-3 py-2 space-y-0.5">
-      <a href="#" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-[13px] text-black/45">
+      <a href="/chat/" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-[13px] text-black/45">
         <span>💬</span> Percakapan
       </a>
       <a href="#" class="nav-item active flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-[13px]">
@@ -288,7 +288,7 @@
   // AUTH
   // ============================================================
   function checkAuth() {
-    authToken = localStorage.getItem('token');
+    authToken = localStorage.getItem('tl_tok');
     if (!authToken) {
       window.location.href = 'login.html';
     }

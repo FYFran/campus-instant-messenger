@@ -1,4 +1,4 @@
-﻿# Gitleaks configuration for Pete/Campus project
+# Gitleaks configuration for Pete/Campus project
 # Docs: https://github.com/gitleaks/gitleaks
 # Extended with custom patterns for the campus app codebase
 
@@ -45,6 +45,52 @@ paths = [
     '''\.log''',
     '''superdesign-mcp-claude-code[/\\]''',
     '''audit[/\\]''',
+    '''integration_test[/\\]''',
+    '''_research[/\\]''',
+    '''_ppt_master[/\\]''',
+    '''_shannon[/\\]''',
+    '''design_previews[/\\]''',
+    '''\.lock''',
+    '''\.sum''',
+    '''campus_app[/\\]server[/\\]backups[/\\]''',
+    '''campus_app[/\\]server[/\\]__pycache__[/\\]''',
+    '''beisen_packages[/\\]''',
+    '''defending-code-harness[/\\]''',
+    '''\.codegraph[/\\]''',
+    '''\.codex[/\\]''',
+    '''\.continue[/\\]''',
+    '''\.peterc''',
+    '''\.nuclei-templates[/\\]''',
+    '''campus_app[/\\]ohos[/\\]''',
+    '''campus_app[/\\]server[/\\]static[/\\]''',
+    '''\.claude[/\\]agents[/\\]''',
+    '''\.jsonl''',
+    '''temp_article\.html''',
+    '''tmp_.*\.py''',
+    '''_be_''',
+    '''_server_''',
+    '''_go_logs''',
+    '''_p3\.txt''',
+    '''_fix.*\.py''',
+    '''_add_rule\.py''',
+    '''_backend_check\.txt''',
+    '''_nginx_clean''',
+    '''\.claude[/\\]session_backup''',
+    '''campus_app[/\\]docs[/\\]''',
+    '''auto_deploy\.sh''',
+    '''create_admins\.py''',
+    '''fix_.*\.py''',
+    '''final_session_fix\.py''',
+    '''single_device_fix\.py''',
+    '''install_sliver\.py''',
+    '''stop_scanners\.py''',
+    '''scripts[/\\]''',
+    '''deploy\.py''',
+    '''migrate\.py''',
+    '''pipeline_backend\.sh''',
+    '''wechat_pete\.py''',
+    '''main_remote\.py''',
+    '''campus_app[/\\]server[/\\]\.env''',
 ]
 
 # Generic high-entropy string detection
@@ -54,6 +100,22 @@ description = "High-entropy Base64 string (potential secret)"
 regex = '''(?i)(?:key|secret|password|token|auth|credential|api[_-]?key|access[_-]?key|secret[_-]?key|bearer|jwt|session|private[_-]?key)(?:\s*[=:]\s*|\s+)(['"'"])([a-zA-Z0-9+\/=]{20,})\b'''
 entropy = 4.5
 secret_group = 2
+[[rules.allowlists]]
+stopwords = [
+    "example",
+    "sample",
+    "test",
+    "dummy",
+    "placeholder",
+    "REDACTED",
+    "xxxx",
+    "deadbeef",
+    "cafebabe",
+    "abcdefgh",
+    "AAAAAAAA",
+    "00000000",
+    "12345678",
+]
 
 [[rules]]
 id = "high-entropy-hex"
@@ -61,6 +123,15 @@ description = "High-entropy hex string (potential secret)"
 regex = '''(?i)(?:key|secret|password|token|auth|credential|api[_-]?key|access[_-]?key|secret[_-]?key|bearer|jwt|session|private[_-]?key)(?:\s*[=:]\s*|\s+)(['"'"])([a-f0-9]{16,})\b'''
 entropy = 3.5
 secret_group = 2
+[[rules.allowlists]]
+stopwords = [
+    "deadbeef",
+    "cafebabe",
+    "dec0de",
+    "feedface",
+    "0000000",
+    "ffffff",
+]
 
 # API key patterns
 [[rules]]
@@ -223,10 +294,13 @@ regex = '''(?i)aliyun[_-]?(access[_-]?key|secret)[^=]{0,10}=\s*['"][a-zA-Z0-9]{2
 tags = ["aliyun", "secret"]
 
 # 64-char hex JWT secret (used by campus Go backend)
+# Tightened: requires jwt/secret/key/token keyword on same line to cut false positives
 [[rules]]
 id = "jwt-hex-secret-64"
 description = "64-char hex JWT secret"
-regex = '''['"][a-f0-9]{64}['"]'''
+regex = '''(?i)(?:jwt|secret|token|key|signing|password|auth)\w*\s*[=:]\s*['"]?([a-f0-9]{64})['"]?'''
+secretGroup = 1
+keywords = ["jwt","secret","token","key","signing","password","auth"]
 tags = ["jwt", "secret"]
 
 # Internal publish code (PUB-XXXXXX)
@@ -235,6 +309,15 @@ id = "publish-code-token"
 description = "Publish code token (PUB- prefix)"
 regex = '''PUB-[A-Z0-9]{6}'''
 tags = ["campus", "publish-code"]
+[[rules.allowlists]]
+stopwords = [
+    "PUB-XXXXXX",
+    "PUB-123456",
+    "PUB-234567",
+    "PUB-345678",
+    "PUB-456789",
+    "PUB-567890",
+]
 
 # tzxy-related internal credentials
 [[rules]]

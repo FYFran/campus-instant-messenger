@@ -76,10 +76,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			"SELECT id FROM users WHERE email=? AND status=1", req.Ref).Scan(&refID)
 		if err == nil {
 			h.DB.ExecContext(r.Context(),
-				"UPDATE subscriptions SET token_balance=COALESCE(token_balance,0)+50000 WHERE user_id=? AND status=1",
+				"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000 WHERE user_id=? AND status=1",
 				refID)
 			h.DB.ExecContext(r.Context(),
-				"UPDATE subscriptions SET token_balance=COALESCE(token_balance,0)+50000 WHERE user_id=? AND status=1",
+				"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000 WHERE user_id=? AND status=1",
 				userID)
 			slog.Info("referral bonus applied", "referrer", refID, "new_user", userID)
 		}
@@ -378,11 +378,16 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, 400, "Nomor telepon belum diverifikasi. Tidak bisa reset password.")
 		return
 	}
+	if checkCooldown(req.Phone, 60) {
+		writeJSON(w, 429, "Tunggu 60 detik sebelum mengirim ulang kode verifikasi")
+		return
+	}
 	otp := generateOTP()
 	otpHash := hashOTP(otp)
 	expires := time.Now().UTC().Add(5 * time.Minute).Format(time.RFC3339)
 	h.DB.ExecContext(r.Context(),
 		"UPDATE users SET otp_hash=?, otp_expires_at=? WHERE id=?", otpHash, expires, userID)
+	setCooldown(req.Phone)
 	go SendSMSOTP(req.Phone, otp)
 	slog.Info("Password reset OTP via SMS", "user", userID, "phone", req.Phone)
 	writeJSON(w, 200, map[string]string{"message": "Kode reset password telah dikirim via SMS ke nomor Anda"})
