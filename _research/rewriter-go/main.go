@@ -231,6 +231,7 @@ func main() {
 	adminMux.HandleFunc("GET /api/admin/revenue", revenueTracker.StatusHandler)
 	adminMux.HandleFunc("GET /api/admin/dashboard", handler.AdminDashboard)
 	adminMux.HandleFunc("GET /api/admin/balances", handler.AdminBalanceHandler)
+		adminMux.HandleFunc("GET /api/admin/charts", handler.AdminCharts)
 	mux.Handle("/api/admin/", handler.AdminAuth(adminMux))
 
 	// Monitoring wrapper

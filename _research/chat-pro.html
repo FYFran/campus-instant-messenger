@@ -161,6 +161,15 @@ body {
 </head>
 <body class="h-screen flex overflow-hidden antialiased">
 
+<!-- ====== MOBILE BANNER ====== -->
+<div id="mobile-banner" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-[#1a1a28] to-[#2a2a48] text-white/90 px-4 py-3 text-center text-[12px] font-medium flex items-center justify-between gap-3 shadow-lg">
+  <span class="flex-1">🖥️ Gunakan komputer untuk membuka semua fitur TokenLine</span>
+  <button onclick="document.getElementById('mobile-banner').style.display='none'" class="text-white/50 hover:text-white text-lg leading-none flex-shrink-0">&times;</button>
+</div>
+<style>
+@media (max-width: 768px) { #mobile-banner { display: flex !important; } }
+</style>
+
 <!-- ====== TOAST ====== -->
 <div class="toast-container" id="toast"></div>
 
@@ -870,10 +879,13 @@ async function send() {
           var json = JSON.parse(ln.slice(6));
           if (json.choices && json.choices[0]) {
             var delta = json.choices[0].delta;
-            if (delta && delta.content) {
-              full += delta.content;
-              bubbleBody.innerHTML = mdToHtml(full);
-              chatEl.scrollTop = chatEl.scrollHeight;
+            if (delta) {
+              var c = delta.content || delta.reasoning_content || '';
+              if (c) {
+                full += c;
+                bubbleBody.innerHTML = mdToHtml(full);
+                chatEl.scrollTop = chatEl.scrollHeight;
+              }
             }
           }
         } catch (e) { /* skip parse errors */ }

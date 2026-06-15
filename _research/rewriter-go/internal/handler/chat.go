@@ -272,12 +272,17 @@ func extractContent(sse string) string {
 			var chunk struct {
 				Choices []struct {
 					Delta struct {
-						Content string `json:"content"`
+						Content          string `json:"content"`
+						ReasoningContent string `json:"reasoning_content"`
 					} `json:"delta"`
 				} `json:"choices"`
 			}
 			if json.Unmarshal([]byte(line[6:]), &chunk) == nil && len(chunk.Choices) > 0 {
-				full.WriteString(chunk.Choices[0].Delta.Content)
+				c := chunk.Choices[0].Delta.Content
+				if c == "" {
+					c = chunk.Choices[0].Delta.ReasoningContent
+				}
+				full.WriteString(c)
 			}
 		}
 	}

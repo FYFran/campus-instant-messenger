@@ -96,7 +96,7 @@ func AdminDashboard(w http.ResponseWriter, r *http.Request) {
 	var totalRevenue int64
 	if GlobalCostTracker != nil && GlobalCostTracker.DB != nil {
 		GlobalCostTracker.DB.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
-		GlobalCostTracker.DB.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND token_balance>0").Scan(&payingCount)
+		GlobalCostTracker.DB.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND (flash_balance>0 OR pro_balance>0)").Scan(&payingCount)
 		GlobalCostTracker.DB.QueryRow("SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='paid'").Scan(&totalRevenue)
 	}
 
@@ -124,6 +124,49 @@ func AdminDashboard(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+// AdminCharts returns daily stats for charts: user signups, revenue, pack sales.
+func AdminCharts(w http.ResponseWriter, r *http.Request) {
+	db := GlobalCostTracker.DB
+	if db == nil {
+		writeJSON(w, 500, "DB not available")
+		return
+	}
+	type dp struct {
+		Date     string `json:"date"`
+		Users    int64  `json:"users"`
+		Revenue  int64  `json:"revenue"`
+		Payments int64  `json:"payments"`
+	}
+	points := []dp{}
+	rows, err := db.Query(`WITH RECURSIVE dates(d) AS (
+		SELECT date('now', '-29 days')
+		UNION ALL SELECT date(d, '+1 day') FROM dates WHERE d < date('now')
+	)
+	SELECT dates.d, COALESCE(us.cnt,0), COALESCE(pr.rev,0), COALESCE(pr.pay,0)
+	FROM dates
+	LEFT JOIN (SELECT date(created_at) AS day, COUNT(*) AS cnt FROM users GROUP BY day) us ON dates.d=us.day
+	LEFT JOIN (SELECT date(created_at) AS day, COALESCE(SUM(amount),0) AS rev, COUNT(*) AS pay FROM payments WHERE status='paid' GROUP BY day) pr ON dates.d=pr.day
+	ORDER BY dates.d ASC`)
+	if err == nil && rows != nil {
+		defer rows.Close()
+		for rows.Next() { var p dp; rows.Scan(&p.Date, &p.Users, &p.Revenue, &p.Payments); points = append(points, p) }
+	}
+	var sf, su, sp int64
+	db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'flash_%'").Scan(&sf)
+	db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'ultimate_%'").Scan(&su)
+	db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'pro_%'").Scan(&sp)
+	var uf, ufl, up, uu int64
+	db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='gratis'").Scan(&uf)
+	db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='flash'").Scan(&ufl)
+	db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='pro'").Scan(&up)
+	db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='ultimate'").Scan(&uu)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"daily": points, "sold_flash": sf, "sold_ultimate": su, "sold_pro": sp,
+		"users_free": uf, "users_flash": ufl, "users_pro": up, "users_ultimate": uu,
+	})
 }
 
 func AdminDeepSeekBalance(w http.ResponseWriter, r *http.Request) {
