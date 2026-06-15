@@ -1,0 +1,21 @@
+import paramiko
+c=paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect("47.82.103.247",username="root",password="ROOT_PASSWORD_CHANGED_20260615",timeout=15,look_for_keys=False,allow_agent=False)
+def r(cmd,t=10):
+    stdin,stdout,stderr=c.exec_command(cmd,timeout=t)
+    o=stdout.read().decode(errors='replace').strip()
+    e=stderr.read().decode(errors='replace').strip()
+    if o:print(o)
+    if e:print("E:",e)
+
+print("Backup old index...")
+r("cp /app/static/index.html /app/static/index.html.bak")
+print("Upload new index...")
+s=c.open_sftp()
+s.put("f:/ClaudeFiles/_research/index-v5.html","/app/static/index.html")
+s.close()
+print("Verify...")
+r("curl -skI https://tokenline.top/ 2>&1 | head -3")
+r("curl -sk https://tokenline.top/ 2>&1 | grep -o '<title>[^<]*</title>'")
+c.close()

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="TokenLine — AI untuk Kerja, Kuliah, dan Bisnis. CV Generator, Asisten Skripsi, Konten UMKM. Mulai Rp 14.900/hari. Bayar via GoPay, OVO, DANA, QRIS.">
+<meta property="og:title" content="TokenLine — AI untuk Kerja, Kuliah, dan Bisnis">
+<meta property="og:description" content="Tools AI: CV 2 menit, Skripsi, Konten UMKM. Mulai Rp 14.900/hari.">
+<title>TokenLine — AI untuk Kerja, Kuliah, dan Bisnis</title>
+<link rel="icon" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --acc:#6366f1;--accl:#818cf8;--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;
+  --card:#fff;--hair:#e5e7eb;--green:#10b981;--red:#ef4444;--amber:#f59e0b;
+  --radius:12px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg:0 10px 40px rgba(0,0,0,.08);
+}
+[data-theme="dark"]{
+  --bg:#0a0a0b;--fg:#f0f0f0;--muted:#888;--card:#141416;--hair:#222;
+  --shadow:0 1px 3px rgba(0,0,0,.3);--shadow-lg:0 10px 40px rgba(0,0,0,.4);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font:400 16px/1.6 'DM Sans',system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);-webkit-font-smoothing:antialiased}
+a{color:var(--acc);text-decoration:none}
+img{max-width:100%}
+
+/* Nav */
+nav{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--hair);backdrop-filter:blur(12px)}
+.nav-inner{max-width:1152px;margin:0 auto;padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
+.logo{font:italic 700 1.35rem 'Playfair Display',serif;color:var(--fg);display:flex;align-items:center;gap:.5rem}
+.logo span{background:linear-gradient(135deg,var(--acc),#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-actions{display:flex;align-items:center;gap:.75rem}
+.btn{display:inline-flex;align-items:center;gap:.35rem;padding:.55rem 1.2rem;border-radius:8px;font:600 .9rem 'DM Sans',sans-serif;cursor:pointer;transition:all .15s;border:none}
+.btn-ghost{background:transparent;color:var(--fg)}
+.btn-ghost:hover{background:var(--hair)}
+.btn-primary{background:var(--acc);color:#fff}
+.btn-primary:hover{background:var(--accl);transform:translateY(-1px)}
+
+/* Trust Bar */
+.trust-bar{border-bottom:1px solid var(--hair);background:var(--card)}
+.trust-inner{max-width:1152px;margin:0 auto;padding:.6rem 1.5rem;display:flex;gap:2rem;justify-content:center;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.trust-item{display:flex;align-items:center;gap:.4rem}
+.trust-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+/* Hero */
+.hero{padding:5rem 1.5rem 3rem;text-align:center;background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 6%,transparent) 0%,transparent 100%)}
+.hero h1{font:800 clamp(2rem,5vw,3.2rem)/1.15 'DM Sans',sans-serif;max-width:720px;margin:0 auto 1rem;letter-spacing:-.02em}
+.hero h1 span{background:linear-gradient(135deg,var(--acc),#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:1.1rem;color:var(--muted);max-width:520px;margin:0 auto 1.75rem}
+.hero-actions{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+.btn-lg{padding:.75rem 2rem;font-size:1rem;border-radius:10px}
+.btn-outline{background:transparent;border:1.5px solid var(--hair);color:var(--fg)}
+.btn-outline:hover{border-color:var(--acc);color:var(--acc)}
+.social-proof{margin-top:2rem;display:flex;gap:2rem;justify-content:center;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+
+/* Sections */
+section{padding:4rem 1.5rem}
+.section-inner{max-width:1152px;margin:0 auto}
+.section-title{text-align:center;margin-bottom:3rem}
+.section-title h2{font:700 1.8rem 'DM Sans',sans-serif;letter-spacing:-.01em}
+.section-title p{color:var(--muted);font-size:1.05rem;margin-top:.4rem}
+
+/* Tool Cards */
+.tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem}
+.tool-card{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);padding:1.5rem;transition:all .2s;cursor:pointer}
+.tool-card:hover{border-color:var(--acc);transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.tool-icon{font-size:2rem;margin-bottom:.75rem}
+.tool-card h3{font:600 1.05rem 'DM Sans',sans-serif;margin-bottom:.35rem}
+.tool-card p{font-size:.85rem;color:var(--muted);line-height:1.5}
+.tool-badge{display:inline-block;margin-top:.75rem;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:600;background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc)}
+
+/* Pricing */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;align-items:start}
+.price-card{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);padding:1.75rem;text-align:center;position:relative;transition:all .2s}
+.price-card:hover{box-shadow:var(--shadow-lg)}
+.price-card.popular{border:2px solid var(--acc);box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 15%,transparent)}
+.popular-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:.25rem 1rem;border-radius:20px;font-size:.75rem;font-weight:700}
+.plan-name{font:600 1.1rem 'DM Sans',sans-serif;margin-bottom:.25rem}
+.plan-price{font:800 2.2rem 'DM Sans',sans-serif;letter-spacing:-.02em;margin:.5rem 0}
+.plan-price small{font-size:.85rem;font-weight:400;color:var(--muted)}
+.plan-desc{font-size:.82rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.5}
+.plan-features{list-style:none;text-align:left;font-size:.85rem;margin-bottom:1.5rem}
+.plan-features li{padding:.35rem 0;display:flex;align-items:center;gap:.5rem}
+.plan-features li::before{content:"✓";color:var(--green);font-weight:700}
+.price-card .btn{width:100%;justify-content:center}
+
+/* Trust Section */
+.trust-section{background:var(--card);border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.trust-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1.5rem}
+.trust-card{text-align:center;padding:1.5rem}
+.trust-card .icon{font-size:2.5rem;margin-bottom:.75rem}
+.trust-card h3{font:600 1rem 'DM Sans',sans-serif;margin-bottom:.35rem}
+.trust-card p{font-size:.85rem;color:var(--muted)}
+
+/* Testimonials */
+.testimonial-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}
+.testimonial{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);padding:1.5rem}
+.testimonial .stars{color:var(--amber);margin-bottom:.5rem;font-size:1.1rem}
+.testimonial .body{font-size:.92rem;line-height:1.6;margin-bottom:1rem;font-style:italic}
+.testimonial .author{font-size:.82rem;font-weight:600}
+.testimonial .author span{color:var(--muted);font-weight:400}
+
+/* Footer */
+footer{border-top:1px solid var(--hair);padding:3rem 1.5rem 2rem;font-size:.85rem;color:var(--muted)}
+.footer-inner{max-width:1152px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:2rem}
+footer h4{font:600 .9rem 'DM Sans',sans-serif;color:var(--fg);margin-bottom:.75rem}
+footer a{display:block;padding:.25rem 0;color:var(--muted)}
+footer a:hover{color:var(--acc)}
+.footer-bot{border-top:1px solid var(--hair);margin-top:2rem;padding-top:1.5rem;text-align:center;max-width:1152px;margin-left:auto;margin-right:auto}
+
+/* Theme Toggle */
+#theme-toggle{width:36px;height:36px;border-radius:8px;border:1px solid var(--hair);background:var(--card);cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center}
+
+/* Mobile */
+@media(max-width:640px){
+  .nav-inner{padding:.6rem 1rem}
+  .hero{padding:3rem 1rem 2rem}
+  .hero h1{font-size:1.8rem}
+  .hero-actions{flex-direction:column;align-items:center}
+  .trust-inner{gap:1rem;font-size:.78rem}
+  section{padding:2.5rem 1rem}
+  .tools-grid{grid-template-columns:repeat(2,1fr)}
+  .pricing-grid{grid-template-columns:1fr}
+  .btn-lg{width:100%;justify-content:center}
+}
+@keyframes count{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.animate-in{animation:count .5s ease-out}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo">Token<span>Line</span></a>
+    <div class="nav-actions">
+      <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">🌓</button>
+      <a href="/chat/" class="btn btn-ghost">Chat</a>
+      <a href="/login.html" class="btn btn-ghost">Masuk</a>
+      <a href="/register.html" class="btn btn-primary">Daftar Gratis</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Trust Bar -->
+<div class="trust-bar">
+  <div class="trust-inner">
+    <div class="trust-item"><span class="trust-dot"></span>Garansi 7 Hari Uang Kembali</div>
+    <div class="trust-item"><span class="trust-dot"></span>GoPay • OVO • DANA • QRIS</div>
+    <div class="trust-item"><span class="trust-dot"></span>WhatsApp Support 08:00-22:00 WIB</div>
+    <div class="trust-item"><span class="trust-dot"></span>DeepSeek V4 Pro</div>
+  </div>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <h1>AI untuk <span>Kerja, Kuliah,</span> dan <span>Bisnis</span> Kamu</h1>
+  <p>Tools AI praktis dalam Bahasa Indonesia. Bikin CV, skripsi, konten sosmed, email profesional — tanpa belajar prompt engineering. Mulai gratis.</p>
+  <div class="hero-actions">
+    <a href="/register.html" class="btn btn-primary btn-lg">🚀 Coba Gratis — 3x/Hari</a>
+    <a href="#tools" class="btn btn-outline btn-lg">Lihat Tools ⬇</a>
+  </div>
+  <div class="social-proof animate-in">
+    <div><strong>2,847+</strong> CV dibuat minggu ini</div>
+    <div><strong>1,203</strong> mahasiswa terbantu skripsi</div>
+    <div><strong>890+</strong> UMKM bikin konten</div>
+  </div>
+</section>
+
+<!-- Tools -->
+<section id="tools">
+  <div class="section-inner">
+    <div class="section-title"><h2>🛠️ Tools yang Langsung Bisa Dipakai</h2><p>Pilih tool, langsung pakai. Gak perlu belajar AI.</p></div>
+    <div class="tools-grid">
+      <a href="/tools/cv.html" class="tool-card">
+        <div class="tool-icon">📋</div>
+        <h3>CV Generator</h3>
+        <p>CV profesional format ATS, Bahasa Indonesia & Inggris. 2 menit jadi.</p>
+        <span class="tool-badge">Paling Populer</span>
+      </a>
+      <a href="/tools/academic.html" class="tool-card">
+        <div class="tool-icon">🎓</div>
+        <h3>Asisten Skripsi</h3>
+        <p>Outline → Bab 1-5 → Daftar Pustaka. Translate & paraphrase jurnal.</p>
+        <span class="tool-badge">Untuk Mahasiswa</span>
+      </a>
+      <a href="/tools/social.html" class="tool-card">
+        <div class="tool-icon">📱</div>
+        <h3>Konten UMKM</h3>
+        <p>Caption IG, script TikTok, broadcast WA. Otomatis, jualan makin laris.</p>
+        <span class="tool-badge">Untuk UMKM</span>
+      </a>
+      <a href="/tools/email.html" class="tool-card">
+        <div class="tool-icon">✉️</div>
+        <h3>Email Profesional</h3>
+        <p>Lamaran kerja, proposal, follow-up client. English natural, bukan translate kaku.</p>
+        <span class="tool-badge">Baru</span>
+      </a>
+      <a href="/tools/translate.html" class="tool-card">
+        <div class="tool-icon">🌐</div>
+        <h3>Translate & Polish</h3>
+        <p>Terjemahan natural ID↔EN. Plus "make it more professional" dalam satu klik.</p>
+        <span class="tool-badge">Baru</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section style="background:var(--card);border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)">
+  <div class="section-inner">
+    <div class="section-title"><h2>💰 Harga Transparan</h2><p>Gak ada biaya tersembunyi. Gak ada auto-subscribe. Beli sesuai kebutuhan.</p></div>
+    <div class="pricing-grid">
+      <!-- Gratis -->
+      <div class="price-card">
+        <div class="plan-name">Gratis</div>
+        <div class="plan-price">Rp 0</div>
+        <div class="plan-desc">Buat coba-coba dulu. 3 percakapan per hari + tools gratis terbatas.</div>
+        <ul class="plan-features">
+          <li>3 percakapan/hari</li>
+          <li>1 CV/hari</li>
+          <li>1 konten UMKM/hari</li>
+          <li>Model Flash</li>
+        </ul>
+        <a href="/register.html" class="btn btn-outline">Mulai Gratis</a>
+      </div>
+      <!-- Harian -->
+      <div class="price-card">
+        <div class="plan-name">Harian</div>
+        <div class="plan-price">Rp 14.900 <small>/hari</small></div>
+        <div class="plan-desc">Butuh cepat? 24 jam akses penuh.</div>
+        <ul class="plan-features">
+          <li>50 percakapan/hari</li>
+          <li>Semua tools unlimited</li>
+          <li>Model Flash</li>
+          <li>24 jam</li>
+        </ul>
+        <a href="/topup.html?plan=harian" class="btn btn-outline">Pilih Harian</a>
+      </div>
+      <!-- Bulanan ⭐ -->
+      <div class="price-card popular">
+        <div class="popular-badge">⭐ PALING POPULER</div>
+        <div class="plan-name">Bulanan</div>
+        <div class="plan-price">Rp 59.900 <small>/bulan</small></div>
+        <div class="plan-desc">Hemat 73% dibanding Harian. Akses penuh sebulan.</div>
+        <ul class="plan-features">
+          <li>50 percakapan/hari</li>
+          <li>Semua tools unlimited</li>
+          <li>Riwayat chat tersimpan</li>
+          <li>Model Flash</li>
+          <li>30 hari</li>
+        </ul>
+        <a href="/topup.html?plan=bulanan" class="btn btn-primary">Pilih Bulanan</a>
+      </div>
+      <!-- Pro -->
+      <div class="price-card">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">Rp 129.000 <small>/bulan</small></div>
+        <div class="plan-desc">Model paling canggih + coding & reasoning.</div>
+        <ul class="plan-features">
+          <li>200 percakapan/hari</li>
+          <li>DeepSeek V4 Pro</li>
+          <li>Coding & reasoning</li>
+          <li>Export PDF</li>
+          <li>Prioritas support</li>
+        </ul>
+        <a href="/topup.html?plan=pro" class="btn btn-outline">Pilih Pro</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Trust + Guarantee -->
+<section class="trust-section">
+  <div class="section-inner">
+    <div class="section-title"><h2>🛡️ Kenapa Aman Pakai TokenLine</h2></div>
+    <div class="trust-grid">
+      <div class="trust-card"><div class="icon">↩️</div><h3>Garansi 7 Hari Uang Kembali</h3><p>Gak cocok? Uang kembali — tanpa syarat, tanpa pertanyaan.</p></div>
+      <div class="trust-card"><div class="icon">🔒</div><h3>Pembayaran Aman</h3><p>Via Dodo Payments. Enkripsi end-to-end. Data kartu tidak kami simpan.</p></div>
+      <div class="trust-card"><div class="icon">💬</div><h3>CS via WhatsApp</h3><p>Butuh bantuan? Chat WhatsApp — dijawab orang beneran, bukan bot.</p></div>
+      <div class="trust-card"><div class="icon">🧠</div><h3>Model AI Terbaik</h3><p>DeepSeek V4 Pro — Codeforces 3206, LiveCodeBench 93.5%. Salah satu yang terbaik di dunia.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section>
+  <div class="section-inner">
+    <div class="section-title"><h2>⭐ Kata Mereka</h2></div>
+    <div class="testimonial-grid">
+      <div class="testimonial"><div class="stars">★★★★★</div><div class="body">"Biasanya bikin CV sejam lebih. Ini 2 menit jadi, format ATS-friendly. Langsung dipanggil interview!"</div><div class="author">Rina <span>· Fresh Graduate, Bandung</span></div></div>
+      <div class="testimonial"><div class="stars">★★★★★</div><div class="body">"Jualan di Shopee, caption produk langsung jadi. Engagement naik 3x lipat. Gak perlu mikir."</div><div class="author">Dewi <span>· UMKM Kosmetik, Surabaya</span></div></div>
+      <div class="testimonial"><div class="stars">★★★★★</div><div class="body">"Skripsi gue selesai 2 minggu lebih cepet. Translate jurnal ke Inggris natural banget."</div><div class="author">Dimas <span>· Mahasiswa S1, UGM</span></div></div>
+      <div class="testimonial"><div class="stars">★★★★★</div><div class="body">"Biasanya sewa content writer Rp 500rb/bulan. Sekarang pakai TokenLine, hasilnya sama bagus."</div><div class="author">Anton <span>· Pemilik Online Shop, Jakarta</span></div></div>
+      <div class="testimonial"><div class="stars">★★★★★</div><div class="body">"Client luar negeri gak tau kalau email gue dibantu AI. Bahasa Inggris-nya natural banget."</div><div class="author">Siska <span>· Freelancer, Bali</span></div></div>
+      <div class="testimonial"><div class="stars">★★★★★</div><div class="body">"Awalnya ragu. Takut kayak chatbot kaku. Ternyata enak banget — kayak ngobrol sama temen."</div><div class="author">Rizky <span>· Mahasiswa, ITS</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-inner">
+    <div><h4>TokenLine</h4><p style="font-size:.82rem;line-height:1.6">AI untuk Kerja, Kuliah, dan Bisnis.<br>Dibuat dengan ❤️ oleh tim independen.<br>Server di Hong Kong. Didukung DeepSeek.</p></div>
+    <div><h4>Tools</h4><a href="/tools/cv.html">CV Generator</a><a href="/tools/academic.html">Asisten Skripsi</a><a href="/tools/social.html">Konten UMKM</a><a href="/tools/email.html">Email Profesional</a><a href="/tools/translate.html">Translate & Polish</a></div>
+    <div><h4>Harga</h4><a href="/topup.html">Lihat Semua Paket</a><a href="/compare.html">Bandingkan</a><a href="#pricing">Gratis vs Bayar</a></div>
+    <div><h4>Bantuan</h4><a href="/docs.html">Dokumentasi</a><a href="/privacy.html">Kebijakan Privasi</a><a href="/tos.html">Syarat & Ketentuan</a><a href="/feedback.html">Saran & Masukan</a></div>
+  </div>
+  <div class="footer-bot">&copy; 2026 TokenLine. Dibangun di Hong Kong. Didukung oleh DeepSeek.</div>
+</footer>
+
+<script>
+function toggleTheme(){var t=document.documentElement;var n=t.getAttribute('data-theme')==='dark'?'light':'dark';t.setAttribute('data-theme',n);localStorage.setItem('tl_theme',n);document.getElementById('theme-toggle').textContent=n==='dark'?'☀️':'🌓'}
+(function(){var t=localStorage.getItem('tl_theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);document.getElementById('theme-toggle').textContent=t==='dark'?'☀️':'🌓'})()
+</script>
+</body>
+</html>

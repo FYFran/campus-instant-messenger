@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TokenLine — AI untuk Semua</title>
+<style>
+:root{--bg:#0a0a0f;--surface:#13131a;--card:#1a1a24;--accent:#6366f1;--accent2:#8b5cf6;--green:#10b981;--red:#ef4444;--text:#f1f5f9;--muted:#64748b;--border:#1e293b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:800px;margin:0 auto;padding:0 16px}
+/* Hero */
+.hero{text-align:center;padding:60px 16px 40px;background:radial-gradient(ellipse at top,var(--accent2)22,transparent 60%)}
+.hero h1{font-size:32px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px}
+.hero p{font-size:16px;color:var(--muted);margin-bottom:24px;max-width:500px;margin-left:auto;margin-right:auto}
+.hero .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{padding:12px 28px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.btn-primary:hover{opacity:0.9;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-sm{padding:8px 16px;font-size:12px}
+/* Cases */
+.cases{padding:40px 0}
+.cases h2{text-align:center;font-size:20px;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 16px;text-align:center;transition:all 0.2s;cursor:pointer}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card .icon{font-size:36px;margin-bottom:8px}
+.card h3{font-size:14px;margin-bottom:4px}
+.card p{font-size:12px;color:var(--muted)}
+/* Pricing */
+.pricing{padding:40px 0}
+.pricing h2{text-align:center;font-size:20px;margin-bottom:20px}
+.price-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;max-width:700px;margin:0 auto}
+.plan{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:20px 14px;text-align:center}
+.plan.popular{border-color:var(--accent);background:var(--surface)}
+.plan .price{font-size:28px;font-weight:800;margin:8px 0}
+.plan .per{font-size:11px;color:var(--muted)}
+.plan .tag{display:inline-block;padding:2px 8px;border-radius:10px;background:var(--accent);color:#fff;font-size:10px;margin-bottom:8px}
+.plan button{width:100%;margin-top:12px}
+/* Modals */
+.modal{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px}
+.modal.hidden{display:none}
+.modal input{width:300px;max-width:90%;padding:12px 16px;border:1px solid #333;border-radius:10px;background:var(--surface);color:var(--text);font-size:14px}
+.modal .close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer}
+/* Chat */
+#chat-app{display:none;flex-direction:column;height:100vh}
+#chat-app.active{display:flex}
+#chat-app header{padding:10px 16px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border)}
+#chat-app header h3{font-size:15px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 14px;border-radius:14px;line-height:1.7;font-size:14px;word-break:break-word}
+.msg.user{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.msg.bot{background:var(--card);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px}
+#chat-input{display:flex;padding:10px 12px;gap:8px;background:var(--surface);border-top:1px solid var(--border)}
+#chat-input textarea{flex:1;padding:10px 12px;border:1px solid #333;border-radius:12px;background:var(--bg);color:var(--text);font-size:14px;resize:none;outline:none;max-height:100px;line-height:1.5}
+#chat-input textarea:focus{border-color:var(--accent)}
+#chat-input button{width:40px;height:40px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:18px;cursor:pointer;flex-shrink:0}
+#chat-input button:disabled{opacity:0.3}
+.upgrade-bar{display:none;padding:8px 16px;background:#451a03;color:#fbbf24;font-size:12px;text-align:center}
+.upgrade-bar.show{display:block}
+.upgrade-bar button{background:#fbbf24;color:#000;border:none;border-radius:12px;padding:4px 12px;margin-left:8px;cursor:pointer;font-size:11px;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- LANDING PAGE -->
+<div id="landing">
+  <div class="hero">
+    <h1>AI untuk Semua</h1>
+    <p>Asisten AI berbahasa Indonesia. Bantu tugas kuliah, bisnis, belajar bahasa Inggris, coding, dan lainnya. Mulai dari Rp 5.000.</p>
+    <div class="btns">
+      <button class="btn btn-primary" onclick="openRegister()">Coba Gratis</button>
+      <button class="btn btn-outline" onclick="scrollTo(document.getElementById('pricing'))">Lihat Harga</button>
+    </div>
+  </div>
+
+  <div class="cases container">
+    <h2>Untuk Apa Saja?</h2>
+    <div class="grid">
+      <div class="card" onclick="openRegister()"><div class="icon">📝</div><h3>Tugas Kuliah</h3><p>Bantu tulis makalah & riset</p></div>
+      <div class="card" onclick="openRegister()"><div class="icon">🏪</div><h3>Bisnis UMKM</h3><p>Caption & copywriting</p></div>
+      <div class="card" onclick="openRegister()"><div class="icon">🇬🇧</div><h3>Belajar Inggris</h3><p>Latihan conversation</p></div>
+      <div class="card" onclick="openRegister()"><div class="icon">💻</div><h3>Belajar Coding</h3><p>Python, JS, SQL</p></div>
+      <div class="card" onclick="openRegister()"><div class="icon">📱</div><h3>Konten Kreator</h3><p>Skrip TikTok & YouTube</p></div>
+      <div class="card" onclick="openRegister()"><div class="icon">💼</div><h3>Karir & Lamaran</h3><p>CV & surat lamaran</p></div>
+    </div>
+  </div>
+
+  <div class="pricing container" id="pricing">
+    <h2>Harga</h2>
+    <div class="price-grid">
+      <div class="plan"><div class="tag">Gratis</div><div class="price">Rp 0</div><div class="per">10x / hari</div><button class="btn btn-outline btn-sm" onclick="openRegister()">Mulai</button></div>
+      <div class="plan popular"><div class="tag">Populer</div><div class="price">Rp 30rb</div><div class="per">30 hari</div><button class="btn btn-primary btn-sm" onclick="openRegister()">Pilih</button></div>
+      <div class="plan"><div class="price">Rp 50rb</div><div class="per">30 hari + Pro</div><button class="btn btn-outline btn-sm" onclick="openRegister()">Pilih</button></div>
+      <div class="plan"><div class="price">Rp 250rb</div><div class="per">12 bulan</div><button class="btn btn-outline btn-sm" onclick="openRegister()">Pilih</button></div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:40px 16px;color:var(--muted);font-size:12px">
+    © 2026 TokenLine &middot; Dibangun di Hong Kong &middot; Didukung oleh DeepSeek
+  </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div id="reg-modal" class="modal hidden">
+  <button class="close" onclick="closeModals()">✕</button>
+  <h2 style="font-size:22px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Daftar Gratis</h2>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:8px">10x chat per hari gratis</p>
+  <input id="r-email" type="email" placeholder="Email">
+  <input id="r-pass" type="password" placeholder="Kata sandi (min 6 karakter)">
+  <button class="btn btn-primary" onclick="doRegister()" style="width:300px;max-width:90%">Daftar Gratis</button>
+  <p style="color:var(--muted);font-size:12px;margin-top:8px">Sudah punya akun? <a href="#" onclick="event.preventDefault();openLogin()" style="color:var(--accent)">Masuk</a></p>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="login-modal" class="modal hidden">
+  <button class="close" onclick="closeModals()">✕</button>
+  <h2 style="font-size:22px;color:var(--text)">Masuk</h2>
+  <input id="l-email" type="email" placeholder="Email">
+  <input id="l-pass" type="password" placeholder="Kata sandi">
+  <button class="btn btn-primary" onclick="doLogin()" style="width:300px;max-width:90%">Masuk</button>
+</div>
+
+<!-- CHAT APP -->
+<div id="chat-app">
+  <div class="upgrade-bar" id="upgrade-bar">Kuota harian habis. <button onclick="buy('bulanan')">Upgrade Rp 30rb/bln</button><button onclick="buy('premium')">Premium Rp 50rb/bln</button></div>
+  <header>
+    <h3>TokenLine</h3>
+    <button onclick="logout()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer">Keluar</button>
+  </header>
+  <div id="chat-msgs"><div style="text-align:center;color:var(--muted);margin-top:40%">Ketik pesan untuk memulai 👋</div></div>
+  <div id="chat-input">
+    <textarea id="textin" rows="1" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+    <button id="sendbtn" onclick="send()">↑</button>
+  </div>
+</div>
+
+<script>
+var T=localStorage.getItem('tl_tok');
+if(T){showChat()}
+
+function openRegister(){document.getElementById('reg-modal').classList.remove('hidden')}
+function openLogin(){document.getElementById('reg-modal').classList.add('hidden');document.getElementById('login-modal').classList.remove('hidden')}
+function closeModals(){document.getElementById('reg-modal').classList.add('hidden');document.getElementById('login-modal').classList.add('hidden')}
+
+async function doRegister(){
+  var e=document.getElementById('r-email').value.trim(),p=document.getElementById('r-pass').value;
+  if(!e||p.length<6)return alert('Email dan password minimal 6 karakter');
+  var r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})});
+  var d=await r.json();
+  if(r.ok&&d.token){T=d.token;localStorage.setItem('tl_tok',T);closeModals();showChat()}
+  else alert(d.message||'Gagal mendaftar')
+}
+
+async function doLogin(){
+  var e=document.getElementById('l-email').value.trim(),p=document.getElementById('l-pass').value;
+  if(!e)return;
+  var r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})});
+  var d=await r.json();
+  if(r.ok&&d.token){T=d.token;localStorage.setItem('tl_tok',T);closeModals();showChat()}
+  else alert(d.message||'Gagal login')
+}
+
+function showChat(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('chat-app').classList.add('active');
+}
+
+function logout(){localStorage.removeItem('tl_tok');T=null;location.reload()}
+
+function buy(plan){var p=prompt('Ketik YA untuk konfirmasi upgrade '+plan);if(p!=='YA')return;fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:JSON.stringify({plan:plan})}).then(r=>r.json()).then(d=>{alert('Pesanan dibuat. Invoice: '+d.invoice_id)})}
+
+function scrollTo(el){el.scrollIntoView({behavior:'smooth'})}
+
+var msgs=document.getElementById('chat-msgs'),ti=document.getElementById('textin'),bt=document.getElementById('sendbtn'),ub=document.getElementById('upgrade-bar');
+
+async function send(){
+  if(!T){openLogin();return}
+  var t=ti.value.trim();if(!t)return;
+  addMsg('user',t);ti.value='';bt.disabled=true;ub.classList.remove('show');
+  var d=addMsg('bot','...');
+  try{
+    var r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:JSON.stringify({message:t})});
+    if(r.status==401){d.textContent='Sesi habis.';logout()}
+    else if(r.status==403){d.textContent='Kuota harian habis.';ub.classList.add('show')}
+    else if(!r.ok){var e=await r.json();d.textContent='Error: '+(e.message||r.status)}
+    else{var rd=r.body.getReader(),dc=new TextDecoder(),full='';d.textContent='';
+      while(true){var v=await rd.read();if(v.done)break;
+        var lines=dc.decode(v.value,{stream:true}).split('\n');
+        for(var i=0;i<lines.length;i++){var ln=lines[i];if(!ln.startsWith('data: ')||ln.includes('[DONE]'))continue;
+          try{var j=JSON.parse(ln.slice(6));if(j.choices&&j.choices[0]){full+=j.choices[0].delta.content||'';d.textContent=full;msgs.scrollTop=msgs.scrollHeight}}catch(e){}
+        }
+      }
+    }
+  }catch(e){d.textContent='Koneksi gagal: '+e.message}
+  bt.disabled=false;ti.focus()
+}
+
+function addMsg(role,text){var d=document.createElement('div');d.className='msg '+role;d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d}
+</script>
+</body>
+</html>

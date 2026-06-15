@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TokenLine Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#f8fafc;color:#1e293b;line-height:1.5}
+/* Sidebar */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:240px;background:#fff;border-right:1px solid #e2e8f0;padding:24px 20px;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:10}
+.sidebar .logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:32px}
+.sidebar .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500;color:#64748b;cursor:pointer;transition:all .15s;margin-bottom:4px;text-decoration:none}
+.sidebar .nav-item:hover{background:#f1f5f9;color:#1e293b}
+.sidebar .nav-item.active{background:#eef2ff;color:#6366f1;font-weight:600}
+.sidebar .nav-icon{font-size:16px;width:20px;text-align:center}
+.sidebar .footer{padding-top:16px;border-top:1px solid #f1f5f9;font-size:11px;color:#94a3b8}
+/* Main */
+.main{margin-left:240px;flex:1;padding:32px 40px;max-width:1100px}
+.main h1{font-size:28px;font-weight:700;margin-bottom:4px}
+.main .subtitle{font-size:14px;color:#64748b;margin-bottom:32px}
+/* Cards */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:24px;transition:all .2s}
+.card:hover{border-color:#c7d2fe;box-shadow:0 4px 20px rgba(99,102,241,.06)}
+.card .label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#94a3b8;margin-bottom:8px}
+.card .value{font-size:28px;font-weight:800;letter-spacing:-.5px}
+.card .sub{font-size:12px;color:#94a3b8;margin-top:6px}
+.card .trend{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:20px}
+.trend-up{background:#ecfdf5;color:#059669}.trend-down{background:#fef2f2;color:#dc2626}
+/* Big number */
+.big-card{grid-column:1/-1;padding:32px}
+.big-card .value{font-size:40px}
+.big-card .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-left:8px;vertical-align:middle}
+.badge-green{background:#ecfdf5;color:#059669}
+.badge-amber{background:#fffbeb;color:#d97706}
+.badge-red{background:#fef2f2;color:#dc2626}
+/* Chart row */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+/* Table */
+.table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;margin-bottom:24px}
+.table-wrap h3{padding:20px 24px 0;font-size:16px;font-weight:600}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+td,th{padding:12px 24px;text-align:left;font-size:13px}
+th{font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #f1f5f9}
+td{border-bottom:1px solid #f8fafc}
+tr:last-child td{border-bottom:none}
+.td-right{text-align:right;font-weight:600}
+.td-high{color:#059669}.td-mid{color:#6366f1}.td-low{color:#f59e0b}
+/* Refresh */
+.refresh{display:flex;align-items:center;gap:8px;font-size:12px;color:#94a3b8;margin-bottom:24px}
+.refresh .dot{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* Error */
+.error{background:#fef2f2;color:#dc2626;padding:16px 20px;border-radius:12px;font-size:13px;margin-bottom:16px;display:none}
+/* Mobile */
+@media(max-width:768px){
+  .layout{flex-direction:column}
+  .sidebar{width:100%;position:relative;flex-direction:row;overflow-x:auto;padding:12px 16px;gap:8px;border-bottom:1px solid #e2e8f0}
+  .sidebar .logo{margin-bottom:0;margin-right:16px;white-space:nowrap}
+  .sidebar .nav-item{white-space:nowrap;margin-bottom:0;font-size:12px;padding:8px 10px}
+  .sidebar .footer{display:none}
+  .main{margin-left:0;padding:20px 16px}
+  .card-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .card{padding:16px}.card .value{font-size:22px}
+  .big-card .value{font-size:32px}
+  .row2{grid-template-columns:1fr}
+  .main h1{font-size:22px}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <div class="logo">TokenLine</div>
+  <a class="nav-item active" onclick="showTab('overview',this)"><span class="nav-icon">📊</span>Ringkasan</a>
+  <a class="nav-item" onclick="showTab('revenue',this)"><span class="nav-icon">💰</span>Pendapatan</a>
+  <a class="nav-item" onclick="showTab('cost',this)"><span class="nav-icon">⚡</span>Biaya API</a>
+  <a class="nav-item" href="/" target="_blank"><span class="nav-icon">🌐</span>Website →</a>
+  <div class="footer" style="margin-top:auto">TokenLine v1.0<br>Admin Panel</div>
+</aside>
+
+<main class="main" id="overview">
+  <div class="refresh"><span class="dot"></span> Data real-time · diperbarui otomatis <span id="lastUpdate">—</span></div>
+  <h1>Ringkasan</h1>
+  <p class="subtitle">Semua metrik penting dalam satu layar</p>
+  <div class="error" id="err"></div>
+  <div class="card-grid">
+    <div class="card big-card">
+      <div class="label">DeepSeek API Balance</div>
+      <div class="value" id="balCNY">—</div>
+      <div class="sub" id="balIDR">—</div>
+    </div>
+  </div>
+  <div class="card-grid">
+    <div class="card"><div class="label">Total Pengguna</div><div class="value" id="totalUsers">—</div></div>
+    <div class="card"><div class="label">Pengguna Berbayar</div><div class="value" id="payingUsers">—</div></div>
+    <div class="card"><div class="label">Biaya API 24 Jam</div><div class="value" id="cost24h">—</div></div>
+    <div class="card"><div class="label">Permintaan 24 Jam</div><div class="value" id="req24h">—</div></div>
+  </div>
+  <div class="table-wrap">
+    <h3>Estimasi Pendapatan (Dodo)</h3>
+    <table><thead><tr><th>Status</th><th>Jumlah (IDR)</th><th>Jumlah (¥)</th></tr></thead>
+    <tbody id="revTable"></tbody></table>
+  </div>
+  <div class="table-wrap">
+    <h3>Paket Token — Profitabilitas</h3>
+    <table><thead><tr><th>Paket</th><th>Harga</th><th>Laba Bersih</th><th>Margin</th></tr></thead>
+    <tbody id="packTable"></tbody></table>
+  </div>
+</main>
+
+<main class="main" id="revenue" style="display:none">
+  <h1>Pendapatan</h1><p class="subtitle">Detail revenue dari Dodo Payments</p>
+  <div class="error" id="err2"></div>
+  <div class="card-grid"><div class="card" id="revDetail"></div></div>
+</main>
+
+<main class="main" id="cost" style="display:none">
+  <h1>Biaya API</h1><p class="subtitle">Konsumsi DeepSeek API</p>
+  <div class="error" id="err3"></div>
+  <div class="card-grid"><div class="card" id="costDetail"></div></div>
+</main>
+</div>
+
+<script>
+var ADMIN_KEY = localStorage.getItem('tl_akey') || '';
+if (!ADMIN_KEY) { ADMIN_KEY = prompt('Password Admin:'); if (ADMIN_KEY) localStorage.setItem('tl_akey', ADMIN_KEY); }
+if (!ADMIN_KEY) { document.body.innerHTML = '<div style=\"display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,system-ui\"><h2>Password diperlukan</h2></div>'; }
+
+var BASE = '';
+function api(path) {
+  return fetch(BASE+'/api/admin/dashboard?key='+encodeURIComponent(ADMIN_KEY))
+    .then(r => { if (!r.ok) { localStorage.removeItem('tl_akey'); throw new Error('Password salah. Refresh halaman.'); } return r.json(); });
+}
+
+function showTab(tab, el) {
+  document.querySelectorAll('.main').forEach(m => m.style.display = 'none');
+  document.getElementById(tab).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  if (tab === 'overview') loadOverview();
+  if (tab === 'revenue') loadRevenue();
+  if (tab === 'cost') loadCost();
+}
+
+function formatIDR(n) { return 'Rp ' + Number(n||0).toLocaleString('id-ID'); }
+function formatCNY(n) { return '¥' + Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function loadOverview() {
+  document.getElementById('err').style.display = 'none';
+  api('dashboard').then(d => {
+    // Balance
+    document.getElementById('balCNY').textContent = formatCNY(d.deepseek.balance_cny);
+    document.getElementById('balIDR').textContent = formatIDR(d.deepseek.balance_idr) + ' · diperiksa ' + new Date(d.deepseek.checked_at).toLocaleTimeString('id-ID');
+    // Users
+    document.getElementById('totalUsers').textContent = (d.users.total||0).toLocaleString();
+    document.getElementById('payingUsers').textContent = (d.users.paying||0).toLocaleString();
+    // Cost
+    document.getElementById('cost24h').textContent = '$' + (d.cost.total_cost_usd_24h||0).toFixed(4);
+    document.getElementById('req24h').textContent = (d.cost.total_requests_24h||0).toLocaleString();
+    // Revenue table
+    var r = d.revenue && d.revenue.revenue ? d.revenue.revenue : {};
+    var rows = [
+      ['Total Dibayar', r.total_paid_idr||0, (r.total_paid_idr||0)/2233],
+      ['Pending (Dodo)', r.pending_idr||0, (r.pending_idr||0)/2233],
+      ['Estimasi Tersedia', r.available_estimated||0, (r.available_estimated||0)/2233],
+    ];
+    document.getElementById('revTable').innerHTML = rows.map(function(rr){
+      return '<tr><td>'+rr[0]+'</td><td class=td-right>'+formatIDR(rr[1])+'</td><td class=td-right>'+formatCNY(rr[2])+'</td></tr>';
+    }).join('');
+    // Pack profitability
+    var packs = [
+      ['Flash 2M','Rp 39.900','¥9.15','51%','td-low'],
+      ['Flash 5M','Rp 89.900','¥23.13','58%','td-mid'],
+      ['Flash 12M','Rp 199.900','¥53.23','60%','td-mid'],
+      ['Pro 500K','Rp 399.000','¥147.00','83%','td-high'],
+      ['Pro 2M','Rp 1.499.000','¥564.30','84%','td-high'],
+      ['Pro 6M','Rp 3.999.000','¥1,512.32','85%','td-high'],
+    ];
+    document.getElementById('packTable').innerHTML = packs.map(function(p){
+      return '<tr><td>'+p[0]+'</td><td>'+p[1]+'</td><td class=td-right>'+p[2]+'</td><td class="td-right '+p[4]+'">'+p[3]+'</td></tr>';
+    }).join('');
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('id-ID');
+  }).catch(function(e){
+    document.getElementById('err').style.display = 'block';
+    document.getElementById('err').textContent = e.message;
+  });
+}
+
+function loadRevenue() {
+  document.getElementById('revDetail').innerHTML = '<div class=label>Revenue API</div><div class=value>Memuat…</div>';
+  api('dashboard').then(d => {
+    var r = d.revenue && d.revenue.revenue ? d.revenue.revenue : {};
+    var h = '<table><tr><th>Metrik</th><th>Nilai</th></tr>';
+    h += '<tr><td>Total Paid</td><td class=td-right>'+formatIDR(r.total_paid_idr)+'</td></tr>';
+    h += '<tr><td>Pending</td><td class=td-right>'+formatIDR(r.pending_idr)+'</td></tr>';
+    h += '<tr><td>Estimasi Tersedia</td><td class=td-right>'+formatIDR(r.available_estimated)+'</td></tr>';
+    h += '<tr><td>Bulan Ini</td><td class=td-right>'+formatIDR(r.this_month_idr)+'</td></tr>';
+    h += '<tr><td>Bulan Lalu</td><td class=td-right>'+formatIDR(r.last_month_idr)+'</td></tr>';
+    if (r.settlement_note) h += '<tr><td colspan=2 style=font-size:11px;color:#94a3b8>'+r.settlement_note+'</td></tr>';
+    h += '</table>';
+    document.getElementById('revDetail').innerHTML = h;
+  });
+}
+
+function loadCost() {
+  document.getElementById('costDetail').innerHTML = '<div class=label>Cost API</div><div class=value>Memuat…</div>';
+  api('dashboard').then(d => {
+    var c = d.cost || {};
+    var h = '<table><tr><th>Metrik</th><th>Nilai</th></tr>';
+    h += '<tr><td>24h Cost</td><td class=td-right>$'+(c.total_cost_usd_24h||0).toFixed(4)+'</td></tr>';
+    h += '<tr><td>24h Requests</td><td class=td-right>'+(c.total_requests_24h||0).toLocaleString()+'</td></tr>';
+    h += '<tr><td>24h Tokens</td><td class=td-right>'+(c.total_tokens_24h||0).toLocaleString()+'</td></tr>';
+    h += '<tr><td>Burn Rate</td><td class=td-right>$'+(c.burn_rate_daily_usd||0).toFixed(4)+'/hari</td></tr>';
+    h += '<tr><td>Prediksi Bulanan</td><td class=td-right>$'+(c.predicted_monthly_usd||0).toFixed(2)+'</td></tr>';
+    h += '<tr><td>Hari Tersisa</td><td class=td-right>'+(c.days_remaining||'∞')+'</td></tr>';
+    h += '</table>';
+    if (c.alerts && c.alerts.length) h += '<div class=error style=display:block;margin-top:12px>'+c.alerts.join('<br>')+'</div>';
+    document.getElementById('costDetail').innerHTML = h;
+  });
+}
+
+// Auto-refresh every 30s
+loadOverview();
+setInterval(function(){
+  if (document.getElementById('overview').style.display !== 'none') loadOverview();
+}, 30000);
+</script>
+</body>
+</html>

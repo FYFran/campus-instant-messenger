@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Asisten Akademik — TokenLine</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf8f5;--surface:#fff;--acc:#6366f1;--text:#1a1a1a;--muted:#6b6b6b;--hair:#e6e3dd}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--surface:#1a1a1a;--text:#f0f0f0;--muted:#999;--hair:#2a2a2a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:400 15px/1.6 'DM Sans',system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh}
+header{padding:16px 24px;border-bottom:1px solid var(--hair);background:var(--surface);display:flex;align-items:center;gap:16px}
+header a{font:400 14px 'DM Sans',sans-serif;color:var(--muted);text-decoration:none}
+header h1{font:700 22px 'Playfair Display',serif}header h1 span{color:var(--acc)}
+main{max-width:700px;margin:0 auto;padding:32px 24px}
+h2{font:600 18px 'Playfair Display',serif;margin-bottom:20px}
+label{display:block;font:500 12px 'DM Sans',sans-serif;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+input,textarea,select{width:100%;padding:12px 14px;border:1px solid var(--hair);border-radius:10px;font:400 14px 'DM Sans',sans-serif;background:var(--bg);color:var(--text);margin-bottom:16px;transition:border-color .2s}
+input:focus,textarea:focus{border-color:var(--acc);outline:none}
+textarea{min-height:80px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:600px){.row{grid-template-columns:1fr}}
+.btn{display:inline-block;padding:14px 32px;background:var(--acc);color:#fff;border:none;border-radius:10px;font:500 15px 'DM Sans',sans-serif;cursor:pointer;transition:all .2s}
+.btn:hover{opacity:.9;transform:translateY(-1px)}
+.btn:disabled{opacity:.5;transform:none}
+#result{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:24px;margin-top:24px;display:none;font:400 14px/1.8 'DM Sans',sans-serif}
+#result.loading{display:block;text-align:center;color:var(--muted);font-style:italic}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--hair);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.back{margin-top:24px;text-align:center}
+.back a{font:400 14px 'DM Sans',sans-serif;color:var(--muted);text-decoration:none;border-bottom:1px solid var(--hair);padding-bottom:2px}
+.tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:8px 16px;border:1px solid var(--hair);border-radius:20px;font:400 13px 'DM Sans',sans-serif;background:var(--bg);color:var(--text);cursor:pointer;transition:all .2s}
+.tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+</style>
+</head>
+<body>
+<header>
+  <a href="/chat/">&larr; Kembali ke Chat</a>
+  <h1><span>Token</span>Line &mdash; Asisten Akademik</h1>
+</header>
+<main>
+  <h2>Alat Bantu Akademik</h2>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('outline')">Outline Makalah</button>
+    <button class="tab" onclick="switchTab('paraphrase')">Parafrase</button>
+    <button class="tab" onclick="switchTab('translate')">Translate Akademik</button>
+  </div>
+
+  <div class="tab-content active" id="tab-outline">
+    <form onsubmit="generate(event,'outline')">
+      <label>Topik / Judul Makalah</label>
+      <input id="o-topic" placeholder="Contoh: Dampak Media Sosial terhadap Kesehatan Mental Remaja" required>
+      <div class="row">
+        <div><label>Jumlah Bab</label><select id="o-chapters"><option>3</option><option selected>5</option><option>7</option></select></div>
+        <div><label>Tingkat</label><select id="o-level"><option>S1</option><option>SMA</option><option>S2</option></select></div>
+      </div>
+      <button type="submit" class="btn" id="btn-outline">Buat Outline</button>
+    </form>
+  </div>
+
+  <div class="tab-content" id="tab-paraphrase">
+    <form onsubmit="generate(event,'paraphrase')">
+      <label>Teks Asli (paste di sini)</label>
+      <textarea id="p-text" placeholder="Paste teks yang ingin diparafrase..." required></textarea>
+      <label>Gaya</label>
+      <select id="p-style"><option>Akademik Formal</option><option>Lebih Sederhana</option><option>Lebih Singkat</option></select>
+      <button type="submit" class="btn" id="btn-paraphrase">Parafrase</button>
+    </form>
+  </div>
+
+  <div class="tab-content" id="tab-translate">
+    <form onsubmit="generate(event,'translate')">
+      <label>Teks Indonesia</label>
+      <textarea id="t-text" placeholder="Paste teks Bahasa Indonesia..." required></textarea>
+      <div class="row">
+        <div><label>Ke Bahasa</label><select id="t-to"><option>English (Academic)</option><option>English (Casual)</option></select></div>
+        <div><label>Gaya</label><select id="t-style"><option>Formal Akademik</option><option>Bisnis Profesional</option></select></div>
+      </div>
+      <button type="submit" class="btn" id="btn-translate">Terjemahkan</button>
+    </form>
+  </div>
+
+  <div id="result"></div>
+  <div class="back"><a href="/chat/">&larr; Kembali ke Chat</a></div>
+</main>
+<script>
+var tok=localStorage.getItem('tl_tok');if(!tok)location.href='/login.html';
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
+  document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active')});
+  event.target.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+async function generate(e,type){
+e.preventDefault();var prompt='';
+if(type==='outline'){
+  var topic=document.getElementById('o-topic').value,ch=document.getElementById('o-chapters').value,lv=document.getElementById('o-level').value;
+  prompt='Buatkan outline makalah tingkat '+lv+' tentang: '+topic+'. Struktur: '+ch+' bab, setiap bab berisi 2-3 sub-bab. Sertakan pendahuluan dan kesimpulan. Gunakan Bahasa Indonesia akademik yang baik. Format rapi dengan penomoran.';
+  var btn=document.getElementById('btn-outline');
+}else if(type==='paraphrase'){
+  var text=document.getElementById('p-text').value,style=document.getElementById('p-style').value;
+  prompt='Parafrase teks berikut dengan gaya '+style+' dalam Bahasa Indonesia. Jangan ubah makna. Tampilkan hasil parafrase dan jelaskan perubahan yang dibuat.\n\n'+text;
+  var btn=document.getElementById('btn-paraphrase');
+}else if(type==='translate'){
+  var text=document.getElementById('t-text').value,to=document.getElementById('t-to').value,style=document.getElementById('t-style').value;
+  prompt='Terjemahkan teks berikut ke '+to+' dengan gaya '+style+'. Pastikan terjemahan akurat, natural, dan sesuai kaidah akademik.\n\n'+text;
+  var btn=document.getElementById('btn-translate');
+}
+var res=document.getElementById('result');
+res.style.display='block';res.className='loading';res.innerHTML='<span class="spinner"></span> Memproses...';btn.disabled=true;
+try{
+var r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({message:prompt})});
+if(!r.ok){var e2=await r.json();throw new Error(e2.message||'Gagal')}
+var reader=r.body.getReader(),decoder=new TextDecoder(),full='';
+while(true){var v=await reader.read();if(v.done)break;var chunk=decoder.decode(v.value,{stream:true});var lines=chunk.split('\n');for(var i=0;i<lines.length;i++){var line=lines[i];if(!line.startsWith('data: '))continue;var data=line.slice(6);if(data==='[DONE]')continue;try{var j=JSON.parse(data);full+=j.choices&&j.choices[0]?j.choices[0].delta.content||'':'';res.innerHTML=full.replace(/\n/g,'<br>');res.className=''}catch(err){}}
+}
+res.innerHTML=full.replace(/\n/g,'<br>');res.className='';res.style.display='block';
+}catch(err){res.innerHTML='Error: '+err.message;res.className='';res.style.display='block'}
+btn.disabled=false;
+}
+</script>
+</body>
+</html>

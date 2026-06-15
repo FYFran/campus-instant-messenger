@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TokenLine — Dashboard Pribadi</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;550;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  body { background: #f9f8f6; }
+  .surface-0 { background: rgba(255,255,255,0.45); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); }
+  .surface-1 { background: rgba(255,255,255,0.65); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0,0,0,0.04); }
+  .surface-2 { background: rgba(255,255,255,0.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(0,0,0,0.04); }
+  .elevation-1 { box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.02); }
+  .elevation-2 { box-shadow: 0 2px 6px rgba(0,0,0,0.03), 0 8px 24px rgba(0,0,0,0.04); }
+  .accent-btn {
+    background: linear-gradient(145deg, #1a1a28 0%, #2a2a48 60%, #1e1e30 100%);
+    box-shadow: 0 2px 8px rgba(26,26,40,0.12), 0 8px 20px rgba(26,26,40,0.06), inset 0 1px 0 rgba(255,255,255,0.06);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .accent-btn:hover { transform: translateY(-1.5px); box-shadow: 0 4px 16px rgba(26,26,40,0.2), 0 12px 32px rgba(26,26,40,0.1); }
+  .accent-btn-outline {
+    background: transparent;
+    border: 1px solid rgba(26,26,40,0.12);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .accent-btn-outline:hover { background: rgba(26,26,40,0.04); border-color: rgba(26,26,40,0.2); }
+  .stat-card { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.05); }
+  .nav-item { transition: all 0.2s ease; border: 1px solid transparent; cursor: pointer; }
+  .nav-item:hover { background: rgba(0,0,0,0.025); }
+  .nav-item.active { background: linear-gradient(145deg, rgba(26,26,40,0.06) 0%, rgba(26,26,40,0.02) 100%); border-color: rgba(26,26,40,0.08); font-weight: 550; }
+  .divider { height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.04) 20%, rgba(0,0,0,0.04) 80%, transparent 100%); }
+  .gold-accent { color: #b8975a; }
+  .progress-bar { height: 6px; background: rgba(0,0,0,0.04); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #1a1a28 0%, #3d3d5c 100%); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .anim-enter { animation: fadeUp 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  .anim-delay-1 { animation-delay: 0.05s; }
+  .anim-delay-2 { animation-delay: 0.1s; }
+  .anim-delay-3 { animation-delay: 0.15s; }
+  .anim-delay-4 { animation-delay: 0.2s; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .skeleton { background: linear-gradient(90deg, rgba(0,0,0,0.02) 25%, rgba(0,0,0,0.04) 50%, rgba(0,0,0,0.02) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: 8px; }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.06); border-radius: 10px; }
+  @media (max-width: 1023px) {
+    #sidebar { position: fixed; left: 0; top: 0; height: 100%; z-index: 50; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    #sidebar.open { transform: translateX(0); }
+    #sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.15); z-index: 40; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+    #sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+  }
+  .chart-bar { transition: height 0.6s cubic-bezier(0.22, 0.61, 0.36, 1); }
+  #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 100; }
+  .toast { animation: slideUp 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .plan-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase;
+  }
+</style>
+</head>
+<body class="h-screen flex overflow-hidden antialiased">
+
+  <!-- ====== SIDEBAR OVERLAY (mobile) ====== -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- ====== SIDEBAR ====== -->
+  <aside id="sidebar" class="surface-0 w-[256px] flex-shrink-0 flex flex-col h-full z-30 border-r border-black/[0.03] elevation-1">
+    <!-- Logo -->
+    <div class="px-5 pt-7 pb-5">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1a1a28] to-[#252540] flex items-center justify-center elevation-2">
+          <span class="text-white text-[10px] font-bold">TL</span>
+        </div>
+        <span class="font-bold text-[15px] tracking-[-0.01em]">TokenLine</span>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-2 space-y-0.5">
+      <a href="#" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-[13px] text-black/45">
+        <span>💬</span> Percakapan
+      </a>
+      <a href="#" class="nav-item active flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-[13px]">
+        <span>📊</span> Dashboard
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-[13px] text-black/45">
+        <span>📋</span> Template
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-[13px] text-black/45">
+        <span>⚙️</span> Pengaturan
+      </a>
+    </nav>
+
+    <!-- User card + Upgrade -->
+    <div class="p-4 space-y-2.5">
+      <div id="user-card" class="surface-2 rounded-2xl p-3.5 elevation-1 flex items-center gap-3">
+        <div id="user-avatar" class="w-8 h-8 rounded-full bg-gradient-to-br from-[#1a1a28] to-[#2a2a48] flex items-center justify-center text-white text-[10px] font-bold">A</div>
+        <div class="flex-1 min-w-0">
+          <p id="user-name" class="text-[12px] font-semibold truncate">Memuat...</p>
+          <p id="user-plan" class="text-[10px] text-black/25">-</p>
+        </div>
+      </div>
+      <a href="topup.html" class="accent-btn flex items-center justify-center gap-2 text-[12px] font-semibold text-white/95 px-4 py-2.5 rounded-2xl w-full">
+        <span>↑</span> Upgrade Paket
+      </a>
+    </div>
+  </aside>
+
+  <!-- ====== MAIN ====== -->
+  <main class="flex-1 overflow-y-auto">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6 lg:space-y-8">
+
+      <!-- Mobile header -->
+      <div class="flex lg:hidden items-center gap-3 anim-enter">
+        <button onclick="toggleSidebar()" class="surface-2 w-9 h-9 rounded-xl flex items-center justify-center elevation-1 flex-shrink-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        </button>
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-[#1a1a28] to-[#252540] flex items-center justify-center">
+            <span class="text-white text-[9px] font-bold">TL</span>
+          </div>
+          <span class="font-bold text-[14px]">Dashboard</span>
+        </div>
+      </div>
+
+      <!-- Header -->
+      <div class="anim-enter hidden lg:flex items-center justify-between">
+        <div>
+          <h1 class="text-[24px] font-bold tracking-[-0.015em]">Dashboard</h1>
+          <p class="text-[13px] text-black/30 mt-1">Ringkasan aktivitas menulis Anda</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="surface-2 rounded-xl p-0.5 elevation-1 flex text-[12px] font-medium">
+            <button data-range="7" onclick="setRange(7)" class="range-btn px-3.5 py-2 rounded-lg transition-all">7 hari</button>
+            <button data-range="30" onclick="setRange(30)" class="range-btn px-3.5 py-2 rounded-lg transition-all text-black/30">30 hari</button>
+          </div>
+          <button onclick="showExportToast()" class="accent-btn text-[12px] font-semibold text-white/95 px-5 py-2.5 rounded-2xl whitespace-nowrap">Export Laporan</button>
+        </div>
+      </div>
+
+      <!-- Mobile header controls -->
+      <div class="anim-enter anim-delay-1 flex lg:hidden items-center justify-between gap-2">
+        <div class="surface-2 rounded-xl p-0.5 elevation-1 flex text-[12px] font-medium">
+          <button data-range="7" onclick="setRange(7)" class="range-btn px-3 py-1.5 rounded-lg transition-all">7 hari</button>
+          <button data-range="30" onclick="setRange(30)" class="range-btn px-3 py-1.5 rounded-lg transition-all text-black/30">30 hari</button>
+        </div>
+        <button onclick="showExportToast()" class="accent-btn text-[11px] font-semibold text-white/95 px-4 py-2 rounded-xl whitespace-nowrap">Export</button>
+      </div>
+
+      <!-- Loading / Error -->
+      <div id="loading-area" class="space-y-6">
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          <div id="stat-total-words" class="stat-card anim-enter anim-delay-1 surface-2 rounded-2xl p-4 lg:p-5 elevation-2">
+            <p class="text-[10px] lg:text-[11px] font-semibold text-black/20 uppercase tracking-[0.1em] mb-2">Kata Ditulis</p>
+            <div id="stat-val-words" class="skeleton h-8 w-24 mb-2"></div>
+            <div id="stat-sub-words" class="skeleton h-4 w-20"></div>
+          </div>
+          <div id="stat-documents" class="stat-card anim-enter anim-delay-2 surface-2 rounded-2xl p-4 lg:p-5 elevation-2">
+            <p class="text-[10px] lg:text-[11px] font-semibold text-black/20 uppercase tracking-[0.1em] mb-2">Dokumen Dibuat</p>
+            <div id="stat-val-docs" class="skeleton h-8 w-16 mb-2"></div>
+            <div id="stat-sub-docs" class="skeleton h-4 w-20"></div>
+          </div>
+          <div id="stat-time" class="stat-card anim-enter anim-delay-3 surface-2 rounded-2xl p-4 lg:p-5 elevation-2">
+            <p class="text-[10px] lg:text-[11px] font-semibold text-black/20 uppercase tracking-[0.1em] mb-2">Waktu Hemat</p>
+            <div id="stat-val-time" class="skeleton h-8 w-20 mb-2"></div>
+            <div id="stat-sub-time" class="skeleton h-4 w-16"></div>
+          </div>
+          <div id="stat-tokens" class="stat-card anim-enter anim-delay-4 surface-2 rounded-2xl p-4 lg:p-5 elevation-2">
+            <p class="text-[10px] lg:text-[11px] font-semibold text-black/20 uppercase tracking-[0.1em] mb-2">Sisa Token</p>
+            <div id="stat-val-tokens" class="skeleton h-8 w-24 mb-2"></div>
+            <div class="progress-bar mt-1"><div class="progress-fill" style="width: 0%"></div></div>
+            <div id="stat-sub-tokens" class="skeleton h-3 w-28 mt-1.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error state (hidden by default) -->
+      <div id="error-area" class="hidden anim-enter surface-2 rounded-2xl p-8 elevation-2 text-center">
+        <p class="text-[28px] mb-3">⚠️</p>
+        <p class="text-[14px] font-semibold text-black/50 mb-1">Gagal memuat data</p>
+        <p id="error-message" class="text-[12px] text-black/25 mb-4">Terjadi kesalahan koneksi</p>
+        <button onclick="loadData()" class="accent-btn text-[12px] font-semibold text-white/95 px-5 py-2.5 rounded-2xl">Coba Lagi</button>
+      </div>
+
+      <!-- Main content (hidden until loaded) -->
+      <div id="content-area" class="hidden space-y-6 lg:space-y-8">
+
+        <!-- Stat Cards (re-populated by JS) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          <div class="stat-card surface-2 rounded-2xl p-4 lg:p-5 elevation-2">
+            <p class="text-[10px] lg:text-[11px] font-semibold text-black/20 uppercase tracking-[0.1em] mb-2">Kata Ditulis</p>
+            <p id="stat-words-value" class="text-[26px] lg:text-[32px] font-extrabold tracking-[-0.02em] mb-1">0</p>
+            <div id="stat-words-sub" class="flex items-center gap-2">
+              <span class="text-[10px] lg:text-[11px] text-black/25">Memuat...</span>
+            </div>
+          </div>
+          <div class="stat-card surface-2 rounded-2xl p-4 lg:p-5 elevation-2">
+            <p class="text-[10px] lg:text-[11px] font-semibold text-black/20 uppercase tracking-[0.1em] mb-2">Dokumen Dibuat</p>
+            <p id="stat-docs-value" class="text-[26px] lg:text-[32px] font-extrabold tracking-[-0.02em] mb-1">0</p>
+            <div id="stat-docs-sub" class="flex items-center gap-2">
+              <span class="text-[10px] lg:text-[11px] text-black/25">Memuat...</span>
+            </div>
+          </div>
+          <div class="stat-card surface-2 rounded-2xl p-4 lg:p-5 elevation-2">
+            <p class="text-[10px] lg:text-[11px] font-semibold text-black/20 uppercase tracking-[0.1em] mb-2">Waktu Hemat</p>
+            <p id="stat-time-value" class="text-[26px] lg:text-[32px] font-extrabold tracking-[-0.02em] mb-1">0</p>
+            <div id="stat-time-sub" class="flex items-center gap-2">
+              <span class="text-[10px] lg:text-[11px] text-black/25">Estimasi</span>
+            </div>
+          </div>
+          <div class="stat-card surface-2 rounded-2xl p-4 lg:p-5 elevation-2">
+            <p class="text-[10px] lg:text-[11px] font-semibold text-black/20 uppercase tracking-[0.1em] mb-2">Sisa Token</p>
+            <p id="stat-tokens-value" class="text-[26px] lg:text-[32px] font-extrabold tracking-[-0.02em] mb-1">0</p>
+            <div class="progress-bar mt-1"><div id="token-progress" class="progress-fill" style="width:0%"></div></div>
+            <p id="stat-tokens-sub" class="text-[9px] lg:text-[10px] text-black/20 mt-1.5">Memuat...</p>
+          </div>
+        </div>
+
+        <!-- Chart + Templates -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <!-- Activity Chart -->
+          <div id="chart-section" class="lg:col-span-2 anim-enter anim-delay-2 surface-2 rounded-2xl p-5 lg:p-6 elevation-2">
+            <div class="flex items-center justify-between mb-5 lg:mb-6">
+              <h3 class="text-[13px] lg:text-[14px] font-bold">Aktivitas Menulis</h3>
+              <div class="flex items-center gap-3 text-[10px] lg:text-[11px]">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#1a1a28]"></span> Kata</span>
+              </div>
+            </div>
+            <div id="chart-container" class="flex items-end gap-2 lg:gap-3 h-32 lg:h-40">
+              <!-- Chart bars rendered by JS -->
+            </div>
+            <div id="chart-empty" class="hidden text-center py-8 text-black/20 text-[13px]">
+              Belum ada data aktivitas
+            </div>
+          </div>
+
+          <!-- Top Templates -->
+          <div class="anim-enter anim-delay-3 surface-2 rounded-2xl p-5 lg:p-6 elevation-2">
+            <h3 class="text-[13px] lg:text-[14px] font-bold mb-4 lg:mb-5">Template Terpakai</h3>
+            <div id="templates-container" class="space-y-3 lg:space-y-4">
+              <!-- Templates rendered by JS -->
+            </div>
+            <div id="templates-empty" class="hidden text-center py-6 text-black/20 text-[13px]">
+              Belum ada template digunakan
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="anim-enter anim-delay-3 surface-2 rounded-2xl p-5 lg:p-6 elevation-2">
+          <h3 class="text-[13px] lg:text-[14px] font-bold mb-4 lg:mb-5">Aktivitas Terbaru</h3>
+          <div id="activity-container" class="space-y-1">
+            <!-- Activities rendered by JS -->
+          </div>
+          <div id="activity-empty" class="hidden text-center py-8 text-black/20 text-[13px]">
+            Belum ada aktivitas
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast-container"></div>
+
+  <script>
+  // ============================================================
+  // STATE
+  // ============================================================
+  const API_BASE = 'https://tokenline.top';
+  let authToken = null;
+  let userData = null;
+  let balanceData = null;
+  let dailyData = [];
+  let conversations = [];
+  let currentRange = 7;
+
+  // Cache for word estimates
+  let totalWords = 0;
+  let avgWordsPerMessage = 0;
+
+  // ============================================================
+  // AUTH
+  // ============================================================
+  function checkAuth() {
+    authToken = localStorage.getItem('token');
+    if (!authToken) {
+      window.location.href = 'login.html';
+    }
+  }
+
+  // ============================================================
+  // UI HELPERS
+  // ============================================================
+  function $(id) { return document.getElementById(id); }
+
+  function toggleSidebar() {
+    const s = $('sidebar');
+    const o = $('sidebar-overlay');
+    s.classList.toggle('open');
+    o.classList.toggle('open');
+  }
+
+  function formatNumber(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return n.toString();
+  }
+
+  function formatNumberFull(n) {
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHr = Math.floor(diffMs / 3600000);
+    const diffDay = Math.floor(diffMs / 86400000);
+
+    if (diffMin < 1) return 'Baru saja';
+    if (diffMin < 60) return diffMin + ' menit lalu';
+    if (diffHr < 24) return diffHr + ' jam lalu';
+    if (diffDay === 1) return 'Kemarin';
+    if (diffDay < 7) return diffDay + ' hari lalu';
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  }
+
+  function dayName(dateStr) {
+    const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    return days[new Date(dateStr).getDay()];
+  }
+
+  function shortDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  }
+
+  function getPlanColor(plan) {
+    const p = (plan || '').toLowerCase();
+    if (p.includes('flash')) return 'bg-amber-100 text-amber-700';
+    if (p.includes('pro')) return 'bg-indigo-100 text-indigo-700';
+    if (p.includes('free') || p === '' || !p) return 'bg-gray-100 text-gray-500';
+    return 'bg-gray-100 text-gray-600';
+  }
+
+  // Derive icon + mode + template category from title
+  function classifyTitle(title) {
+    const t = (title || '').toLowerCase();
+    if (t.includes('skripsi') || t.includes('bab') || t.includes('tesis') || t.includes('jurnal')) {
+      return { icon: '📝', mode: 'Tulis', template: 'Skripsi S1' };
+    }
+    if (t.includes('email') || t.includes('surat') || t.includes('lamaran')) {
+      return { icon: '📧', mode: 'Tulis', template: 'Email Profesional' };
+    }
+    if (t.includes('terjemah') || t.includes('translate') || t.includes('inggris')) {
+      return { icon: '🌐', mode: 'Terjemahkan', template: 'Terjemahan Jurnal' };
+    }
+    if (t.includes('proposal') || t.includes('bisnis') || t.includes('startup')) {
+      return { icon: '💼', mode: 'Tulis', template: 'Proposal Bisnis' };
+    }
+    if (t.includes('abstrak') || t.includes('revisi') || t.includes('perbaiki')) {
+      return { icon: '🔄', mode: 'Perbaiki', template: 'Revisi Dokumen' };
+    }
+    if (t.includes('artikel') || t.includes('blog') || t.includes('konten')) {
+      return { icon: '✍️', mode: 'Tulis', template: 'Artikel Blog' };
+    }
+    if (t.includes('resume') || t.includes('cv') || t.includes('curriculum')) {
+      return { icon: '📄', mode: 'Tulis', template: 'CV / Resume' };
+    }
+    if (t.includes('presentasi') || t.includes('slide') || t.includes('powerpoint')) {
+      return { icon: '📊', mode: 'Tulis', template: 'Presentasi' };
+    }
+    if (t.includes('laporan') || t.includes('report') || t.includes('tugas')) {
+      return { icon: '📋', mode: 'Tulis', template: 'Laporan Tugas' };
+    }
+    return { icon: '💬', mode: 'Tulis', template: 'Lainnya' };
+  }
+
+  // ============================================================
+  // API
+  // ============================================================
+  async function apiFetch(endpoint) {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+    }
+    return res.json();
+  }
+
+  async function loadData() {
+    // Show loading, hide error + content
+    $('loading-area').classList.remove('hidden');
+    $('error-area').classList.add('hidden');
+    $('content-area').classList.add('hidden');
+
+    // Re-inject skeletons into stat cards
+    const sk = (w) => `<div class="skeleton" style="height:32px;width:${w}px;margin-bottom:8px"></div>`;
+    const sk2 = (w) => `<div class="skeleton" style="height:16px;width:${w}px"></div>`;
+    $('stat-val-words').outerHTML = `<div id="stat-val-words" class="skeleton" style="height:32px;width:100px;margin-bottom:8px"></div>`;
+    $('stat-sub-words').outerHTML = `<div id="stat-sub-words" class="skeleton" style="height:16px;width:80px"></div>`;
+    $('stat-val-docs').outerHTML = `<div id="stat-val-docs" class="skeleton" style="height:32px;width:60px;margin-bottom:8px"></div>`;
+    $('stat-sub-docs').outerHTML = `<div id="stat-sub-docs" class="skeleton" style="height:16px;width:80px"></div>`;
+    $('stat-val-time').outerHTML = `<div id="stat-val-time" class="skeleton" style="height:32px;width:80px;margin-bottom:8px"></div>`;
+    $('stat-sub-time').outerHTML = `<div id="stat-sub-time" class="skeleton" style="height:16px;width:60px"></div>`;
+    $('stat-val-tokens').outerHTML = `<div id="stat-val-tokens" class="skeleton" style="height:32px;width:100px;margin-bottom:8px"></div>`;
+    $('stat-sub-tokens').outerHTML = `<div id="stat-sub-tokens" class="skeleton" style="height:12px;width:120px;margin-top:6px"></div>`;
+
+    try {
+      const [me, stats, balance, history] = await Promise.all([
+        apiFetch('/api/me'),
+        apiFetch('/api/me/stats'),
+        apiFetch('/api/me/balance'),
+        apiFetch('/api/chat/history'),
+      ]);
+
+      userData = me;
+      dailyData = (stats && stats.daily) || [];
+      balanceData = balance;
+      conversations = Array.isArray(history) ? history : [];
+
+      // Calculate word estimates
+      const tokensUsed = me.tokens_used || 0;
+      totalWords = Math.round(tokensUsed * 0.75);
+
+      const totalMessages = dailyData.reduce((sum, d) => sum + (d.messages || 0), 0);
+      avgWordsPerMessage = totalMessages > 0 ? totalWords / totalMessages : 200;
+
+      // Render everything
+      renderUserCard();
+      renderStatCards();
+      renderChart(currentRange);
+      renderTemplates();
+      renderRecentActivity();
+
+      // Hide loading, show content
+      $('loading-area').classList.add('hidden');
+      $('content-area').classList.remove('hidden');
+
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+      $('loading-area').classList.add('hidden');
+      $('error-area').classList.remove('hidden');
+      $('error-message').textContent = err.message || 'Terjadi kesalahan koneksi';
+    }
+  }
+
+  // ============================================================
+  // RENDER: User Card
+  // ============================================================
+  function renderUserCard() {
+    const u = userData;
+    if (!u) return;
+
+    const email = u.email || 'Pengguna';
+    const name = email.split('@')[0] || 'Pengguna';
+    const initial = name.charAt(0).toUpperCase();
+    const plan = u.plan || 'Free';
+
+    $('user-avatar').textContent = initial;
+    $('user-name').textContent = name;
+    $('user-plan').textContent = plan;
+  }
+
+  // ============================================================
+  // RENDER: Stat Cards
+  // ============================================================
+  function renderStatCards() {
+    const u = userData;
+    if (!u) return;
+
+    const docs = conversations.length;
+    const timeSaved = totalWords > 0 ? Math.round(totalWords / 500) : 0;
+    const tokenBalance = u.token_balance || 0;
+    const tokensUsed = u.tokens_used || 0;
+    const totalTokens = tokenBalance + tokensUsed;
+
+    // Total words
+    $('stat-words-value').textContent = formatNumber(totalWords) + (totalWords >= 1000 ? '' : '');
+    const growth = u.total_deposited > 0 ? 'Terpakai ' + formatNumber(tokensUsed) + ' token' : 'Belum ada aktivitas';
+    $('stat-words-sub').innerHTML = `<span class="text-[10px] lg:text-[11px] text-black/25">${growth}</span>`;
+
+    // Documents
+    $('stat-docs-value').textContent = docs;
+    $('stat-docs-sub').innerHTML = docs > 0
+      ? `<span class="text-[10px] lg:text-[11px] text-black/25">Total percakapan</span>`
+      : `<span class="text-[10px] lg:text-[11px] text-black/25">Belum ada dokumen</span>`;
+
+    // Time saved
+    $('stat-time-value').textContent = timeSaved + ' jam';
+    $('stat-time-sub').innerHTML = totalWords > 0
+      ? `<span class="text-[10px] lg:text-[11px] text-black/25">Setara ${formatNumber(totalWords)} kata</span>`
+      : `<span class="text-[10px] lg:text-[11px] text-black/25">Estimasi</span>`;
+
+    // Token balance
+    $('stat-tokens-value').textContent = formatNumber(tokenBalance);
+    const pct = totalTokens > 0 ? Math.min((tokensUsed / totalTokens) * 100, 100) : 0;
+    $('token-progress').style.width = pct + '%';
+    $('stat-tokens-sub').textContent = formatNumber(tokensUsed) + ' / ' + formatNumber(totalTokens) + ' terpakai';
+  }
+
+  // ============================================================
+  // RENDER: Chart
+  // ============================================================
+  function renderChart(range) {
+    const container = $('chart-container');
+    const empty = $('chart-empty');
+
+    if (!dailyData || dailyData.length === 0) {
+      container.innerHTML = '';
+      container.classList.add('hidden');
+      empty.classList.remove('hidden');
+      return;
+    }
+    container.classList.remove('hidden');
+    empty.classList.add('hidden');
+
+    // Sort by date ascending
+    const sorted = [...dailyData].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Select range
+    let data = range === 7 ? sorted.slice(-7) : sorted.slice(-30);
+
+    // For 30-day view, aggregate by week
+    if (range === 30) {
+      data = aggregateByWeek(data);
+    }
+
+    const values = data.map(d => d.messages ? Math.round(d.messages * avgWordsPerMessage) : 0);
+    const maxVal = Math.max(...values, 1);
+
+    container.innerHTML = data.map((d, i) => {
+      const val = values[i];
+      const pct = (val / maxVal) * 100;
+      const label = range === 7 ? dayName(d.date) : shortDate(d.date);
+      return `
+        <div class="flex-1 flex flex-col items-center gap-1.5 lg:gap-2" title="${formatNumber(val)} kata">
+          <div class="chart-bar w-full rounded-t-lg" style="height:${Math.max(pct, 2)}%;background:linear-gradient(to top, rgba(26,26,40,0.08), rgba(26,26,40,${0.08 + (pct / 100) * 0.22}))"></div>
+          <span class="text-[9px] lg:text-[10px] text-black/20 whitespace-nowrap">${label}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function aggregateByWeek(data) {
+    // Sort ascending
+    const sorted = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const weeks = [];
+    let currentWeek = [];
+    let weekStart = null;
+
+    for (const d of sorted) {
+      const dt = new Date(d.date);
+      if (!weekStart) weekStart = dt;
+      const diffDays = Math.floor((dt - weekStart) / 86400000);
+      if (diffDays >= 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+        weekStart = dt;
+      }
+      currentWeek.push(d);
+    }
+    if (currentWeek.length > 0) weeks.push(currentWeek);
+
+    return weeks.map((w, idx) => {
+      const total = w.reduce((s, d) => s + (d.messages || 0), 0);
+      const firstDate = w[0].date;
+      return {
+        date: firstDate,
+        messages: Math.round(total / w.length), // Average per day in week
+        label: 'Mg ' + (idx + 1)
+      };
+    });
+  }
+
+  // ============================================================
+  // RENDER: Templates
+  // ============================================================
+  function renderTemplates() {
+    const container = $('templates-container');
+    const empty = $('templates-empty');
+
+    // Build template usage from conversation titles
+    const templateCounts = {};
+    let totalTemplates = 0;
+
+    for (const conv of conversations) {
+      const { template } = classifyTitle(conv.title || '');
+      templateCounts[template] = (templateCounts[template] || 0) + 1;
+      totalTemplates++;
+    }
+
+    // If no conversations, use mock data
+    const mockTemplates = [
+      { icon: '📝', name: 'Skripsi S1', count: 12 },
+      { icon: '📧', name: 'Email Profesional', count: 8 },
+      { icon: '🌐', name: 'Terjemahan Jurnal', count: 7 },
+      { icon: '💼', name: 'Proposal Bisnis', count: 5 },
+    ];
+
+    const nameToIcon = {
+      'Skripsi S1': '📝',
+      'Email Profesional': '📧',
+      'Terjemahan Jurnal': '🌐',
+      'Proposal Bisnis': '💼',
+      'Revisi Dokumen': '🔄',
+      'Artikel Blog': '✍️',
+      'CV / Resume': '📄',
+      'Presentasi': '📊',
+      'Laporan Tugas': '📋',
+      'Lainnya': '💬',
+    };
+
+    let templates;
+    if (totalTemplates === 0) {
+      templates = mockTemplates;
+      totalTemplates = mockTemplates.reduce((s, t) => s + t.count, 0);
+    } else {
+      // Also include from mock for completeness
+      for (const m of mockTemplates) {
+        if (!templateCounts[m.name]) {
+          templateCounts[m.name] = 0;
+        }
+      }
+      templates = Object.entries(templateCounts)
+        .filter(([_, count]) => count > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, count]) => ({
+          icon: nameToIcon[name] || '💬',
+          name,
+          count
+        }));
+      totalTemplates = templates.reduce((s, t) => s + t.count, 0);
+    }
+
+    if (templates.length === 0) {
+      container.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    container.innerHTML = templates.map(t => {
+      const pct = totalTemplates > 0 ? Math.round((t.count / totalTemplates) * 100) : 0;
+      return `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5 lg:gap-3">
+            <span class="text-base lg:text-lg">${t.icon}</span>
+            <div>
+              <p class="text-[11px] lg:text-[12px] font-semibold">${t.name}</p>
+              <p class="text-[9px] lg:text-[10px] text-black/25">${t.count} kali</p>
+            </div>
+          </div>
+          <span class="text-[10px] lg:text-[11px] text-black/20 font-medium">${pct}%</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ============================================================
+  // RENDER: Recent Activity
+  // ============================================================
+  function renderRecentActivity() {
+    const container = $('activity-container');
+    const empty = $('activity-empty');
+
+    if (!conversations || conversations.length === 0) {
+      container.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    // Sort by created_at descending, take 8
+    const recent = [...conversations]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 8);
+
+    const plan = userData && userData.plan ? userData.plan : 'Flash';
+
+    container.innerHTML = recent.map((conv, idx) => {
+      const { icon, mode } = classifyTitle(conv.title || 'Percakapan');
+      const isLast = idx === recent.length - 1;
+
+      // Approximate word count per conversation
+      const convWords = conversations.length > 0
+        ? Math.round(totalWords / conversations.length)
+        : 0;
+
+      return `
+        <div class="flex items-center gap-3 lg:gap-4 py-2.5 lg:py-3 ${isLast ? '' : 'border-b border-black/[0.03]'}">
+          <span class="text-base lg:text-lg">${icon}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-[12px] lg:text-[13px] font-medium truncate">${conv.title || 'Percakapan Baru'}</p>
+            <p class="text-[10px] lg:text-[11px] text-black/25">Mode: ${mode} &middot; ${plan} &middot; ${formatNumber(convWords)} kata</p>
+          </div>
+          <span class="text-[10px] lg:text-[11px] text-black/20 flex-shrink-0">${timeAgo(conv.created_at)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ============================================================
+  // TIME RANGE
+  // ============================================================
+  function setRange(range) {
+    currentRange = range;
+    // Update button styles
+    document.querySelectorAll('.range-btn').forEach(btn => {
+      const r = parseInt(btn.dataset.range);
+      if (r === range) {
+        btn.classList.add('bg-[#1a1a28]', 'text-white', 'font-semibold');
+        btn.classList.remove('text-black/30');
+      } else {
+        btn.classList.remove('bg-[#1a1a28]', 'text-white', 'font-semibold');
+        btn.classList.add('text-black/30');
+      }
+    });
+    renderChart(range);
+  }
+
+  // ============================================================
+  // EXPORT
+  // ============================================================
+  function showExportToast() {
+    const container = $('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast surface-2 rounded-2xl px-5 py-3.5 elevation-2 flex items-center gap-3 border border-black/[0.04]';
+    toast.innerHTML = `
+      <span class="text-lg">✅</span>
+      <p class="text-[13px] font-medium text-black/70">Laporan akan dikirim ke email Anda</p>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  checkAuth();
+  loadData();
+
+  // Set default range button
+  document.querySelectorAll('.range-btn').forEach(btn => {
+    const r = parseInt(btn.dataset.range);
+    if (r === 7) {
+      btn.classList.add('bg-[#1a1a28]', 'text-white', 'font-semibold');
+      btn.classList.remove('text-black/30');
+    }
+  });
+
+  console.log('TokenLine Dashboard v1.0 loaded');
+  </script>
+</body>
+</html>

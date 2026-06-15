@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TokenLine — Asisten Menulis AI Premium</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #faf9f6; --fg: #1a1c2c; --muted: #6b6b7b; }
+* { font-family: 'Inter', system-ui, sans-serif; }
+body { background: var(--bg); color: var(--fg); -webkit-font-smoothing: antialiased; }
+
+/* Section spacing — 3x more breathing room */
+section { padding: 12rem 2rem; }
+@media (max-width: 768px) { section { padding: 7rem 1.25rem; } }
+
+/* 4-level surfaces */
+.s0 { background: var(--bg); }
+.s1 { background: #f5f4f1; }
+.s2 { background: #fff; border: 1px solid rgba(0,0,0,0.05); border-radius: 1.5rem; }
+.s3 { background: #fff; border: 1px solid rgba(0,0,0,0.06); border-radius: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03), 0 8px 24px rgba(0,0,0,0.04); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 2rem; border-radius: 999px; font-weight: 600; font-size: 0.9375rem; transition: all 0.2s ease; }
+.btn-dark { background: var(--fg); color: #fff; }
+.btn-dark:hover { background: #2a2c3c; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,28,44,0.15); }
+.btn-ghost { border: 1px solid rgba(0,0,0,0.12); }
+.btn-ghost:hover { border-color: rgba(0,0,0,0.25); background: rgba(0,0,0,0.02); }
+
+.badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 999px; border: 1px solid rgba(0,0,0,0.08); background: #fff; font-size: 0.8125rem; color: rgba(26,28,44,0.5); }
+.dot-green { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #34d399; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+.kicker { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(26,28,44,0.2); margin-bottom: 1rem; }
+.h1 { font-size: clamp(3rem, 6vw, 5rem); font-weight: 800; letter-spacing: -0.045em; line-height: 1.04; }
+.h2 { font-size: clamp(2.25rem, 4vw, 2.75rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.12; }
+.h3 { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+.body { font-size: 1.0625rem; line-height: 1.75; color: rgba(26,28,44,0.45); max-width: 32rem; }
+.body-sm { font-size: 0.875rem; line-height: 1.7; color: rgba(26,28,44,0.4); }
+
+.card { background: #fff; border: 1px solid rgba(0,0,0,0.05); border-radius: 1.5rem; padding: 2.5rem; transition: all 0.3s ease; }
+.card:hover { transform: translateY(-2px); border-color: rgba(0,0,0,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+
+.nav-blur { background: rgba(255,255,255,0.75); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(0,0,0,0.04); position: fixed; top: 0; left: 0; right: 0; z-index: 50; }
+.nav-link { transition: color 0.2s; }
+.nav-link.active { color: var(--fg); font-weight: 600; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(2rem); } to { opacity: 1; transform: translateY(0); } }
+.reveal { animation: fadeIn 0.8s cubic-bezier(0.22,0.61,0.36,1) both; }
+.r1{animation-delay:0.1s}.r2{animation-delay:0.2s}.r3{animation-delay:0.3s}.r4{animation-delay:0.4s}
+
+/* Section divider */
+.divider { width: 100%; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent); }
+
+/* Scroll progress bar */
+.scroll-progress { position: fixed; top: 0; left: 0; height: 2px; background: var(--fg); z-index: 100; transition: width 0.1s linear; }
+
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<!-- Scroll progress -->
+<div class="scroll-progress" id="progress" style="width:0%"></div>
+
+<!-- NAV -->
+<nav class="nav-blur">
+  <div class="max-w-6xl mx-auto flex items-center justify-between h-16 px-6">
+    <a href="/" class="flex items-center gap-2.5 font-bold text-lg tracking-tight"><span class="w-7 h-7 rounded-lg bg-[#1a1c2c] flex items-center justify-center"><span class="text-white text-[10px] font-bold">T</span></span>TokenLine</a>
+    <div class="hidden md:flex items-center gap-8 text-sm font-medium"><a href="#siapa" class="nav-link text-black/35 hover:text-black/70">Untuk Siapa</a><a href="#fitur" class="nav-link text-black/35 hover:text-black/70">Fitur</a><a href="#harga" class="nav-link text-black/35 hover:text-black/70">Harga</a><a href="chat-pro.html" class="nav-link text-black/35 hover:text-black/70">Coba</a></div>
+    <div class="flex items-center gap-3"><a href="login.html" class="text-sm font-medium text-black/35 hover:text-black/70">Masuk</a><a href="register.html" class="btn btn-dark text-sm !py-2 !px-5">Mulai Gratis</a></div>
+  </div>
+</nav>
+
+<!-- HERO — massive breathing room -->
+<section class="s0 relative flex items-center" style="min-height:95vh; padding-top:8rem;">
+  <div class="max-w-4xl mx-auto text-center reveal">
+    <div class="badge mx-auto mb-10"><span class="dot-green"></span>DeepSeek V4 · Harga Indonesia</div>
+    <h1 class="h1 mb-8">Tulis apa pun.<br>Cukup bilang mau apa.</h1>
+    <p class="body mx-auto mb-12">Skripsi, jurnal, proposal bisnis, email — AI yang ngerti Indonesia. Bukan chatbot biasa.</p>
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+      <a href="register.html" class="btn btn-dark">Mulai Gratis — 3 percakapan/hari</a>
+      <a href="#demo" class="btn btn-ghost">Lihat Cara Kerja ↓</a>
+    </div>
+    <p class="text-xs text-black/20">Tanpa kartu kredit · 30 detik daftar</p>
+    <div class="grid grid-cols-4 gap-12 max-w-lg mx-auto mt-20 reveal r2">
+      <div><p class="text-2xl font-extrabold">12K+</p><p class="text-xs text-black/30 mt-1">Penulis</p></div>
+      <div><p class="text-2xl font-extrabold">85K+</p><p class="text-xs text-black/30 mt-1">Dokumen</p></div>
+      <div><p class="text-2xl font-extrabold">4.8</p><p class="text-xs text-black/30 mt-1">Rating</p></div>
+      <div><p class="text-2xl font-extrabold">98%</p><p class="text-xs text-black/30 mt-1">Puass</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PERSONA — Bento 2+1+1+2 with wide gaps -->
+<section id="siapa" class="s1">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-20 reveal"><p class="kicker">Untuk Siapa</p><h2 class="h2 mb-4">Satu alat. Semua kebutuhan.</h2><p class="body mx-auto">Dari mahasiswa sampai CEO — semua bisa nulis lebih cepat, lebih baik.</p></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card md:col-span-2 flex flex-col sm:flex-row items-start gap-6 reveal"><span class="text-5xl flex-shrink-0">🎓</span><div><h3 class="h3 mb-3">Mahasiswa</h3><p class="body-sm">Skripsi, tesis, makalah, jurnal, abstrak. AI bantu dari Bab 1 sampai daftar pustaka. Sitasi otomatis APA/IEEE/MLA. Bimbingan menulis 24/7 tanpa perlu janjian sama dosen.</p><div class="flex flex-wrap gap-2 mt-4"><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Skripsi</span><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Jurnal</span><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Abstrak</span></div></div></div>
+      <div class="card flex flex-col items-center text-center reveal r1"><span class="text-4xl mb-4">💼</span><h3 class="h3 mb-3">Profesional</h3><p class="body-sm">Email klien, proposal bisnis, laporan tahunan. Bahasa formal, persuasif, siap kirim.</p><div class="flex flex-wrap gap-2 mt-auto pt-4"><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Bisnis</span><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Laporan</span></div></div>
+      <div class="card flex flex-col items-center text-center reveal r2"><span class="text-4xl mb-4">✨</span><h3 class="h3 mb-3">Kreator</h3><p class="body-sm">Blog, naskah video, caption, cerpen. Gaya fleksibel, penuh karakter, gak kaku.</p><div class="flex flex-wrap gap-2 mt-auto pt-4"><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Konten</span><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Kreatif</span></div></div>
+      <div class="card md:col-span-2 flex flex-col sm:flex-row items-start gap-6 reveal r3"><span class="text-5xl flex-shrink-0">🔬</span><div><h3 class="h3 mb-3">Dosen & Peneliti</h3><p class="body-sm">Jurnal internasional, proposal hibah, laporan penelitian. Format IEEE/APA siap submit ke Scopus. Terjemahan akademik natural — bukan hasil translate mentah.</p><div class="flex flex-wrap gap-2 mt-4"><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Scopus</span><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">Hibah</span><span class="text-[10px] bg-black/[0.03] px-3 py-1 rounded-full">IEEE</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FEATURES -->
+<section id="fitur" class="s0">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-20 reveal"><p class="kicker">Fitur</p><h2 class="h2 mb-4">Lebih dari sekadar chat.</h2><p class="body mx-auto">Alat tulis lengkap dalam satu tempat. Dari ide mentah ke dokumen siap pakai.</p></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card flex flex-col items-center text-center reveal"><div class="w-14 h-14 rounded-2xl bg-[#1a1c2c]/[0.04] flex items-center justify-center text-3xl mb-5">✏️</div><h3 class="h3 mb-3">6 Mode Menulis</h3><p class="body-sm">Tulis, Perbaiki, Terjemahkan, Ringkas, Lanjutkan, Analisis — semua dalam satu tempat.</p></div>
+      <div class="card flex flex-col items-center text-center reveal r1"><div class="w-14 h-14 rounded-2xl bg-[#1a1c2c]/[0.04] flex items-center justify-center text-3xl mb-5">📋</div><h3 class="h3 mb-3">20+ Template</h3><p class="body-sm">Skripsi, jurnal, proposal bisnis, email, CV — pilih, isi konteks, AI kerjakan sisanya.</p></div>
+      <div class="card flex flex-col items-center text-center reveal r2"><div class="w-14 h-14 rounded-2xl bg-[#1a1c2c]/[0.04] flex items-center justify-center text-3xl mb-5">📤</div><h3 class="h3 mb-3">Export DOCX/PDF</h3><p class="body-sm">Langsung export. Siap submit jurnal, kirim dosen, atau presentasi ke klien. Satu klik.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section class="s1">
+  <div class="max-w-3xl mx-auto text-center">
+    <div class="reveal mb-24"><p class="kicker">Cara Kerja</p><h2 class="h2">Dari ide ke dokumen. Tiga langkah.</h2></div>
+    <div class="space-y-24">
+      <div class="reveal"><div class="w-14 h-14 rounded-2xl bg-[#1a1c2c] flex items-center justify-center text-white text-xl font-bold mx-auto mb-6">1</div><h3 class="h3 mb-4">Pilih template atau tulis bebas</h3><p class="body mx-auto">20+ template siap pakai. Atau langsung tulis apa yang kamu butuhkan. Gak perlu belajar prompt engineering — cukup bilang apa maunya dalam bahasa sehari-hari.</p></div>
+      <div class="reveal r2"><div class="w-14 h-14 rounded-2xl bg-[#1a1c2c] flex items-center justify-center text-white text-xl font-bold mx-auto mb-6">2</div><h3 class="h3 mb-4">AI menulis, kamu mengarahkan</h3><p class="body mx-auto">Kasih konteks singkat — AI langsung tulis draf lengkap dengan struktur, argumen, dan sitasi. Mau direvisi? Tinggal bilang "lebih formal" atau "tambah data". Real-time streaming.</p></div>
+      <div class="reveal r3"><div class="w-14 h-14 rounded-2xl bg-[#b8975a] flex items-center justify-center text-white text-xl font-bold mx-auto mb-6">3</div><h3 class="h3 mb-4">Export, kirim, selesai</h3><p class="body mx-auto">Langsung export DOCX, PDF, atau Markdown. Siap submit ke jurnal, kirim ke dosen pembimbing, atau presentasi ke klien. Satu klik.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- DEMO -->
+<section id="demo" class="s0">
+  <div class="max-w-3xl mx-auto reveal">
+    <div class="s3 p-10 lg:p-14 text-center">
+      <h2 class="h2 mb-4">Lihat sendiri</h2>
+      <p class="body mx-auto mb-10">Dari "tolong buatin" ke dokumen jadi. Secepat ini.</p>
+      <div class="max-w-lg mx-auto space-y-5">
+        <div class="flex justify-end"><div class="bg-[#1a1c2c] text-white/90 rounded-2xl rounded-br-md px-5 py-3.5 text-sm max-w-[75%] leading-relaxed">Buat pendahuluan skripsi tentang dampak AI pada pembelajaran Bahasa Inggris di universitas Indonesia. Pakai bahasa akademik + sitasi.</div></div>
+        <div class="flex gap-3"><div class="w-8 h-8 rounded-lg bg-[#1a1c2c] flex-shrink-0 flex items-center justify-center"><span class="text-white text-[10px] font-bold">T</span></div><div class="bg-[#faf9f6] rounded-2xl rounded-bl-md px-5 py-4 text-sm text-black/60 max-w-[82%] border border-black/[0.04] leading-relaxed"><p class="font-semibold text-black/70 text-xs mb-2">1.1 Latar Belakang</p><p>Perkembangan kecerdasan buatan dalam satu dekade terakhir telah mentransformasi lanskap pendidikan tinggi secara fundamental. Kehadiran Large Language Models...</p><p class="text-black/20 text-xs mt-3 flex items-center gap-1"><span class="inline-block w-1.5 h-1.5 rounded-full bg-black/20 animate-pulse"></span> AI sedang menulis...</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PRICING -->
+<section id="harga" class="s1">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-20 reveal"><p class="kicker">Harga</p><h2 class="h2 mb-4">Mulai gratis. Upgrade saat butuh.</h2><p class="body mx-auto">Harga Indonesia. Bukan harga Silicon Valley.</p></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+      <div class="card flex flex-col items-center text-center reveal"><p class="text-lg font-bold mb-1">Gratis</p><p class="text-4xl font-extrabold my-3">Rp 0</p><p class="text-xs text-black/30 mb-8">selamanya</p><ul class="space-y-3 text-sm text-black/40 w-full mb-8"><li>3 percakapan/hari</li><li>Model Flash</li><li>6 mode menulis</li><li class="text-black/20">Export premium</li></ul><a href="register.html" class="btn btn-ghost w-full text-sm">Mulai Gratis</a></div>
+      <div class="card flex flex-col items-center text-center reveal r1" style="border-color:rgba(184,151,90,0.25);background:linear-gradient(180deg,#fff 0%,#fdfcfa 100%);transform:scale(1.04)"><div class="bg-[#b8975a]/[0.08] rounded-full px-3 py-1 mb-3"><span class="text-[10px] text-[#b8975a] font-bold">PALING POPULER</span></div><p class="text-lg font-bold mb-1">Flash 1.5M</p><p class="text-4xl font-extrabold my-3">Rp 49.900</p><p class="text-xs text-black/30 mb-8">1.500.000 token</p><ul class="space-y-3 text-sm text-black/40 w-full mb-8"><li>Semua fitur Gratis</li><li>1.5M token</li><li>Export DOCX/PDF</li><li>20+ template premium</li></ul><a href="register.html" class="btn btn-dark w-full text-sm">Pilih Flash 1.5M</a></div>
+      <div class="card flex flex-col items-center text-center reveal r2"><p class="text-lg font-bold mb-1">Pro 2M</p><p class="text-4xl font-extrabold my-3">Rp 399.000</p><p class="text-xs text-black/30 mb-8">2.000.000 token</p><ul class="space-y-3 text-sm text-black/40 w-full mb-8"><li>Semua fitur Flash</li><li>Model Pro</li><li>Riset & sitasi</li><li>Upload dokumen</li></ul><a href="register.html" class="btn btn-ghost w-full text-sm">Pilih Pro 2M</a></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TESTIMONIALS -->
+<section class="s0">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-20 reveal"><p class="kicker">Testimoni</p><h2 class="h2">Dipercaya penulis Indonesia.</h2></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card flex flex-col items-center text-center reveal"><div class="text-amber-400 text-sm mb-4">★★★★★</div><p class="body-sm italic mb-6">"Bab 1 skripsi biasanya seminggu, sekarang 2 hari beres. Sitasi otomatisnya ngebantu banget. Dosen pembimbing puas."</p><div class="mt-auto"><p class="text-sm font-semibold">Rina F.</p><p class="text-xs text-black/30">Mahasiswi, UI</p></div></div>
+      <div class="card flex flex-col items-center text-center reveal r1"><div class="text-amber-400 text-sm mb-4">★★★★★</div><p class="body-sm italic mb-6">"Terjemahan akademik Inggris-Indonesia jauh lebih natural. Reviewer Scopus gak complain soal bahasa lagi."</p><div class="mt-auto"><p class="text-sm font-semibold">Dr. Dewi P.</p><p class="text-xs text-black/30">Dosen, UB</p></div></div>
+      <div class="card flex flex-col items-center text-center reveal r2"><div class="text-amber-400 text-sm mb-4">★★★★★</div><p class="body-sm italic mb-6">"Proposal klien dari 3 jam jadi 20 menit. 4 klien baru dapet gara-gara proposal yang lebih profesional."</p><div class="mt-auto"><p class="text-sm font-semibold">Andi R.</p><p class="text-xs text-black/30">CEO, EdTech</p></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- CTA -->
+<section class="s1">
+  <div class="max-w-2xl mx-auto text-center reveal"><div class="s3 p-14 lg:p-18"><h2 class="h2 mb-4">Siap nulis lebih cepat?</h2><p class="body mx-auto mb-10">Gabung dengan ribuan penulis Indonesia yang sudah pakai TokenLine.</p><a href="register.html" class="btn btn-dark text-base px-12 py-4">Mulai Gratis Sekarang</a><p class="text-xs text-black/20 mt-5">Tanpa kartu kredit. 30 detik daftar.</p></div></div>
+</section>
+
+<footer class="bg-[#1a1c2c] text-white/30 py-12">
+  <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4"><div class="flex items-center gap-2.5"><span class="w-6 h-6 rounded-md bg-white/15 flex items-center justify-center"><span class="text-white text-[9px] font-bold">T</span></span><span class="text-sm font-semibold">TokenLine 2026</span></div><div class="flex gap-6 text-sm"><a href="#" class="hover:text-white/50">Tentang</a><a href="#" class="hover:text-white/50">Privasi</a><a href="#" class="hover:text-white/50">Syarat</a></div></div>
+</footer>
+
+<script>
+// Scroll progress bar
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  document.getElementById('progress').style.width = h > 0 ? (window.scrollY / h * 100) + '%' : '0%';
+});
+
+// Active nav link on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 100) current = s.id; });
+  navLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + current));
+});
+</script>
+</body>
+</html>

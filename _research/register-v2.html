@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daftar — TokenLine</title>
+    <meta name="description" content="Daftar akun TokenLine gratis — asisten menulis AI premium untuk Indonesia." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
+        integrity="sha512-dPXYcDub/aeb08c63jRq/k6GaKccl256JQy/AnOq7CAnEZ9FzSL9wSbcZkMp4R26vBsMLFYH4kQ67/bbV8XaCQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --bg: #f9f8f6;
+            --surface: rgba(255, 255, 255, 0.8);
+            --accent: #1a1a28;
+            --accent-light: #2a2a3e;
+            --gold: #b8975a;
+            --gold-light: #d4b87a;
+            --text-primary: #1a1a2e;
+            --text-secondary: rgba(26, 26, 46, 0.7);
+            --text-muted: rgba(26, 26, 46, 0.45);
+            --card-bg: #ffffff;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.12);
+            --input-bg: rgba(255, 255, 255, 0.75);
+            --input-border: rgba(0, 0, 0, 0.1);
+            --input-focus: #b8975a;
+            --strength-red: #ef4444;
+            --strength-yellow: #eab308;
+            --strength-green: #22c55e;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Glow orbs */
+        .tl-glow {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .tl-glow-gold {
+            background: radial-gradient(circle, #d4b87a, #b8975a 40%, transparent 70%);
+        }
+        .tl-glow-accent {
+            background: radial-gradient(circle, #4a4a6a, #1a1a28 40%, transparent 70%);
+        }
+
+        /* Glass card */
+        .register-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 480px;
+            position: relative;
+            z-index: 1;
+            box-shadow: var(--shadow-lg);
+            transition: box-shadow 0.4s ease;
+        }
+
+        @media (max-width: 520px) {
+            .register-card {
+                padding: 32px 24px;
+                border-radius: 20px;
+                margin: 0 12px;
+            }
+        }
+
+        /* TL Logo Box */
+        .tl-logo-box {
+            background: linear-gradient(135deg, #1a1a28 0%, #2a2a3e 100%);
+            border-radius: 12px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            color: #fff;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+        .tl-logo-box:hover {
+            transform: scale(1.05);
+        }
+
+        /* Inputs */
+        .tl-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--input-bg);
+            border: 1.5px solid var(--input-border);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .tl-input::placeholder {
+            color: var(--text-muted);
+        }
+        .tl-input:focus {
+            border-color: var(--input-focus);
+            box-shadow: 0 0 0 3px rgba(184, 151, 90, 0.15), 0 0 20px rgba(184, 151, 90, 0.08);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .tl-input.error {
+            border-color: var(--strength-red);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+        }
+
+        /* Password strength bar */
+        .strength-bar {
+            height: 4px;
+            border-radius: 4px;
+            transition: all 0.4s ease;
+            width: 0%;
+            background: var(--strength-red);
+        }
+        .strength-bar.weak {
+            width: 33%;
+            background: var(--strength-red);
+        }
+        .strength-bar.medium {
+            width: 66%;
+            background: var(--strength-yellow);
+        }
+        .strength-bar.strong {
+            width: 100%;
+            background: var(--strength-green);
+        }
+        .strength-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        /* Button */
+        .btn {
+            padding: 14px 24px;
+            width: 100%;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: none;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: var(--accent-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(26, 26, 40, 0.3);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-primary.loading {
+            pointer-events: none;
+        }
+        .btn-primary .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        .btn-primary.loading .spinner {
+            display: inline-block;
+        }
+        .btn-primary.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Language switcher pills */
+        .lang-pill {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1.5px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            font-family: 'Inter', sans-serif;
+        }
+        .lang-pill:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-secondary);
+        }
+        .lang-pill.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        /* Terms checkbox */
+        .tl-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 1.5px solid var(--input-border);
+            border-radius: 6px;
+            background: var(--input-bg);
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.25s ease;
+            position: relative;
+            margin-top: 1px;
+        }
+        .tl-checkbox:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .tl-checkbox:checked::after {
+            content: '\f26b';
+            font-family: 'bootstrap-icons';
+            color: #fff;
+            font-size: 12px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .tl-checkbox:focus {
+            box-shadow: 0 0 0 3px rgba(184, 151, 90, 0.15);
+        }
+
+        /* Fade-up entrance */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(24px);
+            animation: fadeUp 0.6s ease forwards;
+        }
+        .fade-up-d1 { animation-delay: 0.1s; }
+        .fade-up-d2 { animation-delay: 0.2s; }
+        .fade-up-d3 { animation-delay: 0.3s; }
+        .fade-up-d4 { animation-delay: 0.4s; }
+        .fade-up-d5 { animation-delay: 0.5s; }
+        .fade-up-d6 { animation-delay: 0.6s; }
+        .fade-up-d7 { animation-delay: 0.7s; }
+
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Input group */
+        .input-group {
+            position: relative;
+        }
+        .input-group .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            pointer-events: none;
+            transition: color 0.3s ease;
+        }
+        .input-group:focus-within .input-icon {
+            color: var(--gold);
+        }
+        .input-group .tl-input {
+            padding-left: 44px;
+        }
+
+        /* Error / success messages */
+        .form-message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: none;
+            align-items: flex-start;
+            gap: 10px;
+            line-height: 1.5;
+        }
+        .form-message.show {
+            display: flex;
+        }
+        .form-message.error {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #dc2626;
+        }
+        .form-message.success {
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: #16a34a;
+        }
+        .form-message .msg-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        /* Separator line */
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 0;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d0d0d0;
+            border-radius: 3px;
+        }
+
+        /* Gold text */
+        .text-gold {
+            color: var(--gold);
+        }
+
+        /* Link style */
+        .tl-link {
+            color: var(--gold);
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .tl-link:hover {
+            color: #a07840;
+            text-decoration: underline;
+        }
+
+        /* Password toggle */
+        .pw-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+            background: none;
+            border: none;
+            padding: 4px;
+        }
+        .pw-toggle:hover {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Glow orbs -->
+    <div class="tl-glow tl-glow-gold" style="width:500px;height:500px;top:-8%;right:-8%;"></div>
+    <div class="tl-glow tl-glow-accent" style="width:450px;height:450px;bottom:-10%;left:-8%;"></div>
+    <div class="tl-glow tl-glow-gold" style="width:300px;height:300px;bottom:20%;right:-5%;opacity:0.15;"></div>
+
+    <!-- =========================== REGISTER CARD =========================== -->
+    <div class="register-card">
+
+        <!-- Logo -->
+        <div class="text-center fade-up">
+            <a href="index-v6.html" class="inline-flex items-center gap-3 no-underline">
+                <div class="tl-logo-box">TL</div>
+                <span class="font-semibold text-lg tracking-tight text-[var(--text-primary)]">TokenLine</span>
+            </a>
+        </div>
+
+        <!-- Heading -->
+        <div class="text-center mt-6 fade-up fade-up-d1">
+            <h1 class="text-2xl font-bold tracking-tight">Buat akun</h1>
+            <p class="text-sm text-[var(--text-secondary)] mt-1.5">
+                Mulai gratis, upgrade kapan pun kamu mau
+            </p>
+        </div>
+
+        <!-- Language switcher -->
+        <div class="flex items-center justify-center gap-2 mt-6 fade-up fade-up-d2">
+            <button class="lang-pill active" data-lang="id" onclick="switchLang('id')">ID</button>
+            <button class="lang-pill" data-lang="en" onclick="switchLang('en')">EN</button>
+        </div>
+
+        <!-- Error / success message -->
+        <div class="form-message mt-6" id="formMessage">
+            <i class="bi msg-icon"></i>
+            <span id="messageText"></span>
+        </div>
+
+        <!-- Form -->
+        <form id="registerForm" class="mt-6 space-y-5" novalidate>
+
+            <!-- Email -->
+            <div class="input-group fade-up fade-up-d3">
+                <i class="bi bi-envelope input-icon"></i>
+                <input type="email" id="email" class="tl-input" placeholder="Email" autocomplete="email" required />
+            </div>
+
+            <!-- Password -->
+            <div class="input-group fade-up fade-up-d4">
+                <i class="bi bi-lock input-icon"></i>
+                <input type="password" id="password" class="tl-input" placeholder="Kata Sandi" minlength="6" autocomplete="new-password" required />
+                <button type="button" class="pw-toggle" onclick="togglePw('password', this)" tabindex="-1" aria-label="Toggle password visibility">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+
+            <!-- Strength indicator -->
+            <div class="fade-up fade-up-d4" style="margin-top:-8px;">
+                <div class="flex items-center gap-3">
+                    <div class="flex-1 h-1 rounded-full bg-[var(--border-color)] overflow-hidden">
+                        <div class="strength-bar" id="strengthBar"></div>
+                    </div>
+                    <span class="strength-label text-[var(--text-muted)]" id="strengthLabel"></span>
+                </div>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="input-group fade-up fade-up-d5">
+                <i class="bi bi-lock-fill input-icon"></i>
+                <input type="password" id="confirmPassword" class="tl-input" placeholder="Konfirmasi Kata Sandi" minlength="6" autocomplete="new-password" required />
+                <button type="button" class="pw-toggle" onclick="togglePw('confirmPassword', this)" tabindex="-1" aria-label="Toggle password visibility">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+
+            <!-- Referral -->
+            <div class="input-group fade-up fade-up-d5">
+                <i class="bi bi-gift input-icon"></i>
+                <input type="text" id="referral" class="tl-input pr-3" placeholder="Kode Referral (opsional)" autocomplete="off" />
+            </div>
+
+            <!-- Terms checkbox -->
+            <label class="flex items-start gap-3 cursor-pointer fade-up fade-up-d6">
+                <input type="checkbox" id="terms" class="tl-checkbox" />
+                <span class="text-sm text-[var(--text-secondary)] leading-relaxed select-none">
+                    Saya menyetujui <a href="#" class="tl-link text-sm">Syarat & Ketentuan</a> dan <a href="#" class="tl-link text-sm">Kebijakan Privasi</a>
+                </span>
+            </label>
+
+            <!-- Submit -->
+            <button type="submit" id="submitBtn" class="btn btn-primary fade-up fade-up-d7">
+                <span class="spinner"></span>
+                <span class="btn-text">Daftar</span>
+                <i class="bi bi-arrow-right btn-text"></i>
+            </button>
+
+        </form>
+
+        <!-- Divider -->
+        <div class="divider mt-8 fade-up fade-up-d7">
+            <span>atau</span>
+        </div>
+
+        <!-- Login link -->
+        <div class="text-center mt-6 fade-up fade-up-d7">
+            <p class="text-sm text-[var(--text-secondary)]">
+                Sudah punya akun?
+                <a href="login.html" class="tl-link">Masuk</a>
+            </p>
+        </div>
+
+        <!-- Footer note -->
+        <div class="text-center mt-6 fade-up fade-up-d7">
+            <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+                <i class="bi bi-shield-check"></i>
+                Data kamu aman dan terenkripsi
+            </p>
+        </div>
+
+    </div>
+
+    <!-- =========================== SCRIPTS =========================== -->
+    <script>
+        // =========================== LANGUAGE SWITCHER ===========================
+        function switchLang(lang) {
+            document.querySelectorAll('.lang-pill').forEach(function(pill) {
+                pill.classList.toggle('active', pill.dataset.lang === lang);
+            });
+            // i18n ready — extend with translations object later
+        }
+
+        // =========================== PASSWORD TOGGLE ===========================
+        function togglePw(inputId, btn) {
+            var input = document.getElementById(inputId);
+            var icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        // =========================== PASSWORD STRENGTH ===========================
+        var passwordInput = document.getElementById('password');
+        var strengthBar = document.getElementById('strengthBar');
+        var strengthLabel = document.getElementById('strengthLabel');
+
+        passwordInput.addEventListener('input', function() {
+            var len = this.value.length;
+            strengthBar.className = 'strength-bar';
+
+            if (len === 0) {
+                strengthBar.style.width = '0%';
+                strengthLabel.textContent = '';
+                return;
+            }
+
+            if (len < 6) {
+                strengthBar.classList.add('weak');
+                strengthLabel.textContent = 'Terlalu pendek';
+                strengthLabel.style.color = 'var(--strength-red)';
+            } else if (len < 8) {
+                strengthBar.classList.add('medium');
+                strengthLabel.textContent = 'Cukup';
+                strengthLabel.style.color = 'var(--strength-yellow)';
+            } else {
+                strengthBar.classList.add('strong');
+                strengthLabel.textContent = 'Kuat';
+                strengthLabel.style.color = 'var(--strength-green)';
+            }
+        });
+
+        // =========================== CONFIRM PASSWORD VALIDATION ===========================
+        var confirmInput = document.getElementById('confirmPassword');
+        confirmInput.addEventListener('input', function() {
+            var pw = passwordInput.value;
+            if (this.value.length === 0) {
+                this.classList.remove('error');
+            } else if (this.value !== pw) {
+                this.classList.add('error');
+            } else {
+                this.classList.remove('error');
+            }
+        });
+
+        // =========================== FORM SUBMISSION ===========================
+        var form = document.getElementById('registerForm');
+        var submitBtn = document.getElementById('submitBtn');
+        var formMessage = document.getElementById('formMessage');
+        var messageText = document.getElementById('messageText');
+
+        function showMessage(type, text) {
+            formMessage.className = 'form-message show ' + type;
+            var icon = formMessage.querySelector('.msg-icon');
+            if (type === 'error') {
+                icon.className = 'bi bi-exclamation-circle msg-icon';
+            } else {
+                icon.className = 'bi bi-check-circle msg-icon';
+            }
+            messageText.textContent = text;
+        }
+
+        function hideMessage() {
+            formMessage.className = 'form-message';
+            messageText.textContent = '';
+        }
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            hideMessage();
+
+            var email = document.getElementById('email').value.trim();
+            var password = passwordInput.value;
+            var confirm = confirmInput.value;
+            var referral = document.getElementById('referral').value.trim();
+            var terms = document.getElementById('terms').checked;
+
+            // --- Client validation ---
+            if (!email) {
+                showMessage('error', 'Masukkan alamat email kamu.');
+                document.getElementById('email').focus();
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showMessage('error', 'Format email tidak valid.');
+                document.getElementById('email').focus();
+                return;
+            }
+            if (password.length < 6) {
+                showMessage('error', 'Kata sandi minimal 6 karakter.');
+                passwordInput.focus();
+                return;
+            }
+            if (password !== confirm) {
+                showMessage('error', 'Konfirmasi kata sandi tidak cocok.');
+                confirmInput.focus();
+                return;
+            }
+            if (!terms) {
+                showMessage('error', 'Kamu harus menyetujui Syarat & Ketentuan.');
+                return;
+            }
+
+            // --- Loading state ---
+            submitBtn.classList.add('loading');
+            submitBtn.disabled = true;
+
+            // --- API call ---
+            var payload = {
+                email: email,
+                password: password
+            };
+            if (referral) {
+                payload.ref = referral;
+            }
+
+            fetch('https://tokenline.top/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(function(res) {
+                return res.json().then(function(data) {
+                    return { status: res.status, ok: res.ok, data: data };
+                });
+            })
+            .then(function(result) {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+
+                if (result.ok && result.data.token) {
+                    // Save token
+                    localStorage.setItem('tl_token', result.data.token);
+                    if (result.data.user) {
+                        localStorage.setItem('tl_user', JSON.stringify(result.data.user));
+                    }
+
+                    // Success
+                    showMessage('success', 'Pendaftaran berhasil! Mengalihkan...');
+
+                    // Redirect
+                    setTimeout(function() {
+                        window.location.href = '/chat-pro.html';
+                    }, 1200);
+                } else {
+                    var msg = result.data.message || result.data.error || 'Pendaftaran gagal. Coba lagi.';
+                    showMessage('error', msg);
+                }
+            })
+            .catch(function(err) {
+                submitBtn.classList.remove('loading');
+                submitBtn.disabled = false;
+                showMessage('error', 'Koneksi gagal. Periksa internet kamu dan coba lagi.');
+            });
+        });
+
+        // =========================== ENTRANCE ANIMATION (IntersectionObserver fallback) ===========================
+        // Fade-up is handled by CSS animation on load.
+        // For elements that enter later, use IntersectionObserver.
+        document.addEventListener('DOMContentLoaded', function() {
+            // Refresh any late elements
+        });
+    </script>
+</body>
+</html>

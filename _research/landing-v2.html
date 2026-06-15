@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shipfast — Launch at Lightspeed</title>
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@200,300,400,500,600,700&f[]=satoshi@300,400,500,700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #08080f;
+            --surface: rgba(255, 255, 255, 0.03);
+            --surface-hover: rgba(255, 255, 255, 0.06);
+            --accent: #6d5aed;
+            --accent-soft: rgba(109, 90, 237, 0.12);
+            --accent-glow: rgba(109, 90, 237, 0.25);
+            --text: #ededf0;
+            --text-2: rgba(237, 237, 240, 0.6);
+            --text-3: rgba(237, 237, 240, 0.32);
+            --line: rgba(255, 255, 255, 0.07);
+            --line-hover: rgba(255, 255, 255, 0.14);
+            --font-head: 'General Sans', -apple-system, sans-serif;
+            --font-body: 'Satoshi', -apple-system, sans-serif;
+        }
+
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ---- GRAIN ---- */
+        .grain {
+            position: fixed; inset: 0; z-index: 1; pointer-events: none;
+            opacity: 0.025;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 200px;
+        }
+        .page { position: relative; z-index: 2; }
+
+        /* ---- NAV ---- */
+        nav {
+            position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 100;
+            padding: 12px 10px 12px 24px;
+            display: flex; align-items: center; gap: 32px;
+            backdrop-filter: blur(20px) saturate(1.5);
+            -webkit-backdrop-filter: blur(20px) saturate(1.5);
+            background: rgba(8, 8, 15, 0.65);
+            border: 1px solid var(--line);
+            border-radius: 100px;
+            transition: background 0.3s;
+        }
+        .nav-logo {
+            font-family: var(--font-head); font-weight: 600; font-size: 1.1rem;
+            letter-spacing: -0.02em; color: var(--text); text-decoration: none;
+            display: flex; align-items: center; gap: 9px;
+        }
+        .logo-mark {
+            width: 28px; height: 28px; border-radius: 8px;
+            background: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .logo-mark svg { width: 15px; height: 15px; }
+        .nav-mid { display: flex; gap: 24px; list-style: none; }
+        .nav-mid a {
+            font-size: 0.84rem; font-weight: 500; color: var(--text-2);
+            text-decoration: none; transition: color 0.2s;
+        }
+        .nav-mid a:hover { color: var(--text); }
+        .nav-cta {
+            font-family: var(--font-head); font-weight: 600; font-size: 0.82rem;
+            padding: 9px 20px; background: var(--accent); color: #1f2937; border: none;
+            border-radius: 50px; cursor: pointer; transition: box-shadow 0.3s, transform 0.2s;
+        }
+        .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); }
+
+        /* ---- HERO WITH VIDEO BG ---- */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 140px 24px 80px;
+            overflow: hidden;
+        }
+
+        /* Video background layer */
+        .hero-video-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .hero-video-bg video,
+        .hero-video-bg canvas {
+            position: absolute;
+            top: 50%; left: 50%;
+            min-width: 100%; min-height: 100%;
+            width: auto; height: auto;
+            transform: translate(-50%, -50%) scale(1.05);
+            object-fit: cover;
+        }
+
+        /* Dark overlay on top of video */
+        .hero-video-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% 40%, rgba(8,8,15,0.55) 0%, rgba(8,8,15,0.85) 100%),
+                linear-gradient(180deg, rgba(8,8,15,0.3) 0%, rgba(8,8,15,0.7) 60%, rgba(8,8,15,1) 100%);
+        }
+
+        /* Accent glow behind text */
+        .hero-glow {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(109,90,237,0.15) 0%, transparent 70%);
+            z-index: 1;
+            pointer-events: none;
+            filter: blur(40px);
+        }
+
+        /* All hero content above video */
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 7px 18px 7px 12px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50px; font-size: 0.8rem; font-weight: 500;
+            color: var(--text-2); margin-bottom: 48px;
+            backdrop-filter: blur(16px);
+            animation: fadeUp 0.7s ease both;
+        }
+        .badge-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #34d399; box-shadow: 0 0 8px rgba(52,211,153,0.5);
+        }
+
+        .hero-title {
+            font-family: var(--font-head); font-weight: 600;
+            font-size: clamp(3.2rem, 7.5vw, 5.6rem);
+            line-height: 1.05; letter-spacing: -0.04em;
+            max-width: 780px;
+            animation: fadeUp 0.7s ease 0.08s both;
+            text-shadow: 0 2px 40px rgba(0,0,0,0.5);
+        }
+        .hero-title .highlight {
+            position: relative;
+            color: var(--accent);
+        }
+        .hero-title .highlight::after {
+            content: '';
+            position: absolute; left: 0; right: 0; bottom: 0.04em;
+            height: 3px; border-radius: 2px;
+            background: var(--accent); opacity: 0.35;
+        }
+
+        .hero-desc {
+            font-size: 1.1rem; line-height: 1.8; color: rgba(237,237,240,0.7);
+            max-width: 480px; margin-top: 28px; font-weight: 400;
+            animation: fadeUp 0.7s ease 0.16s both;
+            text-shadow: 0 1px 20px rgba(0,0,0,0.4);
+        }
+
+        .hero-btns {
+            display: flex; align-items: center; gap: 12px; margin-top: 40px;
+            animation: fadeUp 0.7s ease 0.24s both;
+        }
+        .btn-main {
+            font-family: var(--font-head); font-weight: 600; font-size: 0.95rem;
+            padding: 15px 32px; background: var(--accent); color: #1f2937;
+            border: none; border-radius: 12px; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s;
+        }
+        .btn-main:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 36px var(--accent-glow);
+        }
+        .btn-ghost {
+            font-family: var(--font-head); font-weight: 500; font-size: 0.95rem;
+            padding: 15px 28px; background: rgba(255,255,255,0.08); color: var(--text);
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; cursor: pointer;
+            transition: all 0.2s; backdrop-filter: blur(8px);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); }
+
+        .hero-metrics {
+            display: flex; gap: 48px; margin-top: 72px;
+            animation: fadeUp 0.7s ease 0.32s both;
+        }
+        .metric { text-align: center; position: relative; }
+        .metric:not(:last-child)::after {
+            content: ''; position: absolute; right: -24px; top: 15%; height: 70%;
+            width: 1px; background: rgba(255,255,255,0.1);
+        }
+        .metric-val {
+            font-family: var(--font-head); font-weight: 700; font-size: 1.65rem;
+            letter-spacing: -0.03em;
+        }
+        .metric-lbl {
+            font-size: 0.72rem; color: var(--text-3); margin-top: 4px;
+            letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500;
+        }
+
+        /* Hero bottom fade */
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 200px;
+            background: linear-gradient(transparent, var(--bg));
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* ---- TRUST ---- */
+        .trust {
+            padding: 56px 24px; text-align: center;
+            border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+        }
+        .trust-label {
+            font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+            color: var(--text-3); font-weight: 500; margin-bottom: 24px;
+        }
+        .trust-logos {
+            display: flex; align-items: center; justify-content: center;
+            gap: 48px; flex-wrap: wrap;
+        }
+        .trust-logos span {
+            font-family: var(--font-head); font-weight: 600; font-size: 1.05rem;
+            letter-spacing: -0.01em; color: var(--text-3); transition: color 0.3s;
+        }
+        .trust-logos span:hover { color: var(--text-2); }
+
+        /* ---- SECTIONS ---- */
+        .section-tag {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+            font-weight: 600; font-family: var(--font-head); color: var(--accent);
+        }
+        .section-tag::before {
+            content: ''; width: 20px; height: 2px;
+            background: var(--accent); border-radius: 1px;
+        }
+        .section-heading {
+            font-family: var(--font-head); font-weight: 600;
+            font-size: clamp(2rem, 4vw, 3rem);
+            letter-spacing: -0.035em; line-height: 1.1; margin-top: 16px;
+        }
+        .section-sub {
+            color: var(--text-2); font-size: 1rem; line-height: 1.75;
+            margin-top: 16px; max-width: 460px; font-weight: 400;
+        }
+
+        /* ---- FEATURES ---- */
+        .features { padding: 128px 24px; max-width: 1120px; margin: 0 auto; }
+        .features-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 14px; margin-top: 56px;
+        }
+        .f-card {
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: 18px; padding: 32px 28px;
+            transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
+            backdrop-filter: blur(8px);
+        }
+        .f-card:hover {
+            background: var(--surface-hover); transform: translateY(-4px);
+            border-color: var(--line-hover);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+        }
+        .f-icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 20px;
+        }
+        .f-icon.purple { background: rgba(109,90,237,0.12); }
+        .f-icon.blue { background: rgba(59,130,246,0.12); }
+        .f-icon.green { background: rgba(52,211,153,0.12); }
+        .f-icon.amber { background: rgba(251,191,36,0.12); }
+        .f-icon.rose { background: rgba(251,113,133,0.12); }
+        .f-icon.cyan { background: rgba(34,211,238,0.12); }
+        .f-card h3 {
+            font-family: var(--font-head); font-weight: 600;
+            font-size: 1.05rem; letter-spacing: -0.02em; margin-bottom: 8px;
+        }
+        .f-card p {
+            font-size: 0.88rem; line-height: 1.65; color: var(--text-2); font-weight: 400;
+        }
+
+        /* ---- PRICING ---- */
+        .pricing { padding: 128px 24px; text-align: center; }
+        .pricing-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+            max-width: 1020px; margin: 56px auto 0; align-items: stretch;
+        }
+        .p-card {
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: 20px; padding: 36px 28px; text-align: left;
+            transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
+            display: flex; flex-direction: column; backdrop-filter: blur(8px);
+        }
+        .p-card:hover {
+            transform: translateY(-4px); border-color: var(--line-hover);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+        }
+        .p-card.pop {
+            border-color: rgba(109,90,237,0.4); position: relative;
+            background: linear-gradient(180deg, rgba(109,90,237,0.06) 0%, var(--surface) 60%);
+        }
+        .p-badge {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            font-family: var(--font-head); font-weight: 600; font-size: 0.68rem;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            padding: 5px 16px; background: var(--accent); color: #1f2937;
+            border-radius: 50px;
+        }
+        .p-name { font-family: var(--font-head); font-weight: 600; font-size: 1rem; }
+        .p-desc { font-size: 0.82rem; color: var(--text-3); margin-top: 4px; }
+        .p-price {
+            font-family: var(--font-head); font-weight: 700;
+            font-size: 3rem; letter-spacing: -0.04em; margin-top: 24px;
+        }
+        .p-price .sm { font-size: 1.2rem; font-weight: 400; opacity: 0.4; vertical-align: super; }
+        .p-price .per { font-size: 0.85rem; color: var(--text-3); font-weight: 400; }
+        .p-list {
+            list-style: none; margin-top: 28px; display: flex;
+            flex-direction: column; gap: 12px; flex-grow: 1;
+        }
+        .p-list li {
+            font-size: 0.86rem; color: var(--text-2); display: flex;
+            align-items: center; gap: 10px; font-weight: 400;
+        }
+        .ck {
+            width: 18px; height: 18px; border-radius: 5px;
+            background: var(--accent-soft); display: flex;
+            align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .ck svg { width: 11px; height: 11px; }
+        .p-btn {
+            width: 100%; margin-top: 28px; padding: 13px; border-radius: 10px;
+            font-family: var(--font-head); font-weight: 600; font-size: 0.88rem;
+            cursor: pointer; transition: all 0.25s;
+        }
+        .p-btn.ghost { background: var(--surface); border: 1px solid var(--line); color: var(--text); }
+        .p-btn.ghost:hover { background: var(--surface-hover); border-color: var(--line-hover); }
+        .p-btn.solid { background: var(--accent); border: none; color: #1f2937; }
+        .p-btn.solid:hover { box-shadow: 0 6px 24px var(--accent-glow); transform: translateY(-1px); }
+
+        /* ---- CTA ---- */
+        .cta-section { padding: 80px 24px 120px; text-align: center; }
+        .cta-card {
+            max-width: 680px; margin: 0 auto;
+            background: var(--surface); border: 1px solid var(--line);
+            border-radius: 28px; padding: 72px 48px;
+            position: relative; overflow: hidden; backdrop-filter: blur(12px);
+        }
+        .cta-card::before {
+            content: ''; position: absolute; inset: -1px; border-radius: 28px; padding: 1px;
+            background: linear-gradient(135deg, rgba(109,90,237,0.35), transparent 50%, rgba(59,130,246,0.2));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor; mask-composite: exclude;
+        }
+        .cta-glow {
+            position: absolute; width: 350px; height: 350px; border-radius: 50%;
+            filter: blur(100px); opacity: 0.1; pointer-events: none;
+        }
+        .cta-g1 { background: var(--accent); top: -180px; left: -80px; }
+        .cta-g2 { background: #3b82f6; bottom: -180px; right: -80px; }
+        .cta-card h2 {
+            font-family: var(--font-head); font-weight: 600;
+            font-size: clamp(2rem, 4vw, 2.6rem);
+            letter-spacing: -0.035em; line-height: 1.1; position: relative;
+        }
+        .cta-card p {
+            color: var(--text-2); font-size: 1rem; line-height: 1.75;
+            margin-top: 16px; position: relative;
+        }
+        .cta-card .btn-main {
+            margin-top: 32px; font-size: 1rem; padding: 16px 40px; position: relative;
+        }
+
+        /* ---- FOOTER ---- */
+        footer {
+            border-top: 1px solid var(--line); padding: 44px 48px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .foot-copy { font-size: 0.8rem; color: var(--text-3); }
+        .foot-links { display: flex; gap: 24px; list-style: none; }
+        .foot-links a {
+            font-size: 0.8rem; color: var(--text-3); text-decoration: none;
+            transition: color 0.2s;
+        }
+        .foot-links a:hover { color: var(--text-2); }
+
+        /* ---- ANIM ---- */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .reveal {
+            opacity: 0; transform: translateY(28px);
+            transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+        }
+        .reveal.vis { opacity: 1; transform: translateY(0); }
+        .rd1 { transition-delay: 0.06s; }
+        .rd2 { transition-delay: 0.12s; }
+        .rd3 { transition-delay: 0.18s; }
+
+        /* ---- RESPONSIVE ---- */
+        @media (max-width: 900px) {
+            .features-grid, .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+            nav { padding: 10px 16px 10px 20px; gap: 16px; }
+            .nav-mid { display: none; }
+            footer { flex-direction: column; gap: 20px; text-align: center; }
+            .cta-card { padding: 48px 24px; }
+        }
+        @media (max-width: 600px) {
+            .hero-title { font-size: 2.6rem; }
+            .hero-btns { flex-direction: column; width: 100%; }
+            .hero-btns button { width: 100%; }
+            .hero-metrics { flex-direction: column; gap: 20px; }
+            .metric:not(:last-child)::after { display: none; }
+            nav { top: 8px; left: 8px; right: 8px; transform: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<div class="page">
+
+<!-- NAV -->
+<nav>
+    <a href="#" class="nav-logo">
+        <div class="logo-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        Shipfast
+    </a>
+    <ul class="nav-mid">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#">Docs</a></li>
+        <li><a href="#">Changelog</a></li>
+    </ul>
+    <button class="nav-cta">Get Started</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <!-- Video background -->
+    <div class="hero-video-bg">
+        <canvas id="heroBgCanvas"></canvas>
+    </div>
+    <div class="hero-video-overlay"></div>
+    <div class="hero-glow"></div>
+
+    <!-- Content -->
+    <div class="hero-content">
+        <div class="badge">
+            <span class="badge-dot"></span>
+            Now in public beta &mdash; v2.0 just dropped
+        </div>
+
+        <h1 class="hero-title">
+            Ship your SaaS<br><span class="highlight">at lightspeed</span>
+        </h1>
+
+        <p class="hero-desc">
+            The production-ready boilerplate that gets you from zero to launch in days, not months. Auth, payments, emails &mdash; all wired up.
+        </p>
+
+        <div class="hero-btns">
+            <button class="btn-main">Start Building Now</button>
+            <button class="btn-ghost">See Live Demo</button>
+        </div>
+
+        <div class="hero-metrics">
+            <div class="metric">
+                <div class="metric-val">4,200+</div>
+                <div class="metric-lbl">Developers</div>
+            </div>
+            <div class="metric">
+                <div class="metric-val">12,000+</div>
+                <div class="metric-lbl">Apps Shipped</div>
+            </div>
+            <div class="metric">
+                <div class="metric-val">99.9%</div>
+                <div class="metric-lbl">Uptime SLA</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TRUST -->
+<section class="trust">
+    <div class="trust-label">Trusted by teams at</div>
+    <div class="trust-logos">
+        <span>Vercel</span><span>Stripe</span><span>Linear</span><span>Raycast</span><span>Supabase</span><span>Resend</span>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+    <div class="reveal">
+        <div class="section-tag">Features</div>
+        <h2 class="section-heading">Everything you need.<br>Nothing you don't.</h2>
+        <p class="section-sub">Stop stitching together auth, billing, and email. Shipfast gives you the entire stack so you can focus on what makes your product unique.</p>
+    </div>
+    <div class="features-grid">
+        <div class="f-card reveal rd1">
+            <div class="f-icon purple"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6d5aed" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+            <h3>Authentication</h3>
+            <p>Magic links, OAuth, and session management with battle-tested security baked in from day one.</p>
+        </div>
+        <div class="f-card reveal rd2">
+            <div class="f-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+            <h3>Payments &amp; Billing</h3>
+            <p>Stripe subscriptions, one-time payments, and usage-based billing — all pre-configured and ready to go.</p>
+        </div>
+        <div class="f-card reveal rd3">
+            <div class="f-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+            <h3>Transactional Emails</h3>
+            <p>Beautiful email templates with Resend integration. Onboarding flows, receipts, and notifications out of the box.</p>
+        </div>
+        <div class="f-card reveal rd1">
+            <div class="f-icon amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <h3>Analytics Dashboard</h3>
+            <p>Track MRR, churn, signups, and user activity with a clean admin panel. Know your numbers instantly.</p>
+        </div>
+        <div class="f-card reveal rd2">
+            <div class="f-icon rose"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb7185" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+            <h3>Database &amp; ORM</h3>
+            <p>Prisma ORM with PostgreSQL. Migrations, seeding, and type-safe queries configured from the start.</p>
+        </div>
+        <div class="f-card reveal rd3">
+            <div class="f-icon cyan"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+            <h3>SEO &amp; Performance</h3>
+            <p>Server-side rendering, meta tags, sitemaps, and Core Web Vitals optimization. Ship fast, rank faster.</p>
+        </div>
+    </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+    <div class="reveal">
+        <div class="section-tag">Pricing</div>
+        <h2 class="section-heading">Simple, transparent pricing</h2>
+        <p class="section-sub" style="margin-left:auto;margin-right:auto;">No hidden fees. No per-seat charges. Pick a plan and start shipping.</p>
+    </div>
+    <div class="pricing-grid">
+        <div class="p-card reveal rd1">
+            <div class="p-name">Starter</div>
+            <div class="p-desc">For solo builders and side projects</div>
+            <div class="p-price"><span class="sm">$</span>29 <span class="per">/mo</span></div>
+            <ul class="p-list">
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>1 project</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Auth &amp; payments included</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>5,000 monthly active users</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Community support</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Basic analytics</li>
+            </ul>
+            <button class="p-btn ghost">Get Started</button>
+        </div>
+        <div class="p-card pop reveal rd2">
+            <div class="p-badge">Most Popular</div>
+            <div class="p-name">Pro</div>
+            <div class="p-desc">For serious products and growing teams</div>
+            <div class="p-price"><span class="sm">$</span>79 <span class="per">/mo</span></div>
+            <ul class="p-list">
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Unlimited projects</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Everything in Starter</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>50,000 monthly active users</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Priority support</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Advanced analytics &amp; reports</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Custom domain &amp; branding</li>
+            </ul>
+            <button class="p-btn solid">Get Started</button>
+        </div>
+        <div class="p-card reveal rd3">
+            <div class="p-name">Enterprise</div>
+            <div class="p-desc">For scale-ups and large organizations</div>
+            <div class="p-price">Custom</div>
+            <ul class="p-list">
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Everything in Pro</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Unlimited MAUs</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Dedicated account manager</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>SLA &amp; uptime guarantee</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>SSO &amp; advanced security</li>
+                <li><span class="ck"><svg viewBox="0 0 16 16" fill="none" stroke="#6d5aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 8.5 6.5 11.5 12.5 5.5"/></svg></span>Custom integrations</li>
+            </ul>
+            <button class="p-btn ghost">Contact Sales</button>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+    <div class="cta-card reveal">
+        <div class="cta-glow cta-g1"></div>
+        <div class="cta-glow cta-g2"></div>
+        <h2>Ready to ship<br>something great?</h2>
+        <p>Join thousands of developers who stopped building boilerplate and started building products.</p>
+        <button class="btn-main">Start Building Free</button>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <div class="foot-copy">&copy; 2026 Shipfast. All rights reserved.</div>
+    <ul class="foot-links">
+        <li><a href="#">Privacy</a></li>
+        <li><a href="#">Terms</a></li>
+        <li><a href="#">Twitter</a></li>
+        <li><a href="#">GitHub</a></li>
+    </ul>
+</footer>
+
+</div>
+
+<script>
+    // Scroll reveal
+    const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('vis'); });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+    // Nav scroll
+    window.addEventListener('scroll', () => {
+        const n = document.querySelector('nav');
+        n.style.background = scrollY > 60 ? 'rgba(8,8,15,0.88)' : 'rgba(8,8,15,0.65)';
+    });
+
+    // Fullscreen animated code editor background
+    (() => {
+        const canvas = document.getElementById('heroBgCanvas');
+        const ctx = canvas.getContext('2d');
+        let w, h, dpr;
+
+        function resize() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            w = canvas.offsetWidth;
+            h = canvas.offsetHeight;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        const accent = '#6d5aed';
+        const colors = ['#6d5aed','#3b82f6','#34d399','#fbbf24','#fb7185','#22d3ee','#a78bfa','#f472b6'];
+
+        // Generate code-like lines
+        const codeLines = [];
+        for (let i = 0; i < 50; i++) {
+            const indent = Math.floor(Math.random() * 5) * 28;
+            const segments = [];
+            const numSegs = 1 + Math.floor(Math.random() * 5);
+            for (let s = 0; s < numSegs; s++) {
+                segments.push({
+                    w: 20 + Math.random() * 100,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    gap: 6 + Math.random() * 14
+                });
+            }
+            codeLines.push({ indent, segments });
+        }
+
+        // Dashboard panels
+        const panels = [
+            { x: 0.62, y: 0.08, w: 0.35, h: 0.38 },
+            { x: 0.62, y: 0.5, w: 0.35, h: 0.25 },
+        ];
+
+        // Chart data
+        const chartPoints = [];
+        for (let i = 0; i < 40; i++) {
+            chartPoints.push(Math.sin(i * 0.3) * 0.3 + Math.random() * 0.2 + 0.4);
+        }
+
+        // Bar chart data
+        const bars = [];
+        for (let i = 0; i < 12; i++) {
+            bars.push(0.2 + Math.random() * 0.7);
+        }
+
+        let frame = 0;
+        let scrollOffset = 0;
+
+        // Slow scroll effect
+        function getScroll() {
+            return (frame * 0.15) % (codeLines.length * 22);
+        }
+
+        function draw() {
+            frame++;
+            scrollOffset = getScroll();
+            ctx.clearRect(0, 0, w, h);
+
+            // Background
+            const bg = ctx.createLinearGradient(0, 0, w, h);
+            bg.addColorStop(0, '#080810');
+            bg.addColorStop(0.5, '#0a0a1a');
+            bg.addColorStop(1, '#0c0c20');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, w, h);
+
+            // Sidebar
+            const sideW = w * 0.05;
+            ctx.fillStyle = 'rgba(255,255,255,0.015)';
+            ctx.fillRect(0, 0, sideW, h);
+            // Sidebar icons
+            for (let i = 0; i < 7; i++) {
+                const y = 60 + i * 40;
+                ctx.globalAlpha = i === 1 ? 0.25 : 0.08;
+                ctx.fillStyle = i === 1 ? accent : '#fff';
+                ctx.beginPath();
+                ctx.roundRect(sideW * 0.25, y, sideW * 0.5, sideW * 0.5, 4);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // File tree panel
+            const treeX = sideW;
+            const treeW = w * 0.14;
+            ctx.fillStyle = 'rgba(255,255,255,0.01)';
+            ctx.fillRect(treeX, 0, treeW, h);
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            ctx.fillRect(treeX + treeW, 0, 1, h);
+
+            // File tree items
+            for (let i = 0; i < 18; i++) {
+                const y = 50 + i * 26;
+                const indent = Math.floor(Math.random() * 3 + (i > 3 ? 1 : 0)) * 10;
+                const itemW = 30 + Math.random() * 50;
+                ctx.globalAlpha = 0.06;
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.roundRect(treeX + 14 + indent, y, itemW, 8, 3);
+                ctx.fill();
+                // File icon
+                ctx.globalAlpha = 0.1;
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.beginPath();
+                ctx.arc(treeX + 10 + indent, y + 4, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Code area
+            const codeX = treeX + treeW + 12;
+            const codeW = w * 0.42;
+            const lineH = 22;
+            const visibleLines = Math.ceil(h / lineH) + 2;
+            const startLine = Math.floor(scrollOffset / lineH);
+
+            // Tab bar at top
+            ctx.fillStyle = 'rgba(255,255,255,0.02)';
+            ctx.fillRect(codeX - 12, 0, codeW + 12, 36);
+            // Active tab
+            ctx.fillStyle = 'rgba(109,90,237,0.08)';
+            ctx.beginPath();
+            ctx.roundRect(codeX, 6, 90, 24, 6);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.beginPath();
+            ctx.roundRect(codeX + 10, 14, 40, 6, 3);
+            ctx.fill();
+            // Second tab
+            ctx.fillStyle = 'rgba(255,255,255,0.04)';
+            ctx.beginPath();
+            ctx.roundRect(codeX + 100, 14, 36, 6, 3);
+            ctx.fill();
+
+            // Line numbers + code
+            for (let i = 0; i < visibleLines; i++) {
+                const lineIdx = (startLine + i) % codeLines.length;
+                const line = codeLines[lineIdx];
+                const y = 50 + i * lineH - (scrollOffset % lineH);
+
+                if (y < 36 || y > h) continue;
+
+                // Line number
+                ctx.globalAlpha = 0.08;
+                ctx.fillStyle = '#fff';
+                ctx.font = '11px monospace';
+                const num = String(lineIdx + 1).padStart(3, ' ');
+                ctx.fillText(num, codeX, y + 10);
+
+                // Code segments
+                let cx = codeX + 36 + line.indent;
+                line.segments.forEach(seg => {
+                    ctx.globalAlpha = 0.18;
+                    ctx.fillStyle = seg.color;
+                    ctx.beginPath();
+                    ctx.roundRect(cx, y + 2, seg.w, 9, 3);
+                    ctx.fill();
+                    cx += seg.w + seg.gap;
+                });
+            }
+            ctx.globalAlpha = 1;
+
+            // Blinking cursor
+            if (Math.floor(frame / 35) % 2 === 0) {
+                const cursorLine = Math.floor(frame / 60) % codeLines.length;
+                const cl = codeLines[cursorLine];
+                let cursorX = codeX + 36 + cl.indent;
+                const progress = (frame % 60) / 60;
+                cl.segments.forEach((seg, si) => {
+                    if (si < cl.segments.length * progress) {
+                        cursorX += seg.w + seg.gap;
+                    }
+                });
+                const cursorY = 50 + (cursorLine - startLine) * lineH - (scrollOffset % lineH);
+                if (cursorY > 36 && cursorY < h) {
+                    ctx.fillStyle = accent;
+                    ctx.globalAlpha = 0.7;
+                    ctx.fillRect(cursorX, cursorY + 1, 2, 12);
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            // Right panel — chart
+            const p1 = panels[0];
+            const px = w * p1.x;
+            const py = h * p1.y;
+            const pw = w * p1.w;
+            const ph = h * p1.h;
+
+            // Panel bg
+            ctx.fillStyle = 'rgba(255,255,255,0.015)';
+            ctx.beginPath();
+            ctx.roundRect(px, py, pw, ph, 12);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(px, py, pw, ph, 12);
+            ctx.stroke();
+
+            // Panel title
+            ctx.globalAlpha = 0.1;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.roundRect(px + 20, py + 18, 60, 8, 3);
+            ctx.fill();
+            ctx.globalAlpha = 0.05;
+            ctx.beginPath();
+            ctx.roundRect(px + 20, py + 32, 90, 6, 3);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Area chart
+            const chartX = px + 20;
+            const chartY = py + 56;
+            const chartW = pw - 40;
+            const chartH = ph - 80;
+            const animProgress = Math.min(1, frame / 120);
+
+            ctx.beginPath();
+            ctx.moveTo(chartX, chartY + chartH);
+            for (let i = 0; i < chartPoints.length; i++) {
+                const x = chartX + (i / (chartPoints.length - 1)) * chartW * animProgress;
+                const y = chartY + chartH - chartPoints[i] * chartH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            // Fill under curve
+            const lastIdx = Math.floor((chartPoints.length - 1) * animProgress);
+            const lastX = chartX + animProgress * chartW;
+            ctx.lineTo(lastX, chartY + chartH);
+            ctx.lineTo(chartX, chartY + chartH);
+            ctx.closePath();
+            const grad = ctx.createLinearGradient(chartX, chartY, chartX, chartY + chartH);
+            grad.addColorStop(0, 'rgba(109,90,237,0.12)');
+            grad.addColorStop(1, 'rgba(109,90,237,0.01)');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Line on top
+            ctx.beginPath();
+            for (let i = 0; i < chartPoints.length; i++) {
+                const x = chartX + (i / (chartPoints.length - 1)) * chartW * animProgress;
+                const y = chartY + chartH - chartPoints[i] * chartH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.5;
+            ctx.stroke();
+
+            // Glowing dot at end
+            if (animProgress >= 1) {
+                const dotX = chartX + chartW;
+                const dotY = chartY + chartH - chartPoints[chartPoints.length - 1] * chartH;
+                ctx.beginPath();
+                ctx.arc(dotX, dotY, 4, 0, Math.PI * 2);
+                ctx.fillStyle = accent;
+                ctx.globalAlpha = 0.8;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(dotX, dotY, 8, 0, Math.PI * 2);
+                ctx.fillStyle = accent;
+                ctx.globalAlpha = 0.15;
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Bottom panel — bar chart
+            const p2 = panels[1];
+            const bx = w * p2.x;
+            const by = h * p2.y;
+            const bw = w * p2.w;
+            const bh = h * p2.h;
+
+            ctx.fillStyle = 'rgba(255,255,255,0.015)';
+            ctx.beginPath();
+            ctx.roundRect(bx, by, bw, bh, 12);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.beginPath();
+            ctx.roundRect(bx, by, bw, bh, 12);
+            ctx.stroke();
+
+            // Bar chart title
+            ctx.globalAlpha = 0.1;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.roundRect(bx + 20, by + 18, 50, 8, 3);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Bars
+            const barAreaX = bx + 20;
+            const barAreaY = by + 42;
+            const barAreaW = bw - 40;
+            const barAreaH = bh - 60;
+            const barW = barAreaW / bars.length - 6;
+
+            bars.forEach((val, i) => {
+                const delay = i * 8;
+                const barProgress = Math.min(1, Math.max(0, (frame - delay) / 60));
+                const barH = val * barAreaH * barProgress;
+                const x = barAreaX + i * (barW + 6);
+                const y = barAreaY + barAreaH - barH;
+
+                ctx.globalAlpha = 0.2;
+                ctx.fillStyle = i % 3 === 0 ? accent : i % 3 === 1 ? '#3b82f6' : '#34d399';
+                ctx.beginPath();
+                ctx.roundRect(x, y, barW, barH, 3);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            requestAnimationFrame(draw);
+        }
+        draw();
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TokenLine — AI untuk Semua</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf8f5;--surface:#fff;--acc:#6366f1;--text:#1a1a1a;--muted:#6b6b6b;--hair:#e6e3dd;--err:#e94560}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--surface:#1a1a1a;--text:#f0f0f0;--muted:#999;--hair:#2a2a2a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:400 15px/1.6 'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex}
+a{color:var(--acc);text-decoration:none}
+
+#side{width:260px;min-width:260px;background:var(--surface);border-right:1px solid var(--hair);display:flex;flex-direction:column;overflow-y:auto}
+#side .brand{font:700 20px 'Playfair Display',serif;padding:20px 20px 6px;letter-spacing:-.5px}
+#side .brand span{color:var(--acc)}
+#side h3{font:600 11px 'DM Sans',sans-serif;color:var(--muted);padding:16px 20px 6px;text-transform:uppercase;letter-spacing:1.5px}
+#side .tools{padding:0 16px 12px;display:flex;flex-direction:column;gap:4px}
+#side .tools button{font:400 13px 'DM Sans',sans-serif;padding:10px 12px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;color:var(--text);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;transition:all .2s}
+#side .tools button:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
+#side .tools button .ico{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.conv-item{display:block;width:100%;text-align:left;padding:10px 20px;background:none;border:none;color:var(--text);font:400 13px 'DM Sans',sans-serif;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background .15s}
+.conv-item:hover,.conv-item.active{background:var(--hair)}
+#side .ref-box{margin:12px 16px;padding:14px;background:var(--bg);border:1px solid var(--hair);border-radius:10px;font:400 11px/1.5 'DM Sans',sans-serif;color:var(--muted)}
+#side .ref-box strong{color:var(--acc);font-weight:500}
+#side .ref-box .code{font:400 12px monospace;color:var(--text);word-break:break-all;margin:4px 0}
+#side .ref-box .btn-copy{display:inline-block;margin-top:6px;padding:4px 12px;background:var(--acc);color:#fff;border:none;border-radius:6px;font:500 11px 'DM Sans',sans-serif;cursor:pointer}
+#side .user-foot{padding:14px 20px;border-top:1px solid var(--hair);font:300 12px 'DM Sans',sans-serif;color:var(--muted);margin-top:auto;display:flex;align-items:center;gap:8px}
+#side .user-foot .dot{width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0}
+
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+header{padding:14px 24px;border-bottom:1px solid var(--hair);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;background:var(--surface)}
+header h1{font:600 16px 'Playfair Display',serif;margin:0}
+header h1 span{color:var(--acc)}
+header select{font:400 12px 'DM Sans',sans-serif;padding:6px 12px;border:1px solid var(--hair);border-radius:8px;background:var(--bg);color:var(--text);cursor:pointer}
+.badge{font:500 11px 'DM Sans',sans-serif;padding:4px 10px;border-radius:20px;border:1px solid var(--hair);color:var(--muted)}
+.badge.pro{border-color:var(--acc);color:var(--acc)}
+
+#chat{flex:1;overflow-y:auto;padding:24px}
+.msg{padding:12px 18px;margin-bottom:14px;border-radius:14px;max-width:80%;line-height:1.75;font:400 14px 'DM Sans',sans-serif;word-break:break-word}
+.msg.user{background:var(--acc);color:#fff;margin-left:auto;border-bottom-right-radius:4px}
+.msg.assistant{background:var(--surface);margin-right:auto;border:1px solid var(--hair);border-bottom-left-radius:4px}
+.msg.loading{opacity:.5;font-style:italic}
+.empty{text-align:center;padding:80px 20px;color:var(--muted)}
+.empty .welcome{font:700 28px 'Playfair Display',serif;color:var(--text);margin-bottom:6px}
+.empty .welcome span{color:var(--acc)}
+.empty .sub{font:300 15px 'DM Sans',sans-serif;color:var(--muted);margin-bottom:28px}
+.empty .scenarios{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:560px;margin:0 auto}
+.empty .scenarios button{font:400 13px 'DM Sans',sans-serif;padding:12px 20px;background:var(--surface);border:1px solid var(--hair);border-radius:24px;color:var(--text);cursor:pointer;transition:all .25s;display:flex;align-items:center;gap:8px}
+.empty .scenarios button:hover{background:var(--acc);color:#fff;border-color:var(--acc);transform:translateY(-1px)}
+
+#input-bar{display:flex;padding:14px 24px;gap:10px;border-top:1px solid var(--hair);background:var(--surface);flex-shrink:0}
+#input-bar textarea{flex:1;padding:12px 18px;border:1px solid var(--hair);border-radius:24px;background:var(--bg);color:var(--text);font:400 14px/1.4 'DM Sans',sans-serif;resize:none;outline:none;max-height:120px}
+#input-bar textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+#input-bar button{width:46px;height:46px;border:none;border-radius:50%;background:var(--acc);color:#fff;cursor:pointer;flex-shrink:0;font-size:20px;transition:opacity .2s,transform .2s}
+#input-bar button:hover{transform:scale(1.05)}
+#input-bar button:disabled{opacity:.3;transform:none}
+
+@media(max-width:768px){#side{display:none}#chat{padding:16px}.msg{max-width:95%}.empty .scenarios button{font-size:12px;padding:10px 14px}}
+</style>
+</head>
+<body>
+
+<div id="side">
+  <div class="brand"><span>Token</span>Line</div>
+
+  <h3>Alat Cepat</h3>
+  <div class="tools">
+    <button onclick="quick('Bantu saya menulis makalah tentang [topik]. Berikan outline lengkap dengan pendahuluan, isi, dan kesimpulan.')"><span class="ico">📝</span>Tugas Kuliah</button>
+    <button onclick="quick('Buatkan 5 caption Instagram untuk produk/jasa [nama produk]. Gunakan bahasa Indonesia yang engaging dan tambahkan hashtag yang relevan.')"><span class="ico">📱</span>Konten Sosmed</button>
+    <button onclick="quick('Terjemahkan teks berikut ke Bahasa Inggris yang formal dan akademik: [teks]')"><span class="ico">🇬🇧</span>Terjemahan</button>
+    <button onclick="quick('Perbaiki dan rapikan tulisan ini, jelaskan apa yang kamu perbaiki: [teks]')"><span class="ico">✍️</span>Perbaiki Tulisan</button>
+    <button onclick="quick('Tolong analisis bisnis [jenis usaha] dengan target pasar [target]. Berikan analisis SWOT, strategi harga, dan rencana pemasaran.')"><span class="ico">💼</span>Rencana Bisnis</button>
+    <button onclick="quick('Jelaskan konsep [topik programming] dengan bahasa Indonesia yang mudah dipahami untuk pemula. Berikan contoh kode.')"><span class="ico">💻</span>Belajar Coding</button>
+  </div>
+
+  <h3>Riwayat</h3>
+  <button class="conv-item" onclick="newChat()" style="color:var(--acc);font-weight:500">+ Chat Baru</button>
+  <div id="conv-list"></div>
+
+  <div class="ref-box">
+    <div>Ajak teman &mdash; dapat <strong>3 hari gratis</strong></div>
+    <div class="code" id="ref-code">—</div>
+    <button class="btn-copy" onclick="copyRef()">Salin Kode</button>
+  </div>
+
+  <div class="user-foot">
+    <span class="dot"></span>
+    <span id="user-info">—</span>
+  </div>
+</div>
+
+<div id="main">
+  <header>
+    <h1><span>Token</span>Line Chat</h1>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="badge" id="plan-badge">Gratis</span>
+      <select id="model-sel" onchange="switchModel()">
+        <option value="deepseek-v4-flash">Flash</option>
+        <option value="deepseek-v4-pro">Pro</option>
+      </select>
+      <a href="/topup.html" style="font:500 13px 'DM Sans',sans-serif">Isi Ulang &rarr;</a>
+    </div>
+  </header>
+
+  <div id="chat">
+    <div class="empty">
+      <div class="welcome">Selamat datang di <span>TokenLine</span></div>
+      <div class="sub">AI berbahasa Indonesia. Mulai dari Rp 5.000.</div>
+      <div class="scenarios">
+        <button onclick="quick('Bantu saya menulis makalah tentang perubahan iklim. Berikan outline lengkap.')">📝 Makalah</button>
+        <button onclick="quick('Buatkan caption Instagram untuk toko baju muslim, gaya elegan dan modern.')">📱 Caption IG</button>
+        <button onclick="quick('Terjemahkan ke Bahasa Inggris formal: Halo, perkenalkan nama saya...')">🇬🇧 Translate</button>
+        <button onclick="quick('Bantu saya membuat CV profesional untuk posisi staff administrasi.')">📄 CV</button>
+        <button onclick="quick('Analisis bisnis cafe kecil di daerah kampus. Berikan strategi.')">💼 Bisnis</button>
+        <button onclick="quick('Apa tips terbaik untuk belajar Python dari nol?')">💻 Coding</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="input-bar">
+    <textarea id="textin" rows="1" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+    <button id="sendbtn" onclick="send()">&uarr;</button>
+  </div>
+</div>
+
+<script>
+var chatEl=document.getElementById('chat'),textEl=document.getElementById('textin'),btn=document.getElementById('sendbtn');
+var modelEl=document.getElementById('model-sel'),convList=document.getElementById('conv-list');
+var tok=localStorage.getItem('tl_tok');
+if(!tok)location.href='/login.html';
+var M=localStorage.getItem('tl_m')||'deepseek-v4-flash';
+modelEl.value=M;
+var conversations=JSON.parse(localStorage.getItem('tl_convs')||'{}');
+var activeConv=localStorage.getItem('tl_active')||genId();
+
+init();
+
+async function init(){
+  if(!conversations[activeConv])conversations[activeConv]={title:'Chat Baru',msgs:[]};
+  renderConvs();renderChat();
+  await loadUser();
+}
+
+async function loadUser(){
+  try{
+    var r=await fetch('/api/me',{headers:{Authorization:'Bearer '+tok}});
+    var d=await r.json();
+    document.getElementById('user-info').textContent=(d.email||'')+' · '+(d.plan||'gratis');
+    document.getElementById('plan-badge').textContent=d.plan||'Gratis';
+    if(d.plan&&d.plan!=='gratis')document.getElementById('plan-badge').classList.add('pro');
+    document.getElementById('ref-code').textContent=(d.email||'—');
+  }catch(e){}
+}
+
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+function quick(prompt){textEl.value=prompt;textEl.focus()}
+function switchModel(){M=modelEl.value;localStorage.setItem('tl_m',M)}
+
+function renderConvs(){
+  convList.innerHTML='';
+  Object.keys(conversations).reverse().forEach(function(id){
+    var c=conversations[id];var b=document.createElement('button');
+    b.className='conv-item'+(id===activeConv?' active':'');
+    b.textContent=c.title||'Chat Baru';b.onclick=function(){switchConv(id)};
+    convList.appendChild(b);
+  });
+}
+function switchConv(id){activeConv=id;saveConvs();renderConvs();renderChat()}
+function newChat(){var id=genId();conversations[id]={title:'Chat Baru',msgs:[]};activeConv=id;saveConvs();renderConvs();renderChat()}
+
+function renderChat(){
+  var msgs=conversations[activeConv]?conversations[activeConv].msgs:[];
+  if(msgs.length>0&&document.querySelector('.empty'))document.querySelector('.empty').remove();
+  chatEl.innerHTML='';msgs.forEach(function(m){addMsgEl(m.role,m.content)});
+  chatEl.scrollTop=chatEl.scrollHeight;
+  if(msgs.length===0){chatEl.innerHTML='<div class="empty"><div class="welcome">Selamat datang di <span>TokenLine</span></div><div class="sub">AI berbahasa Indonesia. Mulai dari Rp 5.000.</div><div class="scenarios"><button onclick="quick(\'Bantu saya menulis makalah tentang perubahan iklim. Berikan outline lengkap.\')">📝 Makalah</button><button onclick="quick(\'Buatkan caption Instagram untuk toko baju muslim.\')">📱 Caption IG</button><button onclick="quick(\'Terjemahkan ke Bahasa Inggris formal.\')">🇬🇧 Translate</button><button onclick="quick(\'Bantu saya membuat CV profesional.\')">📄 CV</button><button onclick="quick(\'Analisis bisnis cafe kecil di daerah kampus.\')">💼 Bisnis</button><button onclick="quick(\'Tips belajar Python dari nol?\')">💻 Coding</button></div></div>'}
+}
+
+function addMsgEl(role,content){
+  var d=document.createElement('div');d.className='msg '+role;d.textContent=content;
+  chatEl.appendChild(d);chatEl.scrollTop=chatEl.scrollHeight;
+}
+
+function saveConvs(){
+  var msgs=conversations[activeConv]?conversations[activeConv].msgs:[];
+  if(msgs.length>0&&(!conversations[activeConv].title||conversations[activeConv].title==='Chat Baru'))
+    conversations[activeConv].title=msgs[0].content.slice(0,50)+(msgs[0].content.length>50?'...':'');
+  localStorage.setItem('tl_convs',JSON.stringify(conversations));
+  localStorage.setItem('tl_active',activeConv);renderConvs();
+}
+
+async function send(){
+  var text=textEl.value.trim();if(!text)return;
+  if(document.querySelector('.empty'))document.querySelector('.empty').remove();
+  var msgs=conversations[activeConv].msgs;
+  msgs.push({role:'user',content:text});addMsgEl('user',text);textEl.value='';btn.disabled=true;
+  var loadingEl=document.createElement('div');loadingEl.className='msg assistant loading';
+  loadingEl.textContent='...';chatEl.appendChild(loadingEl);saveConvs();
+  try{
+    var r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({message:text,model:M,conversation_id:parseInt(activeConv,36)||0})});
+    if(!r.ok){var e=await r.json();throw new Error(e.message||'HTTP '+r.status)}
+    var reader=r.body.getReader(),decoder=new TextDecoder(),full='';loadingEl.textContent='';
+    while(true){
+      var v=await reader.read();if(v.done)break;
+      var chunk=decoder.decode(v.value,{stream:true});var lines=chunk.split('\n');
+      for(var i=0;i<lines.length;i++){
+        var line=lines[i];if(!line.startsWith('data: '))continue;
+        var data=line.slice(6);if(data==='[DONE]')continue;
+        try{var j=JSON.parse(data);full+=j.choices&&j.choices[0]?j.choices[0].delta.content||'':'';loadingEl.textContent=full;chatEl.scrollTop=chatEl.scrollHeight}catch(err){}
+      }
+    }
+    loadingEl.classList.remove('loading');msgs.push({role:'assistant',content:full});saveConvs();
+  }catch(err){loadingEl.textContent='Error: '+err.message;loadingEl.style.color='var(--err)';loadingEl.classList.remove('loading')}
+  btn.disabled=false;textEl.focus();
+}
+
+function copyRef(){
+  var code=document.getElementById('ref-code').textContent;
+  navigator.clipboard.writeText('Gabung TokenLine: https://tokenline.top/register.html?ref='+encodeURIComponent(code));
+  var b=event.target;b.textContent='Tersalin!';setTimeout(function(){b.textContent='Salin Kode'},2000);
+}
+</script>
+</body>
+</html>

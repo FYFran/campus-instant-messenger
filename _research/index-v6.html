@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TokenLine — Asisten Menulis AI Premium untuk Indonesia</title>
+  <link rel="stylesheet" href="lang-switcher.css">
+    <meta name="description" content="Asisten menulis AI premium untuk mahasiswa, dosen, profesional, dan kreator Indonesia. Tulis apa pun dalam Bahasa Indonesia." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
+        integrity="sha512-dPXYcDub/aeb08c63jRq/k6GaKccl256JQy/AnOq7CAnEZ9FzSL9wSbcZkMp4R26vBsMLFYH4kQ67/bbV8XaCQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --bg: #f9f8f6;
+            --surface: rgba(255, 255, 255, 0.8);
+            --accent: #1a1a28;
+            --accent-light: #2a2a3e;
+            --gold: #b8975a;
+            --gold-light: #d4b87a;
+            --text-primary: #1a1a2e;
+            --text-secondary: rgba(26, 26, 46, 0.7);
+            --text-muted: rgba(26, 26, 46, 0.45);
+            --card-bg: #ffffff;
+            --header-bg: rgba(255, 255, 255, 0.72);
+            --border-color: rgba(0, 0, 0, 0.08);
+            --navbar-bg: rgba(249, 248, 246, 0.85);
+            --hero-gradient: #f9f8f6;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.12);
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        /* Glass morphism header */
+        .glass-header {
+            background: var(--navbar-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Header mobile collapse */
+        .collapsible-header {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            overflow: hidden;
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        @media not all and (min-width: 1024px) {
+            header .collapsible-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                flex-direction: column;
+                opacity: 0;
+                height: 0vh;
+                min-height: 0vh;
+                width: 100vw;
+                justify-content: center;
+                padding: 5px;
+                padding-top: 80px;
+                padding-bottom: 5%;
+                place-items: center;
+                text-align: center;
+                background: rgba(249, 248, 246, 0.92);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                overflow-y: auto;
+                transition: opacity 0.3s ease, height 0.3s ease;
+                z-index: 40;
+                pointer-events: none;
+            }
+            header .collapsible-header.open {
+                opacity: 1;
+                height: 100vh;
+                pointer-events: all;
+            }
+        }
+
+        /* Header links */
+        .header-links {
+            position: relative;
+            display: flex;
+            min-width: fit-content;
+            padding: 8px 16px;
+            z-index: 2;
+            cursor: pointer;
+            transition: background-color 0.5s, color 0.3s;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .header-links::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.05);
+            transform: scale(40%);
+            opacity: 0;
+            border-radius: 8px;
+            transition: all 300ms;
+        }
+
+        .header-links:hover {
+            color: var(--text-primary);
+        }
+
+        .header-links:hover::after {
+            transform: scale(100%);
+            opacity: 1;
+        }
+
+        /* TL Logo Box */
+        .tl-logo-box {
+            background: linear-gradient(135deg, #1a1a28 0%, #2a2a3e 100%);
+            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* Hero */
+        .hero-section {
+            position: relative;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background-position: center;
+            background-repeat: repeat;
+            background-size: 60px;
+        }
+
+        .hero-gradient-overlay {
+            background: linear-gradient(180deg, var(--hero-gradient) 13%, rgba(249, 248, 246, 0) 50%, var(--hero-gradient) 95%);
+        }
+
+        /* Glow effects */
+        .tl-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.35;
+            pointer-events: none;
+        }
+        .tl-glow-gold {
+            background: radial-gradient(circle, #d4b87a, #b8975a 40%, transparent 70%);
+        }
+        .tl-glow-accent {
+            background: radial-gradient(circle, #4a4a6a, #1a1a28 40%, transparent 70%);
+        }
+
+        /* Bento grid cards */
+        .bento-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 32px;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+        }
+        .bento-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(184, 151, 90, 0.3);
+        }
+        .bento-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--accent));
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            border-radius: 20px 20px 0 0;
+        }
+        .bento-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Persona cards */
+        .persona-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 28px;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .persona-card:hover {
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+            border-color: rgba(184, 151, 90, 0.25);
+        }
+        .persona-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        /* Pricing cards */
+        .pricing-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 36px 32px;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+        }
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+        .pricing-card.featured {
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 0 1px var(--gold), var(--shadow-lg);
+            transform: scale(1.03);
+        }
+        .pricing-card.featured:hover {
+            transform: scale(1.03) translateY(-8px);
+            box-shadow: 0 0 0 1px var(--gold), var(--shadow-xl);
+        }
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 16px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Accordion / FAQ */
+        .faq-accordion {
+            background-color: inherit;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 18px 0;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        .faq-accordion:hover {
+            color: var(--gold);
+        }
+        .faq-item .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .faq-item.active .content {
+            max-height: 300px;
+        }
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
+            color: var(--gold);
+        }
+        .faq-icon {
+            transition: transform 0.3s ease;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 24px;
+            width: max-content;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            border: none;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: var(--accent-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(26, 26, 40, 0.25);
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1.5px solid var(--border-color);
+        }
+        .btn-outline:hover {
+            border-color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            color: #fff;
+        }
+        .btn-gold:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(184, 151, 90, 0.4);
+        }
+
+        /* Footer links */
+        .footer-link {
+            color: var(--text-secondary);
+            transition: color 0.3s;
+            font-size: 0.9rem;
+        }
+        .footer-link:hover {
+            color: var(--text-primary);
+        }
+
+        /* Section transitions */
+        .reveal-up {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .reveal-up.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Dividers */
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 0;
+        }
+
+        /* Gold text highlight */
+        .text-gold {
+            color: var(--gold);
+        }
+        .text-gold-dark {
+            color: #a07840;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d0d0d0;
+            border-radius: 3px;
+        }
+
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent) 0%, #4a4a6a 50%, var(--gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Typing cursor */
+        .typed-cursor {
+            color: var(--gold);
+            font-weight: 300;
+        }
+
+        /* Testimonial card */
+        .testimonial-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 28px;
+            transition: all 0.4s ease;
+        }
+        .testimonial-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Stat number */
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Feature icon container */
+        .feature-icon-box {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: rgba(26, 26, 40, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--accent);
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .bento-card:hover .feature-icon-box {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        /* Mobile tweaks */
+        @media (max-width: 768px) {
+            .bento-card {
+                padding: 24px;
+            }
+            .pricing-card.featured {
+                transform: none;
+            }
+            .pricing-card.featured:hover {
+                transform: translateY(-4px);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =========================== HEADER =========================== -->
+    <header class="fixed top-0 left-0 z-50 w-full glass-header">
+        <div class="max-w-6xl mx-auto flex items-center justify-between h-16 px-4 lg:px-6">
+            <!-- Logo -->
+            <a class="flex items-center gap-3 flex-shrink-0" href="#">
+                <div class="tl-logo-box">TL</div>
+                <span class="font-semibold text-base tracking-tight text-[var(--text-primary)]">TokenLine</span>
+            </a>
+
+            <!-- Nav (desktop) -->
+            <div class="collapsible-header" id="collapsible-nav">
+                <nav class="flex flex-col lg:flex-row items-center gap-1 lg:gap-1 w-full lg:w-auto">
+                    <a class="header-links" href="login.html">Masuk</a>
+                    <a class="header-links" href="register.html">Daftar</a>
+                    <a class="header-links" href="chat-pro.html">Chat Pro</a>
+                    <a class="header-links" href="dashboard.html">Dashboard</a>
+                </nav>
+                <div class="flex items-center gap-3 mt-4 lg:mt-0 lg:ml-4">
+                    <a href="register.html" class="btn btn-primary text-sm px-5 py-2.5">
+                        Mulai Gratis
+                        <i class="bi bi-arrow-right text-sm"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mobile hamburger -->
+            <button class="bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50"
+                    onclick="toggleHeader()" aria-label="Menu" id="collapse-btn"></button>
+        </div>
+    </header>
+
+    <!-- =========================== HERO =========================== -->
+    <section class="hero-section relative min-h-screen flex items-center overflow-hidden pt-20" id="hero">
+        <!-- Background glow -->
+        <div class="tl-glow tl-glow-gold" style="width:500px;height:500px;top:-5%;right:-10%;"></div>
+        <div class="tl-glow tl-glow-accent" style="width:400px;height:400px;bottom:10%;left:-8%;"></div>
+        <div class="hero-gradient-overlay absolute inset-0"></div>
+
+        <div class="relative z-10 w-full max-w-6xl mx-auto px-4 lg:px-6 py-16 lg:py-24">
+            <div class="flex flex-col items-center text-center max-w-4xl mx-auto">
+                <!-- Tagline -->
+                <div class="reveal-up inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 border border-[var(--border-color)] text-sm font-medium text-[var(--text-secondary)] mb-8">
+                    <span class="w-2 h-2 rounded-full bg-[var(--gold)]"></span>
+                    Asisten Menulis AI #1 untuk Indonesia
+                </div>
+
+                <!-- Headline — PAS Framework -->
+                <h1 class="reveal-up text-5xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight">
+                    <span class="text-[var(--text-primary)]">Tugas menumpuk? </span>
+                    <span class="text-[var(--gold)]">Deadline</span>
+                    <span class="text-[var(--text-primary)]"> mepet?</span>
+                    <br/>
+                    <span class="gradient-text">TokenLine solusinya.</span>
+                </h1>
+
+                <p class="reveal-up mt-6 max-w-2xl text-lg md:text-xl text-[var(--text-secondary)] leading-relaxed">
+                    Asisten menulis AI premium yang paham Bahasa Indonesia.
+                    Dari skripsi, makalah, proposal, sampai konten sosial media —
+                    <span class="font-semibold text-[var(--text-primary)]">tulis apa pun dalam hitungan menit, bukan hari.</span>
+                </p>
+
+                <!-- CTA Buttons -->
+                <div class="reveal-up mt-10 flex flex-col sm:flex-row items-center gap-4">
+                    <a href="register.html" class="btn btn-primary text-base px-8 py-3.5 rounded-full shadow-lg hover:shadow-xl">
+                        Mulai Gratis
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                    <a href="#features" class="btn btn-outline text-base px-8 py-3.5 rounded-full">
+                        <i class="bi bi-play-circle"></i>
+                        Lihat Fitur
+                    </a>
+                </div>
+
+                <!-- Social proof -->
+                <div class="reveal-up mt-12 flex flex-wrap items-center justify-center gap-6 lg:gap-10 text-sm text-[var(--text-muted)]">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[var(--gold)]"><i class="bi bi-people-fill"></i></span>
+                        <span><strong class="text-[var(--text-primary)]">10.000+</strong> Pengguna Aktif</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[var(--gold)]"><i class="bi bi-pencil-fill"></i></span>
+                        <span><strong class="text-[var(--text-primary)]">50.000+</strong> Tulisan Terbuat</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[var(--gold)]"><i class="bi bi-star-fill"></i></span>
+                        <span><strong class="text-[var(--text-primary)]">4.9</strong> Rating Pengguna</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hero visual: typing demo area -->
+            <div class="reveal-up mt-16 max-w-3xl mx-auto">
+                <div class="bg-white/70 backdrop-blur-xl border border-[var(--border-color)] rounded-2xl p-6 shadow-xl">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="flex gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-red-400/60"></span>
+                            <span class="w-3 h-3 rounded-full bg-yellow-400/60"></span>
+                            <span class="w-3 h-3 rounded-full bg-green-400/60"></span>
+                        </div>
+                        <span class="text-xs font-medium text-[var(--text-muted)]">tokenline.ai — Premium</span>
+                    </div>
+                    <div class="space-y-3 text-base">
+                        <div class="flex gap-3">
+                            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--accent)] text-white text-xs flex items-center justify-center font-medium">TL</span>
+                            <div>
+                                <span class="font-medium text-sm text-[var(--text-secondary)]">TokenLine</span>
+                                <p class="text-[var(--text-primary)] mt-0.5" id="typing-text">
+                                    Halo! Aku siap bantu kamu menulis apa pun dalam Bahasa Indonesia. Mau bikin apa hari ini? 😊
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 opacity-60">
+                            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--gold)] text-white text-xs flex items-center justify-center">K</span>
+                            <div>
+                                <span class="font-medium text-sm text-[var(--text-secondary)]">Kamu</span>
+                                <p class="text-[var(--text-primary)] mt-0.5">Bantu aku buat pendahuluan skripsi tentang AI di pendidikan.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 pt-2">
+                            <span class="w-2 h-4 bg-[var(--gold)] animate-pulse"></span>
+                            <span class="text-sm text-[var(--text-muted)]">Mengetik...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== PERSONA CARDS =========================== -->
+    <section class="relative py-20 lg:py-28 overflow-hidden">
+        <div class="tl-glow tl-glow-gold" style="width:350px;height:350px;top:10%;left:-5%;opacity:0.2;"></div>
+        <div class="max-w-6xl mx-auto px-4 lg:px-6">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <h2 class="reveal-up text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+                    Dibuat untuk <span class="text-[var(--gold)]">kamu</span>
+                </h2>
+                <p class="reveal-up mt-4 text-lg text-[var(--text-secondary)]">
+                    TokenLine membantu siapa pun yang butuh menulis — dari mahasiswa sampai profesional.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
+                <!-- Mahasiswa -->
+                <div class="persona-card reveal-up">
+                    <span class="persona-icon">🎓</span>
+                    <h3 class="text-xl font-semibold mb-2">Mahasiswa</h3>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        Skripsi, makalah, laporan praktikum, essay — selesai 3x lebih cepat dengan AI yang paham konteks akademik Indonesia.
+                    </p>
+                </div>
+                <!-- Dosen & Peneliti -->
+                <div class="persona-card reveal-up">
+                    <span class="persona-icon">🔬</span>
+                    <h3 class="text-xl font-semibold mb-2">Dosen & Peneliti</h3>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        Jurnal ilmiah, proposal riset, sitasi otomatis APA/MLA. Bikin penelitian lebih produktif.
+                    </p>
+                </div>
+                <!-- Profesional -->
+                <div class="persona-card reveal-up">
+                    <span class="persona-icon">💼</span>
+                    <h3 class="text-xl font-semibold mb-2">Profesional</h3>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        Laporan kerja, email bisnis, proposal klien, notulensi rapat — semua jadi lebih rapi dan cepat.
+                    </p>
+                </div>
+                <!-- Kreator -->
+                <div class="persona-card reveal-up">
+                    <span class="persona-icon">✨</span>
+                    <h3 class="text-xl font-semibold mb-2">Kreator</h3>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        Caption sosial media, artikel blog, script video, newsletter — konten berkualitas setiap hari.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== BENTO FEATURES =========================== -->
+    <section id="features" class="relative py-20 lg:py-28 bg-white/40 overflow-hidden">
+        <div class="tl-glow tl-glow-accent" style="width:400px;height:400px;top:-10%;right:-5%;opacity:0.15;"></div>
+        <div class="max-w-6xl mx-auto px-4 lg:px-6">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <h2 class="reveal-up text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+                    Fitur <span class="text-[var(--gold)]">premium</span>, tanpa ribet
+                </h2>
+                <p class="reveal-up mt-4 text-lg text-[var(--text-secondary)]">
+                    Semua alat yang kamu butuhin buat nulis — dalam satu dashboard.
+                </p>
+            </div>
+
+            <!-- Bento grid: 6 features in 2-1-2-1 layout -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
+                <!-- Card 1: 6 Mode Menulis (wide) -->
+                <div class="bento-card reveal-up md:col-span-2 flex flex-col lg:flex-row items-start gap-6">
+                    <div class="feature-icon-box">
+                        <i class="bi bi-pencil-square"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">6 Mode Menulis</h3>
+                        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                            Akademik, Kreatif, Formal, Santai, Teknis, Persuasif — setiap mode paham konteks dan gaya bahasa yang pas untuk kebutuhanmu.
+                        </p>
+                        <div class="flex flex-wrap gap-2 mt-4">
+                            <span class="px-3 py-1 bg-[var(--accent)]/5 text-xs font-medium rounded-full">Akademik</span>
+                            <span class="px-3 py-1 bg-[var(--accent)]/5 text-xs font-medium rounded-full">Kreatif</span>
+                            <span class="px-3 py-1 bg-[var(--accent)]/5 text-xs font-medium rounded-full">Formal</span>
+                            <span class="px-3 py-1 bg-[var(--accent)]/5 text-xs font-medium rounded-full">Santai</span>
+                            <span class="px-3 py-1 bg-[var(--accent)]/5 text-xs font-medium rounded-full">Teknis</span>
+                            <span class="px-3 py-1 bg-[var(--accent)]/5 text-xs font-medium rounded-full">Persuasif</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: 20+ Template -->
+                <div class="bento-card reveal-up">
+                    <div class="feature-icon-box mb-4">
+                        <i class="bi bi-file-text"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">20+ Template Siap Pakai</h3>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        Resume, surat lamaran, essay, proposal, laporan — tinggal isi data, langsung jadi.
+                    </p>
+                </div>
+
+                <!-- Card 3: Export Multi-Format -->
+                <div class="bento-card reveal-up">
+                    <div class="feature-icon-box mb-4">
+                        <i class="bi bi-download"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Ekspor Multi-Format</h3>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        Download langsung ke PDF, DOCX, atau TXT. Siap kirim ke dosen atau klien.
+                    </p>
+                </div>
+
+                <!-- Card 4: Riset & Sitasi (wide) -->
+                <div class="bento-card reveal-up md:col-span-2 flex flex-col lg:flex-row items-start gap-6">
+                    <div class="feature-icon-box">
+                        <i class="bi bi-journal-richtext"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">Riset & Sitasi Otomatis</h3>
+                        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                            Cari sumber referensi langsung dari AI. Generate sitasi APA, MLA, atau Chicago dalam satu klik. Daftar pustaka nggak perlu repot lagi.
+                        </p>
+                        <div class="flex items-center gap-3 mt-4 text-xs font-medium text-[var(--gold)]">
+                            <span class="flex items-center gap-1"><i class="bi bi-check-circle-fill"></i> APA 7th</span>
+                            <span class="flex items-center gap-1"><i class="bi bi-check-circle-fill"></i> MLA</span>
+                            <span class="flex items-center gap-1"><i class="bi bi-check-circle-fill"></i> Chicago</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Indonesia-Native -->
+                <div class="bento-card reveal-up">
+                    <div class="feature-icon-box mb-4">
+                        <i class="bi bi-globe2"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">100% Bahasa Indonesia</h3>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        Dibangun khusus untuk konteks Indonesia — paham budaya, istilah lokal, EYD, dan gaya komunikasi kita.
+                    </p>
+                </div>
+
+                <!-- Card 6: Dashboard -->
+                <div class="bento-card reveal-up">
+                    <div class="feature-icon-box mb-4">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Dashboard Personal</h3>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        Riwayat tulisan, statistik produktivitas, folder tersimpan — semua terorganisir rapi.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== STATS =========================== -->
+    <section class="relative py-16 lg:py-20 overflow-hidden">
+        <div class="max-w-5xl mx-auto px-4 lg:px-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div class="reveal-up">
+                    <div class="stat-number">10K+</div>
+                    <div class="text-sm text-[var(--text-muted)] mt-1">Pengguna Aktif</div>
+                </div>
+                <div class="reveal-up">
+                    <div class="stat-number">50K+</div>
+                    <div class="text-sm text-[var(--text-muted)] mt-1">Tulisan Terbuat</div>
+                </div>
+                <div class="reveal-up">
+                    <div class="stat-number">20+</div>
+                    <div class="text-sm text-[var(--text-muted)] mt-1">Template Siap Pakai</div>
+                </div>
+                <div class="reveal-up">
+                    <div class="stat-number">4.9</div>
+                    <div class="text-sm text-[var(--text-muted)] mt-1">Rating Pengguna</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== TESTIMONIALS =========================== -->
+    <section class="relative py-20 lg:py-28 bg-white/40 overflow-hidden">
+        <div class="tl-glow tl-glow-gold" style="width:300px;height:300px;bottom:-5%;right:-5%;opacity:0.2;"></div>
+        <div class="max-w-6xl mx-auto px-4 lg:px-6">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <h2 class="reveal-up text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+                    Apa kata <span class="text-[var(--gold)]">mereka</span>
+                </h2>
+                <p class="reveal-up mt-4 text-lg text-[var(--text-secondary)]">
+                    Ribuan pengguna sudah merasakan bedanya pakai TokenLine.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Testimonial 1 -->
+                <div class="testimonial-card reveal-up">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--gold-light)] flex items-center justify-center text-white font-bold text-lg">RW</div>
+                        <div>
+                            <div class="font-semibold text-sm">Rina Wijaya</div>
+                            <div class="text-xs text-[var(--text-muted)]">Mahasiswa UI</div>
+                        </div>
+                    </div>
+                    <div class="flex text-[var(--gold)] text-sm mb-3">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        "TokenLine bikin skripsi aku selesai 3 minggu lebih cepat! Fitur sitasi otomatisnya juara banget — nggak perlu pusing mikirin format APA. Recommended banget buat temen-temen."
+                    </p>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="testimonial-card reveal-up">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-light)] flex items-center justify-center text-white font-bold text-lg">AP</div>
+                        <div>
+                            <div class="font-semibold text-sm">Andi Pratama</div>
+                            <div class="text-xs text-[var(--text-muted)]">Dosen ITB</div>
+                        </div>
+                    </div>
+                    <div class="flex text-[var(--gold)] text-sm mb-3">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        "Sebagai dosen, saya butuh alat bantu nulis yang akurat dan paham konteks akademik Indonesia. TokenLine delivers. Sitasi otomatisnya sangat presisi. Recommended untuk rekan-rekan dosen."
+                    </p>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="testimonial-card reveal-up">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--gold)] to-[var(--accent)] flex items-center justify-center text-white font-bold text-lg">SD</div>
+                        <div>
+                            <div class="font-semibold text-sm">Sari Dewi</div>
+                            <div class="text-xs text-[var(--text-muted)]">Content Creator</div>
+                        </div>
+                    </div>
+                    <div class="flex text-[var(--gold)] text-sm mb-3">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <p class="text-[var(--text-secondary)] text-sm leading-relaxed">
+                        "Bikin konten jadi 10x lebih cepet! Caption Instagram, thread Twitter, script TikTok — tinggal kasih ide, TokenLine langsung eksekusi. Worth it banget buat kreator kayak aku."
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== PRICING =========================== -->
+    <section id="pricing" class="relative py-20 lg:py-28 overflow-hidden">
+        <div class="tl-glow tl-glow-accent" style="width:500px;height:500px;top:5%;left:-8%;opacity:0.12;"></div>
+        <div class="tl-glow tl-glow-gold" style="width:350px;height:350px;bottom:10%;right:-5%;opacity:0.15;"></div>
+        <div class="max-w-6xl mx-auto px-4 lg:px-6">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <h2 class="reveal-up text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+                    Pilih <span class="text-[var(--gold)]">paket</span>mu
+                </h2>
+                <p class="reveal-up mt-4 text-lg text-[var(--text-secondary)]">
+                    Mulai gratis, upgrade kapan pun kamu butuh lebih.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
+                <!-- Gratis -->
+                <div class="pricing-card reveal-up flex flex-col">
+                    <h3 class="text-xl font-semibold mb-1">Gratis</h3>
+                    <p class="text-sm text-[var(--text-muted)] mb-6">Coba dulu, nggak pakai KTP</p>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold">Rp0</span>
+                        <span class="text-[var(--text-muted)]">/bulan</span>
+                    </div>
+                    <ul class="space-y-3 text-sm text-[var(--text-secondary)] mb-8 flex-1">
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>5 tulisan per hari</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>2 mode menulis dasar</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>Template terbatas</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--text-muted)] mt-0.5"></i>
+                            <span class="text-[var(--text-muted)]">Ekspor PDF/DOCX</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--text-muted)] mt-0.5"></i>
+                            <span class="text-[var(--text-muted)]">Sitasi otomatis</span>
+                        </li>
+                    </ul>
+                    <a href="register.html" class="btn btn-outline w-full justify-center rounded-xl py-3">
+                        Mulai Gratis
+                    </a>
+                </div>
+
+                <!-- Flash 1.5M (Featured) -->
+                <div class="pricing-card featured flex flex-col">
+                    <div class="pricing-badge">Paling Populer</div>
+                    <h3 class="text-xl font-semibold mb-1">Flash 1.5M</h3>
+                    <p class="text-sm text-[var(--text-muted)] mb-6">Untuk mahasiswa & profesional</p>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold">Rp49.900</span>
+                        <span class="text-[var(--text-muted)]">/bulan</span>
+                    </div>
+                    <ul class="space-y-3 text-sm text-[var(--text-secondary)] mb-8 flex-1">
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span><strong>1.500.000</strong> token/bulan</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>6 mode menulis lengkap</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>20+ template premium</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>Ekspor PDF, DOCX, TXT</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>Sitasi APA/MLA/Chicago</span>
+                        </li>
+                    </ul>
+                    <a href="register.html?plan=flash" class="btn btn-gold w-full justify-center rounded-xl py-3 shadow-lg">
+                        Pilih Flash
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+
+                <!-- Pro 2M -->
+                <div class="pricing-card reveal-up flex flex-col">
+                    <h3 class="text-xl font-semibold mb-1">Pro 2M</h3>
+                    <p class="text-sm text-[var(--text-muted)] mb-6">Untuk power user & tim</p>
+                    <div class="mb-6">
+                        <span class="text-4xl font-bold">Rp399.000</span>
+                        <span class="text-[var(--text-muted)]">/bulan</span>
+                    </div>
+                    <ul class="space-y-3 text-sm text-[var(--text-secondary)] mb-8 flex-1">
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span><strong>2.000.000</strong> token/bulan</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>Semua fitur Flash</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>Prioritas support</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>Akses API (coming soon)</span>
+                        </li>
+                        <li class="flex items-start gap-2.5">
+                            <i class="bi bi-check-circle-fill text-[var(--gold)] mt-0.5"></i>
+                            <span>Kolaborasi tim</span>
+                        </li>
+                    </ul>
+                    <a href="register.html?plan=pro" class="btn btn-primary w-full justify-center rounded-xl py-3">
+                        Pilih Pro
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== FAQ =========================== -->
+    <section class="relative py-20 lg:py-28 bg-white/40 overflow-hidden">
+        <div class="max-w-3xl mx-auto px-4 lg:px-6">
+            <div class="text-center mb-14">
+                <h2 class="reveal-up text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+                    Pertanyaan <span class="text-[var(--gold)]">umum</span>
+                </h2>
+            </div>
+
+            <div class="space-y-0">
+                <!-- FAQ 1 -->
+                <div class="faq-item border-b border-[var(--border-color)]">
+                    <button class="faq-accordion" onclick="toggleFaq(this)">
+                        <span>Apa itu TokenLine?</span>
+                        <i class="bi bi-plus faq-icon"></i>
+                    </button>
+                    <div class="content px-0 pb-0 text-sm">
+                        <p>TokenLine adalah asisten menulis AI premium yang dirancang khusus untuk Indonesia. Kami membantu kamu menulis skripsi, makalah, proposal, konten sosial media, dan berbagai jenis tulisan lainnya dengan lebih cepat dan berkualitas.</p>
+                    </div>
+                </div>
+                <!-- FAQ 2 -->
+                <div class="faq-item border-b border-[var(--border-color)]">
+                    <button class="faq-accordion" onclick="toggleFaq(this)">
+                        <span>Apakah gratis bisa dipakai selamanya?</span>
+                        <i class="bi bi-plus faq-icon"></i>
+                    </button>
+                    <div class="content px-0 pb-0 text-sm">
+                        <p>Bisa! Paket Gratis bisa kamu pakai selamanya dengan batas 5 tulisan per hari dan fitur dasar. Upgrade ke Flash atau Pro kapan pun kamu butuh lebih banyak token dan fitur premium.</p>
+                    </div>
+                </div>
+                <!-- FAQ 3 -->
+                <div class="faq-item border-b border-[var(--border-color)]">
+                    <button class="faq-accordion" onclick="toggleFaq(this)">
+                        <span>Bahasa apa yang didukung TokenLine?</span>
+                        <i class="bi bi-plus faq-icon"></i>
+                    </button>
+                    <div class="content px-0 pb-0 text-sm">
+                        <p>TokenLine 100% mendukung Bahasa Indonesia, termasuk konteks akademik dan formal. Kami juga support English dan campuran (code-switching) yang umum dipakai di Indonesia.</p>
+                    </div>
+                </div>
+                <!-- FAQ 4 -->
+                <div class="faq-item border-b border-[var(--border-color)]">
+                    <button class="faq-accordion" onclick="toggleFaq(this)">
+                        <span>Apakah tulisan saya aman?</span>
+                        <i class="bi bi-plus faq-icon"></i>
+                    </button>
+                    <div class="content px-0 pb-0 text-sm">
+                        <p>Keamanan data adalah prioritas kami. Semua tulisan terenkripsi dan tidak dibagikan ke pihak ketiga. Data kamu, hak kamu. Kami tidak menggunakan tulisan kamu untuk training model tanpa izin eksplisit.</p>
+                    </div>
+                </div>
+                <!-- FAQ 5 -->
+                <div class="faq-item border-b border-[var(--border-color)]">
+                    <button class="faq-accordion" onclick="toggleFaq(this)">
+                        <span>Bisa ekspor ke Word/PDF?</span>
+                        <i class="bi bi-plus faq-icon"></i>
+                    </button>
+                    <div class="content px-0 pb-0 text-sm">
+                        <p>Bisa! Paket Flash dan Pro bisa ekspor ke PDF, DOCX, dan TXT. Format siap kirim — langsung download tanpa ribet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== CTA =========================== -->
+    <section class="relative py-20 lg:py-28 overflow-hidden">
+        <div class="tl-glow tl-glow-gold" style="width:450px;height:450px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.2;"></div>
+        <div class="max-w-4xl mx-auto px-4 lg:px-6 text-center relative z-10">
+            <div class="reveal-up">
+                <h2 class="text-3xl md:text-5xl font-bold tracking-tight leading-tight">
+                    Siap <span class="text-[var(--gold)]">tingkatin</span> tulisanmu?
+                </h2>
+                <p class="mt-5 text-lg text-[var(--text-secondary)] max-w-xl mx-auto">
+                    Gabung 10.000+ pengguna yang udah nulis lebih cepat dan lebih baik pakai TokenLine.
+                </p>
+                <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <a href="register.html" class="btn btn-primary text-base px-10 py-4 rounded-full shadow-lg hover:shadow-xl">
+                        Mulai Gratis Sekarang
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                    <a href="chat-pro.html" class="btn btn-outline text-base px-10 py-4 rounded-full">
+                        Coba Chat Pro
+                    </a>
+                </div>
+                <p class="mt-4 text-sm text-[var(--text-muted)]">
+                    <i class="bi bi-shield-check"></i> Gratis selamanya. Upgrade kapan pun kamu mau.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== NEWSLETTER =========================== -->
+    <section class="py-12 px-4 lg:px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/70 backdrop-blur border border-[var(--border-color)] rounded-2xl p-8 shadow-sm">
+                <div>
+                    <h3 class="text-lg font-semibold">Dapatkan update terbaru</h3>
+                    <p class="text-sm text-[var(--text-muted)] mt-0.5">Tips menulis, fitur baru, dan promo spesial.</p>
+                </div>
+                <div class="flex w-full md:w-auto gap-2">
+                    <input type="email" placeholder="email@kamu.com"
+                           class="flex-1 md:w-64 px-4 py-2.5 bg-white border border-[var(--border-color)] rounded-xl text-sm outline-none focus:border-[var(--accent)] transition-colors" />
+                    <button class="btn btn-primary text-sm px-5 py-2.5 rounded-xl whitespace-nowrap">
+                        Langganan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========================== FOOTER =========================== -->
+    <footer class="border-t border-[var(--border-color)] pt-16 pb-10 px-4 lg:px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex flex-col md:flex-row gap-10 md:gap-16">
+                <!-- Brand -->
+                <div class="flex flex-col items-center md:items-start gap-4 md:max-w-[240px]">
+                    <a href="#" class="flex items-center gap-3">
+                        <div class="tl-logo-box">TL</div>
+                        <span class="font-semibold text-base">TokenLine</span>
+                    </a>
+                    <p class="text-sm text-[var(--text-muted)] text-center md:text-left">
+                        Asisten menulis AI premium untuk Indonesia. Bikin tulisan lebih cepat, lebih baik, lebih Indonesia.
+                    </p>
+                    <div class="flex gap-4 text-lg text-[var(--text-muted)]">
+                        <a href="#" class="hover:text-[var(--text-primary)] transition-colors" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+                        <a href="#" class="hover:text-[var(--text-primary)] transition-colors" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
+                        <a href="#" class="hover:text-[var(--text-primary)] transition-colors" aria-label="TikTok"><i class="bi bi-tiktok"></i></a>
+                        <a href="#" class="hover:text-[var(--text-primary)] transition-colors" aria-label="YouTube"><i class="bi bi-youtube"></i></a>
+                    </div>
+                </div>
+
+                <!-- Links -->
+                <div class="flex flex-wrap gap-10 md:gap-16 flex-1 justify-around">
+                    <div>
+                        <h4 class="font-semibold text-sm mb-4">Produk</h4>
+                        <div class="flex flex-col gap-2.5">
+                            <a href="chat-pro.html" class="footer-link">Chat Pro</a>
+                            <a href="dashboard.html" class="footer-link">Dashboard</a>
+                            <a href="#pricing" class="footer-link">Harga</a>
+                            <a href="#features" class="footer-link">Fitur</a>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-sm mb-4">Sumber Daya</h4>
+                        <div class="flex flex-col gap-2.5">
+                            <a href="#" class="footer-link">Blog & Tips</a>
+                            <a href="#" class="footer-link">Pusat Bantuan</a>
+                            <a href="#" class="footer-link">Template</a>
+                            <a href="#" class="footer-link">Status</a>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-sm mb-4">Perusahaan</h4>
+                        <div class="flex flex-col gap-2.5">
+                            <a href="#" class="footer-link">Tentang</a>
+                            <a href="#" class="footer-link">Kebijakan Privasi</a>
+                            <a href="#" class="footer-link">Syarat & Ketentuan</a>
+                            <a href="#" class="footer-link">Kontak</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-8" />
+            <div class="flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
+                <span>&copy; 2025 TokenLine. All rights reserved.</span>
+                <span>Dibuat dengan <i class="bi bi-heart-fill text-[var(--gold)]"></i> untuk Indonesia</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =========================== SCRIPTS =========================== -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/gsap.min.js"
+        integrity="sha512-B1lby8cGcAUU3GR+Fd809/ZxgHbfwJMp0jLTVfHiArTuUt++VqSlJpaJvhNtRf3NERaxDNmmxkdx2o+aHd4bvw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/ScrollTrigger.min.js"
+        integrity="sha512-AY2+JxnBETJ0wcXnLPCcZJIJx0eimyhz3OJ55k2Jx4RtYC+XdIi2VtJQ+tP3BaTst4otlGG1TtPJ9fKrAUnRdQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script>
+        // =========================== TOGGLE MOBILE HEADER ===========================
+        function toggleHeader() {
+            const nav = document.getElementById('collapsible-nav');
+            const btn = document.getElementById('collapse-btn');
+            nav.classList.toggle('open');
+            if (nav.classList.contains('open')) {
+                btn.className = 'bi bi-x text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.add('modal-open');
+            } else {
+                btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.remove('modal-open');
+            }
+        }
+
+        // Close mobile menu on link click
+        document.querySelectorAll('.collapsible-header a.header-links').forEach(function(link) {
+            link.addEventListener('click', function() {
+                const nav = document.getElementById('collapsible-nav');
+                const btn = document.getElementById('collapse-btn');
+                if (nav.classList.contains('open')) {
+                    nav.classList.remove('open');
+                    btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                    document.body.classList.remove('modal-open');
+                }
+            });
+        });
+
+        // Close mobile menu on resize to desktop
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) {
+                const nav = document.getElementById('collapsible-nav');
+                const btn = document.getElementById('collapse-btn');
+                nav.classList.remove('open');
+                btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.remove('modal-open');
+            }
+        });
+
+        // =========================== FAQ ACCORDION ===========================
+        function toggleFaq(btn) {
+            const item = btn.parentElement;
+            const wasActive = item.classList.contains('active');
+
+            // Close all
+            document.querySelectorAll('.faq-item').forEach(function(el) {
+                el.classList.remove('active');
+            });
+
+            // Open clicked if it was closed
+            if (!wasActive) {
+                item.classList.add('active');
+            }
+        }
+
+        // =========================== GSAP SCROLL ANIMATIONS ===========================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Reveal up animation for sections
+            gsap.registerPlugin(ScrollTrigger);
+
+            const reveals = document.querySelectorAll('.reveal-up');
+
+            reveals.forEach(function(el) {
+                ScrollTrigger.create({
+                    trigger: el,
+                    start: 'top 85%',
+                    onEnter: function() {
+                        el.classList.add('revealed');
+                    },
+                    once: true
+                });
+            });
+
+            // Refresh ScrollTrigger after fonts load
+            window.addEventListener('load', function() {
+                ScrollTrigger.refresh();
+            });
+
+            // Hero title staggered animation
+            const heroTitle = document.querySelector('#hero h1');
+            if (heroTitle) {
+                const heroChars = heroTitle.querySelectorAll('span, br');
+                // Simple fade in for hero already handled by reveal-up
+            }
+
+            // Stats counter animation on scroll
+            const statNumbers = document.querySelectorAll('.stat-number');
+            statNumbers.forEach(function(el) {
+                ScrollTrigger.create({
+                    trigger: el,
+                    start: 'top 90%',
+                    onEnter: function() {
+                        el.style.opacity = '1';
+                        el.style.transform = 'translateY(0)';
+                    },
+                    once: true
+                });
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(20px)';
+                el.style.transition = 'all 0.6s ease';
+            });
+        });
+
+        // =========================== CLOSE MOBILE MENU ON SCROLL ===========================
+        let lastScroll = 0;
+        window.addEventListener('scroll', function() {
+            const nav = document.getElementById('collapsible-nav');
+            const btn = document.getElementById('collapse-btn');
+            if (nav && nav.classList.contains('open')) {
+                const currentScroll = window.pageYOffset;
+                if (Math.abs(currentScroll - lastScroll) > 50) {
+                    nav.classList.remove('open');
+                    btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                    document.body.classList.remove('modal-open');
+                }
+                lastScroll = currentScroll;
+            }
+        });
+    </script>
+<script src="tokenline-i18n.js"></script>
+</body>
+</html>

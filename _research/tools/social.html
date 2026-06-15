@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Konten Sosmed — TokenLine</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf8f5;--surface:#fff;--acc:#6366f1;--text:#1a1a1a;--muted:#6b6b6b;--hair:#e6e3dd}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--surface:#1a1a1a;--text:#f0f0f0;--muted:#999;--hair:#2a2a2a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:400 15px/1.6 'DM Sans',system-ui,sans-serif;color:var(--text);background:var(--bg);min-height:100vh}
+header{padding:16px 24px;border-bottom:1px solid var(--hair);background:var(--surface);display:flex;align-items:center;gap:16px}
+header a{font:400 14px 'DM Sans',sans-serif;color:var(--muted);text-decoration:none}
+header h1{font:700 22px 'Playfair Display',serif}header h1 span{color:var(--acc)}
+main{max-width:700px;margin:0 auto;padding:32px 24px}
+h2{font:600 18px 'Playfair Display',serif;margin-bottom:20px}
+label{display:block;font:500 12px 'DM Sans',sans-serif;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+input,textarea,select{width:100%;padding:12px 14px;border:1px solid var(--hair);border-radius:10px;font:400 14px 'DM Sans',sans-serif;background:var(--bg);color:var(--text);margin-bottom:16px;transition:border-color .2s}
+input:focus,textarea:focus{border-color:var(--acc);outline:none}
+textarea{min-height:80px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:600px){.row{grid-template-columns:1fr}}
+.btn{display:inline-block;padding:14px 32px;background:var(--acc);color:#fff;border:none;border-radius:10px;font:500 15px 'DM Sans',sans-serif;cursor:pointer;transition:all .2s}
+.btn:hover{opacity:.9;transform:translateY(-1px)}
+.btn:disabled{opacity:.5;transform:none}
+#result{background:var(--surface);border:1px solid var(--hair);border-radius:12px;padding:24px;margin-top:24px;display:none;font:400 14px/1.8 'DM Sans',sans-serif}
+#result.loading{display:block;text-align:center;color:var(--muted);font-style:italic}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--hair);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.result-card{background:var(--bg);border:1px solid var(--hair);border-radius:10px;padding:16px;margin-bottom:12px}
+.result-card .number{font:700 12px 'DM Sans',sans-serif;color:var(--acc);text-transform:uppercase;letter-spacing:1px}
+.caption-text{font:400 14px 'DM Sans',sans-serif;margin:8px 0;line-height:1.7}
+.hashtags{font:400 12px 'DM Sans',sans-serif;color:var(--acc);line-height:1.6}
+.back{margin-top:24px;text-align:center}
+.back a{font:400 14px 'DM Sans',sans-serif;color:var(--muted);text-decoration:none;border-bottom:1px solid var(--hair);padding-bottom:2px}
+</style>
+</head>
+<body>
+<header>
+  <a href="/chat/">&larr; Kembali ke Chat</a>
+  <h1><span>Token</span>Line &mdash; Konten Sosmed</h1>
+</header>
+<main>
+  <h2>Buat Caption Media Sosial</h2>
+  <form id="form" onsubmit="generate(event)">
+    <div class="row">
+      <div><label>Nama Produk / Brand</label><input id="product" placeholder="Contoh: Kopi Kenangan" required></div>
+      <div><label>Platform</label><select id="platform"><option>Instagram</option><option>TikTok</option><option>Facebook</option><option>Twitter/X</option><option>LinkedIn</option></select></div>
+    </div>
+    <label>Deskripsi Produk / Jasa</label>
+    <textarea id="desc" placeholder="Contoh: Kopi susu kekinian dengan harga terjangkau, target anak muda, suasana cafe yang Instagrammable..."></textarea>
+    <div class="row">
+      <div><label>Target Audiens</label><input id="audience" placeholder="Contoh: Anak muda 18-30 tahun"></div>
+      <div><label>Jumlah Caption</label><select id="count"><option>3</option><option selected>5</option><option>10</option></select></div>
+    </div>
+    <label>Gaya Bahasa</label>
+    <select id="tone"><option>Santai & Gaul</option><option>Elegan & Profesional</option><option>Fun & Playful</option><option>Inspiratif</option><option>Langsung & Hard Selling</option></select>
+    <button type="submit" class="btn" id="btn">Generate Caption</button>
+  </form>
+  <div id="result"></div>
+  <div class="back"><a href="/chat/">&larr; Kembali ke Chat</a></div>
+</main>
+<script>
+var tok=localStorage.getItem('tl_tok');if(!tok)location.href='/login.html';
+async function generate(e){
+e.preventDefault();
+var prod=document.getElementById('product').value,plat=document.getElementById('platform').value;
+var desc=document.getElementById('desc').value,tone=document.getElementById('tone').value;
+var aud=document.getElementById('audience').value,count=document.getElementById('count').value;
+var res=document.getElementById('result'),btn=document.getElementById('btn');
+var prompt='Buatkan '+count+' caption '+plat+' untuk '+prod+'. Deskripsi: '+(desc||'produk/jasa')+'. Target audiens: '+(aud||'umum')+'. Gaya bahasa: '+tone+'. Untuk setiap caption, sertakan hashtag yang relevan (3-5 hashtag). Format: nomor, caption, hashtag. Bahasa Indonesia.';
+res.style.display='block';res.className='loading';res.innerHTML='<span class="spinner"></span> Menulis caption...';btn.disabled=true;
+try{
+var r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({message:prompt})});
+if(!r.ok){var e2=await r.json();throw new Error(e2.message||'Gagal')}
+var reader=r.body.getReader(),decoder=new TextDecoder(),full='';
+while(true){var v=await reader.read();if(v.done)break;var chunk=decoder.decode(v.value,{stream:true});var lines=chunk.split('\n');for(var i=0;i<lines.length;i++){var line=lines[i];if(!line.startsWith('data: '))continue;var data=line.slice(6);if(data==='[DONE]')continue;try{var j=JSON.parse(data);full+=j.choices&&j.choices[0]?j.choices[0].delta.content||'':'';res.innerHTML=full.replace(/\n/g,'<br>');res.className=''}catch(err){}}
+}
+res.innerHTML=full.replace(/\n/g,'<br>');res.className='';res.style.display='block';
+}catch(err){res.innerHTML='Error: '+err.message;res.className='';res.style.display='block'}
+btn.disabled=false;
+}
+</script>
+</body>
+</html>

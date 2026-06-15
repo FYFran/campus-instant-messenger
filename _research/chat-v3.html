@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TokenLine Chat</title>
+<meta name="description" content="AI Chat berbahasa Indonesia">
+<link rel="icon" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<style>
+:root{--pico-font-family:system-ui,-apple-system,sans-serif;--acc:#6366f1}
+body{height:100vh;display:flex;overflow:hidden}
+#side{width:16rem;min-width:16rem;background:var(--pico-card-background-color,#fff);border-right:1px solid var(--pico-muted-border-color,#e5e7eb);display:flex;flex-direction:column;transition:transform .3s}
+@media(max-width:768px){#side{position:fixed;left:0;top:0;bottom:0;z-index:20;transform:translateX(-100%)}#side.open{transform:translateX(0)}}
+#side header{padding:0.75rem 1rem;border-bottom:1px solid var(--pico-muted-border-color,#e5e7eb)}
+#side strong{font-size:1rem}
+#side .conv-list{flex:1;overflow-y:auto;padding:0.5rem}
+.conv{padding:0.5rem 0.75rem;border-radius:0.5rem;cursor:pointer;font-size:0.8rem;margin-bottom:0.15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:0.7;display:flex;align-items:center;gap:0.4rem}
+.conv:hover{background:var(--pico-dropdown-hover-background-color,#f3f4f6)}
+.conv.active{opacity:1;font-weight:500;background:var(--pico-primary-background,#eef2ff)}
+.conv .n{font-size:0.65rem;font-weight:700;color:var(--acc);min-width:1.2rem}
+.conv .del{opacity:0;margin-left:auto;font-size:0.9rem;cursor:pointer;padding:0 0.2rem}.conv:hover .del{opacity:0.4}.conv .del:hover{opacity:1}
+#side footer{padding:0.75rem 1rem;border-top:1px solid var(--pico-muted-border-color,#e5e7eb);font-size:0.75rem;display:flex;align-items:center;gap:0.5rem}
+#side footer span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:0.6}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#main header{padding:0.6rem 1rem;border-bottom:1px solid var(--pico-muted-border-color,#e5e7eb);display:flex;align-items:center;gap:1rem}
+#main header strong{font-size:0.95rem;flex:1}
+#main header select{padding:0.25rem 0.5rem;font-size:0.8rem;max-width:8rem}
+#main .menu-btn{display:none;background:none;border:none;font-size:1.3rem;cursor:pointer}@media(max-width:768px){#main .menu-btn{display:block}}
+#messages{flex:1;overflow-y:auto;padding:1.5rem}
+.msg{display:flex;gap:0.75rem;margin-bottom:1.5rem;max-width:90%}
+.msg.user{flex-direction:row-reverse;margin-left:auto}
+.msg .avatar{width:1.8rem;height:1.8rem;border-radius:50%;font-size:0.65rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+.msg.bot .avatar{background:var(--pico-primary-background,#eef2ff);color:var(--acc)}
+.msg.user .avatar{background:var(--pico-contrast-background,#1f2937);color:#fff}
+.msg .bubble{padding:0.6rem 0.9rem;border-radius:0.75rem;line-height:1.5;font-size:0.88rem;position:relative;word-break:break-word}
+.msg.bot .bubble{background:var(--pico-card-background-color,#fff);border:1px solid var(--pico-muted-border-color,#e5e7eb)}
+.msg.user .bubble{background:var(--pico-contrast-background,#1f2937);color:#fff}
+.msg .bubble:hover .copy-btn{opacity:1}.copy-btn{position:absolute;top:-0.5rem;right:0.5rem;opacity:0;background:var(--pico-background-color,#fff);border:1px solid var(--pico-muted-border-color,#e5e7eb);border-radius:0.25rem;padding:0.1rem 0.4rem;font-size:0.6rem;cursor:pointer;transition:all .2s}
+.copy-btn:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
+.msg.bot .bubble pre{background:var(--pico-contrast-background,#1f2937);color:#fff;padding:0.75rem 1rem;border-radius:0.5rem;overflow-x:auto;margin:0.5rem 0;font-size:0.8rem}
+.typing{display:flex;gap:0.25rem;padding:0.3rem 0}.typing span{width:0.35rem;height:0.35rem;border-radius:50%;background:var(--pico-muted-color,#9ca3af);animation:blink 1.2s infinite}.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}@keyframes blink{0%,60%,100%{opacity:.2}30%{opacity:1}}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;opacity:0.7}
+.empty h2{font-size:1.2rem;margin-bottom:0.5rem}
+.empty .grid{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;max-width:24rem;width:100%;margin-top:1rem}
+.empty .grid div{padding:1rem 0.75rem;border:1px solid var(--pico-muted-border-color,#e5e7eb);border-radius:0.5rem;cursor:pointer;text-align:left;font-size:0.8rem;transition:background .2s}
+.empty .grid div:hover{background:var(--pico-primary-background,#eef2ff)}
+#input-area{padding:1rem;border-top:1px solid var(--pico-muted-border-color,#e5e7eb)}
+#input-area .wrap{display:flex;gap:0.5rem;align-items:flex-end}
+#input-area textarea{flex:1;resize:none;max-height:8rem;font-size:0.9rem;padding:0.6rem 0.8rem}
+#input-area button{flex-shrink:0}
+#upgrade-bar{display:none;padding:0.5rem 1rem;text-align:center;background:#fef3c7;border-bottom:1px solid #fde68a;font-size:0.8rem}
+#upgrade-bar.show{display:block}#upgrade-bar a{color:var(--acc);font-weight:600;cursor:pointer;margin:0 0.5rem}
+.toast{position:fixed;top:0.75rem;right:0.75rem;background:var(--pico-contrast-background,#1f2937);color:#fff;padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8rem;z-index:99;animation:slide .3s ease}@keyframes slide{from{transform:translateX(120%)}to{transform:translateX(0)}}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+</head>
+<body>
+
+<div id="side">
+  <header>
+    <strong>Token<small style="color:var(--acc)">Line</small></strong>
+    <button class="secondary" style="padding:0.25rem 0.5rem;font-size:0.75rem;width:100%;margin-top:0.5rem" onclick="newChat()">+ Percakapan Baru</button>
+  </header>
+  <div class="conv-list" id="conv-list"></div>
+  <footer><span id="u-email">...</span><button class="outline secondary" style="padding:0.15rem 0.4rem;font-size:0.65rem" onclick="logout()">Keluar</button></footer>
+</div>
+
+<div id="main">
+  <header>
+    <button class="menu-btn" onclick="document.getElementById('side').classList.toggle('open')">☰</button>
+    <strong>Percakapan</strong>
+    <select id="model-sel" onchange="switchModel()"><option value="deepseek-v4-flash">Flash</option><option value="deepseek-v4-pro">Pro</option></select>
+    <small style="opacity:0.5" id="plan-badge">Gratis</small>
+    <button class="outline secondary" style="padding:0.2rem 0.6rem;font-size:0.7rem" onclick="exportChat()">Ekspor</button>
+  </header>
+  <div id="upgrade-bar">Kuota harian habis. <a onclick="buy('bulanan')">Upgrade Rp 30rb/bln</a><a onclick="buy('premium')">Premium Rp 50rb/bln</a></div>
+  <div id="messages">
+    <div class="empty" id="landing-state"><h2>Ada yang bisa saya bantu?</h2><p>Ketik pesan atau pilih topik</p><div class="grid"><div onclick="quickAsk('Bantu saya menulis makalah tentang')">📝 Tugas Kuliah</div><div onclick="quickAsk('Buatkan caption Instagram untuk produk')">🏪 Bisnis UMKM</div><div onclick="quickAsk('Ajar saya bahasa Inggris dasar')">🇬🇧 Belajar Inggris</div><div onclick="quickAsk('Jelaskan cara mulai belajar Python')">💻 Belajar Coding</div><div onclick="quickAsk('Buatkan skrip video TikTok')">📱 Konten Kreator</div><div onclick="quickAsk('Bantu saya menulis CV profesional')">💼 Karier</div></div></div>
+  </div>
+  <div id="input-area"><div class="wrap"><textarea id="textin" rows="1" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea><button id="sendbtn" onclick="send()">↑</button></div></div>
+</div>
+
+<script>
+var T=localStorage.getItem('tl_tok'),M=localStorage.getItem('tl_m')||'deepseek-v4-flash';if(!T)location.href='/';
+document.getElementById('model-sel').value=M;
+var me=document.getElementById('messages'),ti=document.getElementById('textin'),bt=document.getElementById('sendbtn'),ub=document.getElementById('upgrade-bar'),ls=document.getElementById('landing-state');
+var cx=JSON.parse(localStorage.getItem('tl_cx')||'{}'),aid=genId();
+if(!cx[aid])cx[aid]={title:'Percakapan Baru',msgs:[]};
+loadUser();renderSide();renderChat();
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function switchModel(){M=document.getElementById('model-sel').value;localStorage.setItem('tl_m',M)}
+function logout(){['tl_tok','tl_cx','tl_m'].forEach(function(k){localStorage.removeItem(k)});location.href='/'}
+function quickAsk(q){ti.value=q;send()}
+async function loadUser(){try{var r=await fetch('/api/me',{headers:{Authorization:'Bearer '+T}});if(r.ok){var d=await r.json();document.getElementById('u-email').textContent=d.email;document.getElementById('plan-badge').textContent=d.plan.charAt(0).toUpperCase()+d.plan.slice(1)}}catch(e){}}
+function toast(m){var el=document.createElement('div');el.className='toast';el.textContent=m;document.body.appendChild(el);setTimeout(function(){el.remove()},2500)}
+function exportChat(){var m=cx[aid]?cx[aid].msgs:[],t=cx[aid].title+'\n'+'='.repeat(40)+'\n';m.forEach(function(x){t+='\n['+x.role+']: '+x.content+'\n'});var b=new Blob([t],{type:'text/plain'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=cx[aid].title.replace(/[^a-z0-9]/gi,'_')+'.txt';a.click();toast('Diekspor')}
+function buy(p){if(!confirm('Upgrade ke '+p+'?'))return;fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:JSON.stringify({plan:p})}).then(function(r){return r.json()}).then(function(d){if(d.invoice_url)window.open(d.invoice_url);else toast('Invoice: '+d.invoice_id)})}
+function newChat(){var id=genId();cx[id]={title:'Percakapan Baru',msgs:[]};aid=id;saveNrender()}
+function switchConv(id){aid=id;saveNrender()}
+function delConv(id,e){e.stopPropagation();if(!confirm('Hapus?'))return;delete cx[id];if(aid===id){var ks=Object.keys(cx);aid=ks.length?ks[ks.length-1]:genId();if(!cx[aid])cx[aid]={title:'Percakapan Baru',msgs:[]}}saveNrender()}
+function saveNrender(){var m=cx[aid].msgs;if(m.length&&(!cx[aid].title||cx[aid].title==='Percakapan Baru'))cx[aid].title=m[0].content.slice(0,30)+(m[0].content.length>30?'...':'');localStorage.setItem('tl_cx',JSON.stringify(cx));renderSide();renderChat()}
+function renderSide(){var el=document.getElementById('conv-list'),ks=Object.keys(cx);el.innerHTML=ks.reverse().map(function(id,i){return '<div class=\"conv'+(id===aid?' active':'')+'\" onclick=\"switchConv(\\''+id+'\\')\"><span class=\"n\">'+(ks.length-i)+'.</span><span style=\"flex:1;overflow:hidden;text-overflow:ellipsis\">'+esc(cx[id].title)+'</span><span class=\"del\" onclick=\"delConv(\\''+id+'\\',event)\">x</span></div>'}).join('')||'<small style=\"opacity:0.5;padding:1rem\">Belum ada</small>'}
+function renderChat(){me.innerHTML='';var m=cx[aid]?cx[aid].msgs:[];if(!m.length){ls.style.display='flex';return}ls.style.display='none';m.forEach(function(x){add(x.role,x.content)})}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function fmt(s){return s.replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}
+function add(role,content){var g=document.createElement('div');g.className='msg '+role;g.innerHTML=role==='user'?'<div class=\"bubble\">'+esc(content)+'<button class=\"copy-btn\" onclick=\"copyMsg(this)\">Copy</button></div><div class=\"avatar\">U</div>':'<div class=\"avatar\">AI</div><div class=\"bubble\">'+fmt(content)+'<button class=\"copy-btn\" onclick=\"copyMsg(this)\">Copy</button></div>';me.appendChild(g);me.scrollTop=me.scrollHeight;return g}
+function copyMsg(b){var t=b.parentElement.textContent.replace('Copy','').trim();navigator.clipboard.writeText(t).then(function(){toast('Disalin')}).catch(function(){toast('Gagal')})}
+async function send(){
+  if(!T)return;var t=ti.value.trim();if(!t)return;
+  if(!cx[aid].msgs.length)ls.style.display='none';
+  cx[aid].msgs.push({role:'user',content:t});add('user',t);ti.value='';bt.disabled=true;ub.classList.remove('show');
+  var b=add('bot','<div class=\"typing\"><span></span><span></span><span></span></div>'),bubble=b.querySelector('.bubble');
+  try{
+    var r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:JSON.stringify({message:t,model:M})});
+    if(r.status==401){bubble.innerHTML='Sesi habis.';logout()}
+    else if(r.status==403){bubble.innerHTML='Kuota harian habis.';ub.classList.add('show')}
+    else if(r.status==429){bubble.innerHTML='Terlalu cepat. Tunggu sebentar.'}
+    else if(!r.ok){var e=await r.json();bubble.innerHTML='Error: '+(e.message||r.status)}
+    else{var rd=r.body.getReader(),dc=new TextDecoder(),full='';bubble.innerHTML='';
+      while(true){var v=await rd.read();if(v.done)break;
+        var lines=dc.decode(v.value,{stream:true}).split('\n');
+        for(var i=0;i<lines.length;i++){var ln=lines[i];if(!ln.startsWith('data: ')||ln.includes('[DONE]'))continue;
+          try{var j=JSON.parse(ln.slice(6));if(j.choices&&j.choices[0]){full+=j.choices[0].delta.content||'';bubble.innerHTML=fmt(full)+'<button class=\"copy-btn\" onclick=\"copyMsg(this)\">Copy</button>';me.scrollTop=me.scrollHeight}}catch(e){}
+        }
+      }
+    }
+    cx[aid].msgs.push({role:'assistant',content:full||bubble.textContent.replace('Copy','').trim()});
+  }catch(e){bubble.innerHTML='Koneksi gagal.'}
+  bt.disabled=false;ti.focus();saveNrender()
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(e){document.documentElement.setAttribute('data-theme',e.matches?'dark':'light')})
+</script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TokenLine Chat</title>
+<style>
+:root{--bg:#1a1a2e;--surface:#16213e;--accent:#e94560;--text:#eee;--muted:#888}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:16px/1.5 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column}
+header{background:var(--surface);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #333;gap:8px}
+header h1{font-size:18px;font-weight:700}
+header h1 a{color:var(--accent);text-decoration:none}
+#user-bar{display:flex;align-items:center;gap:8px;font-size:12px}
+#user-bar .bal{background:#1a1a2e;padding:4px 10px;border-radius:12px;color:#4ade80;font-weight:600}
+#user-bar a{color:var(--muted);text-decoration:none;font-size:11px}
+#user-bar a:hover{color:var(--text)}
+#chat{flex:1;overflow-y:auto;padding:12px}
+.msg{padding:8px 12px;margin-bottom:10px;border-radius:10px;max-width:90%;line-height:1.7;font-size:15px;word-break:break-word;white-space:pre-wrap}
+.msg.user{background:var(--accent);color:#fff;margin-left:auto;border-bottom-right-radius:2px}
+.msg.assistant{background:var(--surface);margin-right:auto;border-bottom-left-radius:2px}
+.msg.loading{opacity:0.6}
+#input-bar{display:flex;padding:10px 12px;gap:8px;background:var(--surface);border-top:1px solid #333}
+#input-bar textarea{flex:1;padding:10px 12px;border:1px solid #444;border-radius:12px;background:var(--bg);color:var(--text);font-size:15px;resize:none;outline:none;max-height:100px;line-height:1.4}
+#input-bar textarea:focus{border-color:var(--accent)}
+#input-bar button{width:42px;height:42px;border:none;border-radius:50%;background:var(--accent);color:#fff;cursor:pointer;flex-shrink:0;font-size:18px}
+#input-bar button:disabled{opacity:0.3}
+#input-bar .model-select{background:var(--bg);color:var(--text);border:1px solid #333;border-radius:6px;padding:4px 8px;font-size:12px}
+#login-nag{text-align:center;padding:20px;color:var(--muted)}
+#login-nag a{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><a href="/">TokenLine</a></h1>
+  <div id="user-bar">
+    <span id="token-balance" class="bal">—</span>
+    <select class="model-select" id="model-select" onchange="switchModel()">
+      <option value="deepseek-v4-flash">Flash</option>
+      <option value="deepseek-v4-pro">Pro</option>
+    </select>
+    <a href="/topup.html" id="topup-link">Isi Token</a>
+    <a href="#" onclick="logout()" id="logout-link" style="display:none">Keluar</a>
+  </div>
+</header>
+
+<div id="chat">
+  <div id="login-nag" style="display:none">
+    <p>🔑 <a href="/login.html">Masuk</a> atau <a href="/register.html">Daftar</a> untuk mulai chat.</p>
+    <p style="font-size:12px;margin-top:8px">Gratis 3 pesan/hari. Token mulai Rp 19.900.</p>
+  </div>
+</div>
+
+<div id="input-bar">
+  <textarea id="textin" rows="1" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+  <button id="sendbtn" onclick="send()">&#8593;</button>
+</div>
+
+<script>
+var chatEl=document.getElementById("chat"),textEl=document.getElementById("textin"),btn=document.getElementById("sendbtn");
+var modelEl=document.getElementById("model-select"),balEl=document.getElementById("token-balance");
+var jwt=localStorage.getItem("tl_tok");
+modelEl.value=localStorage.getItem("tl_model")||"deepseek-v4-flash";
+var msgs=[],convId=0,isLoggedIn=!!jwt;
+
+function init(){
+  if(isLoggedIn){
+    document.getElementById("logout-link").style.display="";
+    fetchBalance();
+  } else {
+    document.getElementById("login-nag").style.display="";
+  }
+}
+
+async function fetchBalance(){
+  if(!jwt) return;
+  try{
+    var r=await fetch("/api/me/balance",{headers:{Authorization:"Bearer "+jwt}});
+    if(!r.ok){if(r.status==401){logout();return};return}
+    var d=await r.json();
+    if(d.balance>0){
+      balEl.textContent=fmtNum(d.balance)+" token";
+      balEl.style.color="#4ade80";
+    } else {
+      balEl.textContent="Gratis ("+(3-d.free_used)+"/3)";
+      balEl.style.color="var(--muted)";
+    }
+  }catch(e){}
+}
+
+function fmtNum(n){if(n>=1e6)return (n/1e6).toFixed(1)+"M";if(n>=1e3)return (n/1e3).toFixed(0)+"K";return String(n)}
+
+function switchModel(){localStorage.setItem("tl_model",modelEl.value)}
+
+async function send(){
+  var text=textEl.value.trim(); if(!text) return;
+  if(!isLoggedIn){document.getElementById("login-nag").style.display="";return}
+  addMsg("user",text); textEl.value=""; btn.disabled=true;
+  var loadingEl=document.createElement("div"); loadingEl.className="msg assistant loading"; loadingEl.textContent="..."; chatEl.appendChild(loadingEl);
+  try{
+    var r=await fetch("/api/chat",{
+      method:"POST",
+      headers:{"Content-Type":"application/json",Authorization:"Bearer "+jwt},
+      body:JSON.stringify({message:text,model:modelEl.value,conversation_id:convId})
+    });
+    if(!r.ok){
+      if(r.status==403){var d=await r.json();loadingEl.textContent=d.message||"Kuota habis";loadingEl.style.color="#e94560"}
+      else if(r.status==401){logout();return}
+      else{loadingEl.textContent="Error: "+r.status}
+      loadingEl.classList.remove("loading");btn.disabled=false;return
+    }
+    var full="";loadingEl.textContent="";
+    var reader=r.body.getReader(),decoder=new TextDecoder();
+    while(true){
+      var v=await reader.read();if(v.done)break;
+      var chunk=decoder.decode(v.value,{stream:true});
+      var lines=chunk.split("\n");
+      for(var i=0;i<lines.length;i++){
+        var line=lines[i];if(!line.startsWith("data: "))continue;
+        var data=line.slice(6);if(data=="[DONE]")continue;
+        try{var j=JSON.parse(data);var c=j.choices&&j.choices[0]?j.choices[0].delta.content||"":"";full+=c;loadingEl.textContent=full;chatEl.scrollTop=chatEl.scrollHeight}catch(e){}
+      }
+    }
+    loadingEl.classList.remove("loading");addMsg("assistant",full);
+    if(!convId){
+      var cr=await fetch("/api/chat/history",{headers:{Authorization:"Bearer "+jwt}});
+      if(cr.ok){var cls=await cr.json();if(cls.length>0)convId=cls[0].id}
+    }
+    fetchBalance();
+  }catch(e){loadingEl.textContent="Error: "+e.message;loadingEl.style.color="#e94560";loadingEl.classList.remove("loading")}
+  btn.disabled=false;textEl.focus()
+}
+
+function addMsg(role,content){
+  var d=document.createElement("div");d.className="msg "+role;d.textContent=content;chatEl.appendChild(d);chatEl.scrollTop=chatEl.scrollHeight
+}
+function logout(){
+  localStorage.removeItem("tl_tok");jwt=null;isLoggedIn=false;
+  document.getElementById("logout-link").style.display="none";
+  document.getElementById("login-nag").style.display="";balEl.textContent="—";
+  msgs=[];convId=0;chatEl.innerHTML="";
+}
+init();
+</script>
+</body>
+</html>

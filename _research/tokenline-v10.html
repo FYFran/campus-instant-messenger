@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TokenLine — Asisten Menulis AI Premium</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ========== RESET & BASE ========== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#faf9f6;color:#1a1c2c;-webkit-font-smoothing:antialiased;line-height:1.6;overflow-x:hidden}
+
+/* ========== LAYOUT — NO Tailwind dependency ========== */
+.container{width:100%;max-width:1200px;margin-left:auto;margin-right:auto;padding-left:2rem;padding-right:2rem}
+.container-sm{max-width:900px;margin-left:auto;margin-right:auto;padding-left:2rem;padding-right:2rem}
+.container-xs{max-width:640px;margin-left:auto;margin-right:auto;padding-left:2rem;padding-right:2rem}
+.text-center{text-align:center}
+.flex{display:flex}
+.flex-col{flex-direction:column}
+.flex-row{flex-direction:row}
+.items-center{align-items:center}
+.items-start{align-items:flex-start}
+.justify-center{justify-content:center}
+.justify-between{justify-content:space-between}
+.gap-12{gap:3rem}.gap-8{gap:2rem}.gap-6{gap:1.5rem}.gap-4{gap:1rem}.gap-3{gap:0.75rem}.gap-2{gap:0.5rem}
+.flex-1{flex:1}
+.flex-shrink-0{flex-shrink:0}
+.flex-wrap{flex-wrap:wrap}
+.inline-flex{display:inline-flex}
+
+/* Grid */
+.grid{display:grid}
+.grid-cols-1{grid-template-columns:1fr}
+.grid-cols-3{grid-template-columns:repeat(3,1fr)}
+.grid-cols-4{grid-template-columns:repeat(4,1fr)}
+@media(min-width:768px){.md\:grid-cols-3{grid-template-columns:repeat(3,1fr)}.md\:col-span-2{grid-column:span 2}.md\:flex-row{flex-direction:row}}
+@media(max-width:767px){.sm\:flex-col{flex-direction:column}.sm\:w-full{width:100%}}
+.hidden-mobile{display:none}
+@media(min-width:768px){.hidden-mobile{display:flex}}
+
+/* ========== SECTIONS ========== */
+section{padding:10rem 2rem}
+@media(max-width:768px){section{padding:6rem 1.25rem}}
+.s0{background:#faf9f6}
+.s1{background:#f5f4f1}
+.divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(0,0,0,0.06),transparent)}
+
+/* ========== SURFACES ========== */
+.surface{background:#fff;border:1px solid rgba(0,0,0,0.05);border-radius:1.5rem}
+.card{background:#fff;border:1px solid rgba(0,0,0,0.05);border-radius:1.5rem;padding:2.5rem;transition:all .3s ease}
+.card:hover{transform:translateY(-2px);border-color:rgba(0,0,0,0.1);box-shadow:0 4px 24px rgba(0,0,0,0.04)}
+.card-gold{border-color:rgba(184,151,90,0.25)!important;background:linear-gradient(180deg,#fff 0%,#fdfcfa 100%)}
+.card-raised{border:1px solid rgba(0,0,0,0.06);border-radius:1.5rem;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.03),0 8px 24px rgba(0,0,0,0.04)}
+
+/* ========== BUTTONS ========== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:1rem 2rem;border-radius:999px;font-weight:600;font-size:.9375rem;text-decoration:none;transition:all .2s ease;cursor:pointer;border:none;white-space:nowrap}
+.btn-dark{background:#1a1c2c;color:#fff}
+.btn-dark:hover{background:#2a2c3c;transform:translateY(-1px);box-shadow:0 4px 12px rgba(26,28,44,.15)}
+.btn-ghost{border:1px solid rgba(0,0,0,.12);color:#1a1c2c;background:transparent}
+.btn-ghost:hover{border-color:rgba(0,0,0,.25);background:rgba(0,0,0,.02)}
+.btn-sm{padding:.625rem 1.25rem;font-size:.8125rem}
+
+/* ========== TYPOGRAPHY ========== */
+.badge{display:inline-flex;align-items:center;gap:.5rem;padding:.5rem 1rem;border-radius:999px;border:1px solid rgba(0,0,0,.08);background:#fff;font-size:.8125rem;color:rgba(26,28,44,.5)}
+.dot-green{width:.5rem;height:.5rem;border-radius:999px;background:#34d399;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.kicker{font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:rgba(26,28,44,.2);margin-bottom:1rem}
+h1{font-size:clamp(3rem,6vw,5rem);font-weight:800;letter-spacing:-.045em;line-height:1.04}
+h2{font-size:clamp(2.25rem,4vw,2.75rem);font-weight:700;letter-spacing:-.03em;line-height:1.12}
+h3{font-size:1.125rem;font-weight:600;letter-spacing:-.01em}
+p{color:rgba(26,28,44,.45)}
+.mt-auto{margin-top:auto}
+.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.mb-10{margin-bottom:2.5rem}.mb-12{margin-bottom:3rem}.mb-16{margin-bottom:4rem}.mb-20{margin-bottom:5rem}.mb-24{margin-bottom:6rem}
+.mt-2{margin-top:.5rem}.mt-4{margin-top:1rem}.mt-10{margin-top:2.5rem}.mt-14{margin-top:3.5rem}.mt-16{margin-top:4rem}.mt-20{margin-top:5rem}
+.my-3{margin-top:.75rem;margin-bottom:.75rem}
+.mx-auto{margin-left:auto;margin-right:auto}
+.p-10{padding:2.5rem}.p-12{padding:3rem}.p-14{padding:3.5rem}
+.pt-4{padding-top:1rem}
+.text-xs{font-size:.75rem}.text-sm{font-size:.875rem}.text-lg{font-size:1.125rem}.text-2xl{font-size:1.5rem}.text-4xl{font-size:2.25rem}.text-5xl{font-size:3rem}
+.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-semibold{font-weight:600}.font-medium{font-weight:500}
+.italic{font-style:italic}
+.tracking-tight{letter-spacing:-.02em}
+.leading-relaxed{line-height:1.7}
+.text-gold{color:#b8975a}
+.text-muted{color:rgba(26,28,44,.4)}
+.text-subtle{color:rgba(26,28,44,.25)}
+.text-white{color:#fff}
+.text-white\/90{color:rgba(255,255,255,.9)}
+
+/* ========== NAV ========== */
+nav{position:fixed;top:0;left:0;right:0;z-index:50;background:rgba(255,255,255,.75);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid rgba(0,0,0,.04);height:4rem}
+nav .container{display:flex;align-items:center;justify-content:space-between;height:100%}
+.nav-brand{display:flex;align-items:center;gap:.625rem;font-weight:700;font-size:1.125rem;letter-spacing:-.01em;text-decoration:none;color:#1a1c2c}
+.nav-logo{width:1.75rem;height:1.75rem;border-radius:.5rem;background:#1a1c2c;display:flex;align-items:center;justify-content:center}
+.nav-links{display:flex;align-items:center;gap:2rem}
+.nav-links a{font-size:.875rem;font-weight:500;color:rgba(26,28,44,.4);text-decoration:none;transition:color .2s}
+.nav-links a:hover,.nav-links a.active{color:#1a1c2c;font-weight:600}
+.nav-actions{display:flex;align-items:center;gap:.75rem}
+
+/* ========== SCROLL PROGRESS ========== */
+#progress{position:fixed;top:0;left:0;height:2px;background:#1a1c2c;z-index:100;transition:width .1s linear}
+
+/* ========== HERO ========== */
+.hero{min-height:95vh;display:flex;align-items:center;padding-top:5rem;position:relative}
+.glow{position:absolute;top:-20%;left:50%;transform:translateX(-50%);width:50rem;height:50rem;border-radius:50%;background:radial-gradient(circle,rgba(26,28,44,.035) 0%,transparent 70%);pointer-events:none}
+
+/* ========== ANIMATIONS ========== */
+@keyframes fadeIn{from{opacity:0;transform:translateY(2rem)}to{opacity:1;transform:translateY(0)}}
+.reveal{animation:fadeIn .8s cubic-bezier(.22,.61,.36,1) both}
+.r1{animation-delay:.1s}.r2{animation-delay:.2s}.r3{animation-delay:.3s}.r4{animation-delay:.4s}
+
+/* ========== UTILITY ========== */
+.pill{font-size:.625rem;background:rgba(0,0,0,.03);padding:.25rem .75rem;border-radius:999px;color:rgba(26,28,44,.4)}
+.pill-gold{font-size:.625rem;background:rgba(184,151,90,.08);padding:.25rem .75rem;border-radius:999px;color:#b8975a;font-weight:700}
+.w-full{width:100%}
+.relative{position:relative}
+.z-10{z-index:10}
+.block{display:block}
+.space-y-24>*+*{margin-top:6rem}
+.space-y-20>*+*{margin-top:5rem}
+.space-y-3>*+*{margin-top:.75rem}
+.overflow-hidden{overflow:hidden}
+.rounded-2xl{border-radius:1rem}
+.rounded-full{border-radius:999px}
+.bg-dark{background:#1a1c2c}
+.bg-white{background:#fff}
+.bg-warm{background:#faf9f6}
+.shadow-sm{box-shadow:0 1px 3px rgba(0,0,0,.04)}
+
+/* ========== MOBILE NAV ========== */
+@media(max-width:767px){
+  .nav-links{display:none}
+  .hero{min-height:90vh}
+  .grid-cols-4{grid-template-columns:repeat(2,1fr)}
+  .grid-cols-3{grid-template-columns:1fr}
+  .md\:grid-cols-3{grid-template-columns:1fr}
+  .md\:col-span-2{grid-column:span 1}
+  .md\:flex-row{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<div id="progress" style="width:0%"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="container">
+    <a href="/" class="nav-brand"><span class="nav-logo"><span style="color:#fff;font-size:10px;font-weight:700">T</span></span>TokenLine</a>
+    <div class="nav-links">
+      <a href="#siapa">Untuk Siapa</a><a href="#fitur">Fitur</a><a href="#harga">Harga</a><a href="chat-pro.html">Coba</a>
+    </div>
+    <div class="nav-actions">
+      <a href="login.html" style="font-size:.875rem;font-weight:500;color:rgba(26,28,44,.35);text-decoration:none">Masuk</a>
+      <a href="register.html" class="btn btn-dark btn-sm">Mulai Gratis</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="s0 hero"><div class="glow"></div>
+  <div class="container-xs text-center reveal">
+    <div class="badge mx-auto mb-10" style="display:inline-flex"><span class="dot-green"></span>DeepSeek V4 · Harga Indonesia</div>
+    <h1 class="mb-8">Tulis apa pun.<br>Cukup bilang mau apa.</h1>
+    <p class="mx-auto mb-12" style="max-width:28rem;font-size:1.0625rem;line-height:1.75;color:rgba(26,28,44,.45)">Skripsi, jurnal, proposal bisnis, email — AI yang ngerti Indonesia. Bukan chatbot biasa.</p>
+    <div class="flex flex-row items-center justify-center gap-4" style="flex-wrap:wrap">
+      <a href="register.html" class="btn btn-dark">Mulai Gratis — 3/hari</a>
+      <a href="#demo" class="btn btn-ghost">Lihat Cara Kerja ↓</a>
+    </div>
+    <p class="text-xs text-subtle mt-4">Tanpa kartu kredit · 30 detik daftar</p>
+    <div class="grid grid-cols-4 gap-12 mx-auto mt-20 reveal r2" style="max-width:32rem">
+      <div><p class="text-2xl font-extrabold" style="color:#1a1c2c">12K+</p><p class="text-xs text-muted mt-2">Penulis</p></div>
+      <div><p class="text-2xl font-extrabold" style="color:#1a1c2c">85K+</p><p class="text-xs text-muted mt-2">Dokumen</p></div>
+      <div><p class="text-2xl font-extrabold" style="color:#1a1c2c">4.8</p><p class="text-xs text-muted mt-2">Rating</p></div>
+      <div><p class="text-2xl font-extrabold" style="color:#1a1c2c">98%</p><p class="text-xs text-muted mt-2">Puass</p></div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- PERSONA -->
+<section id="siapa" class="s1">
+  <div class="container text-center">
+    <div class="reveal mb-20"><p class="kicker">Untuk Siapa</p><h2 class="mb-4">Satu alat. Semua kebutuhan.</h2><p class="mx-auto" style="max-width:28rem;font-size:1.0625rem;color:rgba(26,28,44,.45)">Dari mahasiswa sampai CEO — semua bisa nulis lebih cepat, lebih baik.</p></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card md:col-span-2 flex flex-col md:flex-row items-start gap-6 reveal">
+        <span class="text-5xl flex-shrink-0">🎓</span>
+        <div class="flex-1"><h3 class="mb-3">Mahasiswa</h3><p class="text-sm text-muted leading-relaxed">Skripsi, tesis, makalah, jurnal, abstrak. AI bantu dari Bab 1 sampai daftar pustaka. Sitasi otomatis APA/IEEE/MLA. Bimbingan menulis 24/7 tanpa perlu janjian sama dosen.</p><div class="flex flex-wrap gap-2 mt-4"><span class="pill">Skripsi</span><span class="pill">Jurnal</span><span class="pill">Abstrak</span></div></div>
+      </div>
+      <div class="card flex flex-col items-center text-center reveal r1">
+        <span class="text-4xl mb-4">💼</span><h3 class="mb-3">Profesional</h3><p class="text-sm text-muted leading-relaxed">Email klien, proposal bisnis, laporan tahunan. Bahasa formal, persuasif, siap kirim.</p>
+        <div class="flex flex-wrap gap-2 mt-auto pt-4"><span class="pill">Bisnis</span><span class="pill">Laporan</span></div>
+      </div>
+      <div class="card flex flex-col items-center text-center reveal r2">
+        <span class="text-4xl mb-4">✨</span><h3 class="mb-3">Kreator</h3><p class="text-sm text-muted leading-relaxed">Blog, naskah video, caption, cerpen. Gaya fleksibel, penuh karakter, gak kaku.</p>
+        <div class="flex flex-wrap gap-2 mt-auto pt-4"><span class="pill">Konten</span><span class="pill">Kreatif</span></div>
+      </div>
+      <div class="card md:col-span-2 flex flex-col md:flex-row items-start gap-6 reveal r3">
+        <span class="text-5xl flex-shrink-0">🔬</span>
+        <div class="flex-1"><h3 class="mb-3">Dosen & Peneliti</h3><p class="text-sm text-muted leading-relaxed">Jurnal internasional, proposal hibah, laporan penelitian. Format IEEE/APA siap submit ke Scopus. Terjemahan akademik natural — bukan hasil translate mentah.</p><div class="flex flex-wrap gap-2 mt-4"><span class="pill">Scopus</span><span class="pill">Hibah</span><span class="pill">IEEE</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- FEATURES -->
+<section id="fitur" class="s0">
+  <div class="container text-center">
+    <div class="reveal mb-20"><p class="kicker">Fitur</p><h2 class="mb-4">Lebih dari sekadar chat.</h2><p class="mx-auto" style="max-width:28rem;font-size:1.0625rem;color:rgba(26,28,44,.45)">Alat tulis lengkap dalam satu tempat. Dari ide mentah ke dokumen siap pakai.</p></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card flex flex-col items-center text-center reveal">
+        <div class="mb-5" style="width:3.5rem;height:3.5rem;border-radius:1rem;background:rgba(26,28,44,.04);display:flex;align-items:center;justify-content:center;font-size:1.75rem">✏️</div>
+        <h3 class="mb-3">6 Mode Menulis</h3><p class="text-sm text-muted leading-relaxed">Tulis, Perbaiki, Terjemahkan, Ringkas, Lanjutkan, Analisis — semua dalam satu tempat.</p>
+      </div>
+      <div class="card flex flex-col items-center text-center reveal r1">
+        <div class="mb-5" style="width:3.5rem;height:3.5rem;border-radius:1rem;background:rgba(26,28,44,.04);display:flex;align-items:center;justify-content:center;font-size:1.75rem">📋</div>
+        <h3 class="mb-3">20+ Template</h3><p class="text-sm text-muted leading-relaxed">Skripsi, jurnal, proposal, email, CV — pilih, isi konteks, AI kerjakan sisanya.</p>
+      </div>
+      <div class="card flex flex-col items-center text-center reveal r2">
+        <div class="mb-5" style="width:3.5rem;height:3.5rem;border-radius:1rem;background:rgba(26,28,44,.04);display:flex;align-items:center;justify-content:center;font-size:1.75rem">📤</div>
+        <h3 class="mb-3">Export DOCX/PDF</h3><p class="text-sm text-muted leading-relaxed">Langsung export. Siap submit jurnal, kirim dosen, atau presentasi ke klien. Satu klik.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- HOW -->
+<section class="s1">
+  <div class="container-xs text-center">
+    <div class="reveal mb-24"><p class="kicker">Cara Kerja</p><h2>Dari ide ke dokumen. Tiga langkah.</h2></div>
+    <div class="space-y-24">
+      <div class="reveal"><div class="mx-auto mb-6" style="width:3.5rem;height:3.5rem;border-radius:1rem;background:#1a1c2c;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.25rem;font-weight:700">1</div><h3 class="mb-4">Pilih template atau tulis bebas</h3><p class="mx-auto text-muted leading-relaxed" style="max-width:24rem;font-size:.9375rem">20+ template siap pakai. Atau langsung tulis apa yang kamu butuhkan. Gak perlu belajar prompt engineering — cukup bilang apa maunya dalam bahasa sehari-hari.</p></div>
+      <div class="reveal r2"><div class="mx-auto mb-6" style="width:3.5rem;height:3.5rem;border-radius:1rem;background:#1a1c2c;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.25rem;font-weight:700">2</div><h3 class="mb-4">AI menulis, kamu mengarahkan</h3><p class="mx-auto text-muted leading-relaxed" style="max-width:24rem;font-size:.9375rem">Kasih konteks singkat — AI langsung tulis draf lengkap dengan struktur, argumen, dan sitasi. Mau revisi? Tinggal bilang "lebih formal". Real-time streaming.</p></div>
+      <div class="reveal r3"><div class="mx-auto mb-6" style="width:3.5rem;height:3.5rem;border-radius:1rem;background:#b8975a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.25rem;font-weight:700">3</div><h3 class="mb-4">Export, kirim, selesai</h3><p class="mx-auto text-muted leading-relaxed" style="max-width:24rem;font-size:.9375rem">Langsung export DOCX, PDF, atau Markdown. Siap submit, kirim dosen, atau presentasi klien. Satu klik.</p></div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- DEMO -->
+<section id="demo" class="s0">
+  <div class="container-xs text-center reveal">
+    <div class="card-raised p-10" style="padding:3rem">
+      <h2 class="mb-4">Lihat sendiri</h2>
+      <p class="mx-auto mb-10" style="max-width:24rem;font-size:1.0625rem;color:rgba(26,28,44,.45)">Dari "tolong buatin" ke dokumen jadi. Secepat ini.</p>
+      <div class="mx-auto space-y-3" style="max-width:32rem">
+        <div class="flex" style="justify-content:flex-end"><div class="bg-dark text-white/90 rounded-2xl px-5 py-3 text-sm" style="max-width:75%;line-height:1.6;border-bottom-right-radius:.25rem">Buat pendahuluan skripsi tentang dampak AI pada pembelajaran Bahasa Inggris di universitas Indonesia. Pakai bahasa akademik + sitasi.</div></div>
+        <div class="flex gap-3"><div class="flex-shrink-0 bg-dark rounded-lg flex items-center justify-center" style="width:2rem;height:2rem"><span style="color:#fff;font-size:9px;font-weight:700">T</span></div><div class="bg-warm rounded-2xl px-5 py-4 text-sm text-muted border overflow-hidden" style="max-width:82%;border-color:rgba(0,0,0,.04);line-height:1.6;border-bottom-left-radius:.25rem"><p class="font-semibold mb-2" style="color:rgba(26,28,44,.7);font-size:.75rem">1.1 Latar Belakang</p><p>Perkembangan kecerdasan buatan dalam satu dekade terakhir telah mentransformasi lanskap pendidikan tinggi secara fundamental. Kehadiran Large Language Models...</p><p class="text-xs text-subtle mt-3 flex items-center gap-1"><span class="inline-block rounded-full bg-black/20 animate-pulse" style="width:.375rem;height:.375rem"></span> AI sedang menulis...</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- PRICING — Full 6 packages -->
+<section id="harga" class="s1">
+  <div class="container text-center">
+    <div class="reveal mb-20"><p class="kicker">Harga</p><h2 class="mb-4">Mulai gratis. Bayar sesuai kebutuhan.</h2><p class="mx-auto" style="max-width:32rem;font-size:1.0625rem;color:rgba(26,28,44,.45)">Gak perlu langganan bulanan. Beli token — pakai kapan aja, gak hangus. Harga Indonesia, bukan harga Silicon Valley.</p></div>
+
+    <!-- FLASH tier label -->
+    <div class="reveal mb-6"><span class="pill" style="font-size:.75rem;font-weight:600;padding:.5rem 1.25rem;background:rgba(26,28,44,.06);color:rgba(26,28,44,.5)">⚡ FLASH — Cepat, harga terjangkau</span></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div class="card flex flex-col items-center text-center reveal"><p class="text-lg font-bold mb-1">Flash 500K</p><p class="text-4xl font-extrabold my-3">Rp 19.900</p><p class="text-xs text-subtle mb-8">500.000 token <span style="color:rgba(26,28,44,.2)">· ≈250 hlm</span></p><ul class="space-y-3 text-sm text-muted w-full mb-8" style="list-style:none;padding:0"><li>Model Flash (cepat)</li><li>6 mode menulis</li><li>Export DOCX/PDF</li><li>20+ template</li></ul><a href="register.html" class="btn btn-ghost w-full text-sm">Pilih Flash 500K</a></div>
+      <div class="card card-gold flex flex-col items-center text-center reveal r1" style="transform:scale(1.04)"><div class="pill-gold mb-3">PALING POPULER</div><p class="text-lg font-bold mb-1">Flash 1.5M</p><p class="text-4xl font-extrabold my-3">Rp 49.900</p><p class="text-xs text-subtle mb-8">1.500.000 token <span style="color:rgba(26,28,44,.2)">· ≈750 hlm</span></p><ul class="space-y-3 text-sm text-muted w-full mb-8" style="list-style:none;padding:0"><li>Model Flash (cepat)</li><li>6 mode menulis</li><li>Export DOCX/PDF</li><li>20+ template premium</li><li class="font-semibold" style="color:#1a1c2c">Hemat 34% vs 500K</li></ul><a href="register.html" class="btn btn-dark w-full text-sm">Pilih Flash 1.5M</a></div>
+      <div class="card flex flex-col items-center text-center reveal r2"><p class="text-lg font-bold mb-1">Flash 4M</p><p class="text-4xl font-extrabold my-3">Rp 99.900</p><p class="text-xs text-subtle mb-8">4.000.000 token <span style="color:rgba(26,28,44,.2)">· ≈2.000 hlm</span></p><ul class="space-y-3 text-sm text-muted w-full mb-8" style="list-style:none;padding:0"><li>Model Flash (cepat)</li><li>6 mode menulis</li><li>Export DOCX/PDF</li><li>20+ template premium</li><li class="font-semibold" style="color:#1a1c2c">Hemat 50% vs 500K</li></ul><a href="register.html" class="btn btn-ghost w-full text-sm">Pilih Flash 4M</a></div>
+    </div>
+
+    <!-- PRO tier label — premium distinction -->
+    <div class="reveal r2 mb-6 mt-16"><span class="pill" style="font-size:.75rem;font-weight:700;padding:.5rem 1.25rem;background:rgba(184,151,90,.1);color:#b8975a">👑 PRO — Model paling cerdas · Untuk hasil terbaik</span></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card flex flex-col items-center text-center reveal r2" style="border-top:3px solid #b8975a"><p class="text-lg font-bold mb-1">Pro 500K</p><p class="text-4xl font-extrabold my-3">Rp 399.000</p><p class="text-xs text-subtle mb-8">500.000 token <span style="color:rgba(26,28,44,.2)">· ≈250 hlm</span></p><ul class="space-y-3 text-sm text-muted w-full mb-8" style="list-style:none;padding:0"><li>✨ Model Pro (paling cerdas)</li><li>🔍 Riset & sitasi otomatis</li><li>📄 Upload & analisis dokumen</li><li>🎯 Akurasi lebih tinggi</li><li>Semua fitur Flash</li></ul><a href="register.html" class="btn btn-ghost w-full text-sm">Pilih Pro 500K</a></div>
+      <div class="card card-gold flex flex-col items-center text-center reveal r3" style="transform:scale(1.04);border-top:3px solid #b8975a"><div class="pill-gold mb-3">⭐ VALUE TERBAIK</div><p class="text-lg font-bold mb-1">Pro 2M</p><p class="text-4xl font-extrabold my-3">Rp 1.499.000</p><p class="text-xs text-subtle mb-8">2.000.000 token <span style="color:rgba(26,28,44,.2)">· ≈1.000 hlm</span></p><ul class="space-y-3 text-sm text-muted w-full mb-8" style="list-style:none;padding:0"><li>✨ Model Pro (paling cerdas)</li><li>🔍 Riset & sitasi otomatis</li><li>📄 Upload & analisis dokumen</li><li>🎯 Akurasi lebih tinggi</li><li>Semua fitur Flash</li><li class="font-semibold" style="color:#1a1c2c">Hemat 25% vs Pro 500K</li></ul><a href="register.html" class="btn btn-dark w-full text-sm">Pilih Pro 2M</a></div>
+      <div class="card flex flex-col items-center text-center reveal r4" style="border-top:3px solid #b8975a"><p class="text-lg font-bold mb-1">Pro 5M</p><p class="text-4xl font-extrabold my-3">Rp 3.499.000</p><p class="text-xs text-subtle mb-8">5.000.000 token <span style="color:rgba(26,28,44,.2)">· ≈2.500 hlm</span></p><ul class="space-y-3 text-sm text-muted w-full mb-8" style="list-style:none;padding:0"><li>✨ Model Pro (paling cerdas)</li><li>🔍 Riset & sitasi otomatis</li><li>📄 Upload & analisis dokumen</li><li>🎯 Akurasi lebih tinggi</li><li>Semua fitur Flash</li><li class="font-semibold" style="color:#1a1c2c">Hemat 42% vs Pro 500K</li></ul><a href="register.html" class="btn btn-ghost w-full text-sm">Pilih Pro 5M</a></div>
+    </div>
+
+    <p class="text-xs text-subtle mt-6 reveal r4">Token tidak hangus · Bayar sekali, pakai sampai habis · PPN sudah termasuk</p>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- WHY PRO — Flash vs Pro comparison -->
+<section class="s0">
+  <div class="container text-center">
+    <div class="reveal mb-16"><p class="kicker">Mengapa Pro?</p><h2 class="mb-4">Flash itu cepat. Pro itu jenius.</h2><p class="mx-auto" style="max-width:32rem;font-size:1.0625rem;color:rgba(26,28,44,.45)">Buat yang pengen hasil terbaik — skripsi yang lobos sidang, jurnal yang tembus Scopus, proposal yang bikin investor tertarik.</p></div>
+
+    <div class="reveal r1 overflow-hidden" style="max-width:900px;margin:0 auto;border-radius:1rem;border:1px solid rgba(0,0,0,.06)">
+      <table style="width:100%;border-collapse:collapse;font-size:.875rem">
+        <thead><tr style="background:rgba(26,28,44,.03)"><th style="padding:1rem 1.5rem;text-align:left;font-weight:600;color:rgba(26,28,44,.5);width:30%">Fitur</th><th style="padding:1rem 1.5rem;text-align:center;font-weight:600;color:rgba(26,28,44,.5);width:35%">⚡ Flash</th><th style="padding:1rem 1.5rem;text-align:center;font-weight:700;color:#b8975a;width:35%">👑 Pro</th></tr></thead>
+        <tbody>
+          <tr style="border-top:1px solid rgba(0,0,0,.04)"><td style="padding:1rem 1.5rem;text-align:left;font-weight:500">Model AI</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.4)">DeepSeek V4 Flash<br><span class="text-xs text-subtle">Cepat, responsif</span></td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.6);font-weight:500">DeepSeek V4 Pro<br><span class="text-xs" style="color:#b8975a">Paling cerdas, reasoning superior</span></td></tr>
+          <tr style="border-top:1px solid rgba(0,0,0,.04);background:rgba(0,0,0,.01)"><td style="padding:1rem 1.5rem;text-align:left;font-weight:500">Kualitas Akademik</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.4)">Baik untuk tugas umum</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.6);font-weight:500">⭐ Optimal untuk publikasi ilmiah</td></tr>
+          <tr style="border-top:1px solid rgba(0,0,0,.04)"><td style="padding:1rem 1.5rem;text-align:left;font-weight:500">Riset & Sitasi</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.25)">—</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.6);font-weight:500">✅ Otomatis · APA/IEEE/MLA</td></tr>
+          <tr style="border-top:1px solid rgba(0,0,0,.04);background:rgba(0,0,0,.01)"><td style="padding:1rem 1.5rem;text-align:left;font-weight:500">Upload & Analisis Dokumen</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.25)">—</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.6);font-weight:500">✅ PDF, Word, CSV</td></tr>
+          <tr style="border-top:1px solid rgba(0,0,0,.04)"><td style="padding:1rem 1.5rem;text-align:left;font-weight:500">Akurasi & Kedalaman</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.4)">Standar</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.6);font-weight:500">⭐ Superior · reasoning 3x lebih dalam</td></tr>
+          <tr style="border-top:1px solid rgba(0,0,0,.04);background:rgba(0,0,0,.01)"><td style="padding:1rem 1.5rem;text-align:left;font-weight:500">Cocok Untuk</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.4)">Tugas kuliah, email, konten</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.6);font-weight:500">Skripsi S2/S3, jurnal Scopus, proposal jutaan</td></tr>
+          <tr style="border-top:1px solid rgba(0,0,0,.04)"><td style="padding:1rem 1.5rem;text-align:left;font-weight:500">Harga per Token</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.4)">Mulai Rp 40/1K token</td><td style="padding:1rem 1.5rem;text-align:center;color:rgba(26,28,44,.6);font-weight:500">Rp 800/1K token<br><span class="text-xs" style="color:#b8975a">Investasi untuk kualitas</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="reveal r2 mx-auto mt-6 text-sm text-subtle" style="max-width:32rem">💡 <strong style="color:#1a1c2c">Tips:</strong> Pakai Flash buat drafting cepat, Pro buat finalisasi & publikasi. Token gak hangus — bisa mix Flash & Pro sesuai kebutuhan.</p>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- TESTIMONIALS -->
+<section class="s0">
+  <div class="container text-center">
+    <div class="reveal mb-20"><p class="kicker">Testimoni</p><h2>Dipercaya penulis Indonesia.</h2></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card flex flex-col items-center text-center reveal"><div class="text-sm mb-4" style="color:#f59e0b">★★★★★</div><p class="text-sm text-muted italic leading-relaxed mb-6">"Bab 1 skripsi biasanya seminggu, sekarang 2 hari beres. Sitasi otomatisnya ngebantu banget."</p><div class="mt-auto"><p class="text-sm font-semibold">Rina F.</p><p class="text-xs text-subtle">Mahasiswi, UI</p></div></div>
+      <div class="card flex flex-col items-center text-center reveal r1"><div class="text-sm mb-4" style="color:#f59e0b">★★★★★</div><p class="text-sm text-muted italic leading-relaxed mb-6">"Terjemahan akademik Inggris-Indonesia jauh lebih natural. Reviewer Scopus gak complain lagi."</p><div class="mt-auto"><p class="text-sm font-semibold">Dr. Dewi P.</p><p class="text-xs text-subtle">Dosen, UB</p></div></div>
+      <div class="card flex flex-col items-center text-center reveal r2"><div class="text-sm mb-4" style="color:#f59e0b">★★★★★</div><p class="text-sm text-muted italic leading-relaxed mb-6">"Proposal klien dari 3 jam jadi 20 menit. 4 klien baru dapet gara-gara proposal yang lebih profesional."</p><div class="mt-auto"><p class="text-sm font-semibold">Andi R.</p><p class="text-xs text-subtle">CEO, EdTech</p></div></div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- CTA -->
+<section class="s1">
+  <div class="container-xs text-center reveal"><div class="card-raised p-14"><h2 class="mb-4">Siap nulis lebih cepat?</h2><p class="mx-auto mb-10" style="max-width:24rem;font-size:1.0625rem;color:rgba(26,28,44,.45)">Gabung dengan ribuan penulis Indonesia yang sudah pakai TokenLine.</p><a href="register.html" class="btn btn-dark" style="padding:1rem 3rem;font-size:1rem">Mulai Gratis Sekarang</a><p class="text-xs text-subtle mt-5">Tanpa kartu kredit. 30 detik daftar.</p></div></div>
+</section>
+
+<footer style="background:#1a1c2c;color:rgba(255,255,255,.3);padding:3rem 2rem">
+  <div class="container flex" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem"><div class="flex items-center gap-2"><span style="width:1.5rem;height:1.5rem;border-radius:.375rem;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center"><span style="color:#fff;font-size:9px;font-weight:700">T</span></span><span class="text-sm font-semibold">TokenLine 2026</span></div><div class="flex gap-6 text-sm"><a href="#" style="color:rgba(255,255,255,.3);text-decoration:none">Tentang</a><a href="#" style="color:rgba(255,255,255,.3);text-decoration:none">Privasi</a><a href="#" style="color:rgba(255,255,255,.3);text-decoration:none">Syarat</a></div></div>
+</footer>
+
+<script>
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement.scrollHeight-window.innerHeight;
+  document.getElementById('progress').style.width=h>0?(window.scrollY/h*100)+'%':'0%';
+  const sections=document.querySelectorAll('section[id]');
+  const links=document.querySelectorAll('.nav-links a');
+  let c='';
+  sections.forEach(s=>{if(window.scrollY>=s.offsetTop-100)c=s.id});
+  links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+c));
+});
+</script>
+</body>
+</html>

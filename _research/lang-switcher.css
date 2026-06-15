@@ -1,0 +1,29 @@
+/* TokenLine Language Switcher — 3 pill buttons */
+.lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0,0,0,0.04);
+  border-radius: 12px;
+  padding: 2px;
+}
+.lang-switcher button {
+  border: none;
+  background: transparent;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'Inter', system-ui, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(0,0,0,0.35);
+  white-space: nowrap;
+}
+.lang-switcher button:hover { color: rgba(0,0,0,0.6); }
+.lang-switcher button.active {
+  background: white;
+  color: #1a1a28;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}

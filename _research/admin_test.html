@@ -1,0 +1,19 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Test</title></head><body>
+<h2>TokenLine Admin Test</h2>
+<input id="pw" type="password" placeholder="Password"><br><br>
+<button onclick="go()">Masuk</button>
+<div id="out" style="margin-top:16px;font-size:24px"></div>
+<script>
+function go(){
+  document.getElementById('out').textContent='Loading...';
+  var p=document.getElementById('pw').value;
+  fetch('/api/admin/dashboard?key='+p).then(function(r){
+    return r.json();
+  }).then(function(d){
+    document.getElementById('out').innerHTML='Balance: '+d.deepseek.balance_cny+' CNY<br>Users: '+d.users.total;
+  }).catch(function(e){
+    document.getElementById('out').textContent='Error: '+e.message;
+  });
+}
+</script>
+</body></html>

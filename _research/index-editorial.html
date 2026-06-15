@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TokenLine</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;--hair:#e6e3dd;--acc:#6366f1;--err:#e85d5d}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;background:var(--bg)}
+body{font:400 15px/1.6 'DM Sans',system-ui,sans-serif;color:var(--fg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.serif{font-family:'Playfair Display',Georgia,serif}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:18px 48px;display:flex;justify-content:space-between;align-items:center;transition:background .3s}
+nav.scrolled{background:rgba(250,248,245,.88);backdrop-filter:blur(10px)}
+nav a{color:var(--fg);text-decoration:none;font-size:13px;font-weight:500;margin-left:32px;transition:opacity .2s}
+nav a:hover{opacity:.5}
+nav .logo{font:italic 700 20px 'Playfair Display',serif;letter-spacing:-.5px}
+nav .logo span{font-style:normal;color:var(--acc)}
+.btn{display:inline-block;padding:12px 28px;border-radius:40px;font:600 13px 'DM Sans',sans-serif;cursor:pointer;border:none;text-decoration:none;transition:all .3s}
+.btn-dark{background:var(--fg);color:#fff}.btn-dark:hover{background:var(--acc);transform:translateY(-2px)}
+.btn-line{background:transparent;color:var(--fg);border:1px solid var(--hair)}.btn-line:hover{border-color:var(--fg)}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;align-items:center;padding:0 48px;position:relative}
+.hero .col{max-width:680px}
+.hero .tag{font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--acc);font-weight:600;margin-bottom:28px}
+.hero h1{font:800 clamp(56px,9vw,104px)/.95 'Playfair Display',serif;letter-spacing:-.03em;margin-bottom:28px}
+.hero h1 i{font-style:italic;color:var(--acc)}
+.hero p{font-size:17px;color:var(--muted);max-width:440px;margin-bottom:40px;font-weight:300;line-height:1.7}
+.hero .btns{display:flex;gap:12px}
+
+/* ── SCROLL REVEAL ── */
+.reveal{opacity:0;transform:translateY(40px);transition:opacity .8s,transform .8s}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ── SECTIONS ── */
+section{padding:120px 48px;max-width:1200px;margin:0 auto}
+.sec-label{font:600 10px/1 'DM Sans',sans-serif;letter-spacing:.3em;text-transform:uppercase;color:var(--acc);margin-bottom:40px;display:block}
+
+/* ── CASES ── */
+.cases-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hair)}
+@media(max-width:768px){.cases-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.cases-grid{grid-template-columns:1fr}}
+.case{padding:56px 36px;background:var(--bg);cursor:pointer;transition:background .3s;position:relative}
+.case:hover{background:#fff}
+.case .n{font:900 72px/1 'Playfair Display',serif;color:rgba(0,0,0,.03);position:absolute;top:20px;left:20px}
+.case h3{font:600 18px 'Playfair Display',serif;margin-bottom:6px;position:relative}
+.case p{font-size:13px;color:var(--muted);font-weight:300;position:relative}
+
+/* ── PRICING ── */
+.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--hair)}
+@media(max-width:900px){.pricing-grid{grid-template-columns:1fr 1fr}}
+.plan{padding:48px 32px;background:var(--bg);text-align:center;transition:all .3s}
+.plan:hover{background:#fff}
+.plan.featured{background:var(--fg);color:#fff}
+.plan.featured .btn-dark{background:#fff;color:var(--fg)}.plan.featured .btn-dark:hover{background:var(--acc);color:#fff}
+.plan.featured p,.plan.featured .price sub{color:rgba(255,255,255,.5)}
+.plan h3{font:600 16px 'Playfair Display',serif;margin-bottom:16px}
+.plan .price{font:800 48px/1 'DM Sans',sans-serif;margin-bottom:4px}
+.plan .price sub{font:300 13px 'DM Sans',sans-serif;color:var(--muted);display:block;margin-top:4px}
+.plan ul{list-style:none;margin:24px 0;text-align:left}
+.plan ul li{padding:6px 0;font-size:13px;color:var(--muted)}
+.plan ul li::before{content:'— ';color:var(--acc)}
+
+/* ── FAQ ── */
+.faq{max-width:700px}
+.faq details{padding:28px 0;border-bottom:1px solid var(--hair);cursor:pointer}
+.faq summary{font:600 16px 'Playfair Display',serif;list-style:none;display:flex;justify-content:space-between}
+.faq summary::after{content:'+';font:300 22px 'DM Sans',sans-serif;color:var(--acc)}
+.faq details[open] summary::after{content:'−'}
+.faq details p{font-size:14px;color:var(--muted);margin-top:12px;font-weight:300;line-height:1.8}
+
+/* ── CTA ── */
+.cta{border-top:1px solid var(--hair);margin:0 48px 80px;padding:100px 0 0;text-align:center}
+.cta h2{font:800 clamp(36px,6vw,56px)/1.1 'Playfair Display',serif;margin-bottom:16px}
+.cta p{color:var(--muted);font-weight:300;margin-bottom:32px}
+footer{padding:40px 48px;text-align:center;font-size:11px;color:var(--muted);border-top:1px solid var(--hair);font-weight:300}
+
+/* ── MODAL ── */
+.modal{position:fixed;inset:0;background:rgba(26,26,26,.6);backdrop-filter:blur(3px);z-index:100;display:none;align-items:center;justify-content:center}
+.modal.active{display:flex}
+.modal>div{background:#fff;border-radius:4px;padding:48px 40px;max-width:400px;width:90%;position:relative;box-shadow:0 2px 40px rgba(0,0,0,.15)}
+.modal h3{font:700 22px 'Playfair Display',serif;margin-bottom:4px}
+.modal p{color:var(--muted);font-size:13px;margin-bottom:24px;font-weight:300}
+.modal input{width:100%;padding:14px;border:1px solid var(--hair);border-radius:4px;font:400 14px 'DM Sans',sans-serif;margin-bottom:10px;outline:none;transition:border-color .3s}
+.modal input:focus{border-color:var(--fg)}
+.modal .close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)}
+.modal .switch{font-size:12px;color:var(--muted);margin-top:12px}
+.modal .switch a{color:var(--acc);text-decoration:none;font-weight:500}
+
+@media(max-width:768px){
+  nav{padding:14px 20px}nav .links{display:none}
+  .hero{padding:120px 20px 60px}.hero h1{font-size:42px}
+  section{padding:80px 20px}.cases-grid{grid-template-columns:1fr}
+  .plan.featured{background:var(--fg)}
+}
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="logo">Token<span>Line</span></div>
+  <div class="links"><a href="#cases">Kemampuan</a><a href="#pricing">Harga</a><a href="#faq">FAQ</a></div>
+  <button class="btn btn-dark" onclick="openRegister()">Mulai Gratis</button>
+</nav>
+
+<section class="hero">
+  <div class="col">
+    <div class="tag">Asisten AI &middot; Bahasa Indonesia</div>
+    <h1>Kecerdasan,<br><i>untuk siapa saja.</i></h1>
+    <p>TokenLine membawa AI tercanggih kepada jutaan orang Indonesia — untuk menulis, belajar, dan berkarya. Tanpa biaya selangit.</p>
+    <div class="btns"><a href="#" class="btn btn-dark" onclick="event.preventDefault();openRegister()">Coba Gratis</a><a href="#pricing" class="btn btn-line">Lihat Paket</a></div>
+  </div>
+</section>
+
+<section id="cases">
+  <span class="sec-label">Kemampuan &middot; 01</span>
+  <div class="cases-grid">
+    <div class="case reveal" onclick="openRegister()"><span class="n">01</span><h3>Tugas Kuliah</h3><p>Riset, tulis makalah, terjemahan jurnal</p></div>
+    <div class="case reveal" onclick="openRegister()"><span class="n">02</span><h3>Bisnis Kecil</h3><p>Copywriting, caption, strategi konten</p></div>
+    <div class="case reveal" onclick="openRegister()"><span class="n">03</span><h3>Bahasa Inggris</h3><p>Latihan percakapan, perbaiki grammar</p></div>
+    <div class="case reveal" onclick="openRegister()"><span class="n">04</span><h3>Belajar Koding</h3><p>Python, JavaScript — dari nol</p></div>
+    <div class="case reveal" onclick="openRegister()"><span class="n">05</span><h3>Konten Kreator</h3><p>Ide & skrip untuk TikTok, YouTube</p></div>
+    <div class="case reveal" onclick="openRegister()"><span class="n">06</span><h3>Karier</h3><p>CV profesional, surat lamaran</p></div>
+  </div>
+</section>
+
+<section id="pricing">
+  <span class="sec-label">Harga &middot; 02</span>
+  <div class="pricing-grid">
+    <div class="plan reveal"><h3>Gratis</h3><div class="price">Rp 0<sub>10 pesan / hari</sub></div><ul><li>Model Flash</li><li>6 kategori</li></ul><a href="#" class="btn btn-line" onclick="event.preventDefault();openRegister()">Mulai</a></div>
+    <div class="plan featured reveal"><h3>Bulanan</h3><div class="price">Rp 30rb<sub>30 hari penuh</sub></div><ul><li>Unlimited pesan</li><li>Akses prioritas</li><li>Model Flash</li></ul><a href="#" class="btn btn-dark" onclick="event.preventDefault();openRegister()">Pilih</a></div>
+    <div class="plan reveal"><h3>Premium</h3><div class="price">Rp 50rb<sub>30 hari &middot; Pro</sub></div><ul><li>Semua Bulanan</li><li>Model Pro (V4)</li><li>Respon lebih cepat</li></ul><a href="#" class="btn btn-line" onclick="event.preventDefault();openRegister()">Pilih</a></div>
+    <div class="plan reveal"><h3>Tahunan</h3><div class="price">Rp 250rb<sub>12 bulan</sub></div><ul><li>Semua Premium</li><li>Hemat 30%</li></ul><a href="#" class="btn btn-line" onclick="event.preventDefault();openRegister()">Pilih</a></div>
+  </div>
+</section>
+
+<section id="faq">
+  <span class="sec-label">FAQ &middot; 03</span>
+  <div class="faq">
+    <details><summary>Apakah TokenLine gratis?</summary><p>Ya. Paket Gratis memberi Anda 10 pesan per hari. Untuk akses tanpa batas, pilih paket Bulanan seharga Rp&nbsp;30.000 per bulan.</p></details>
+    <details><summary>Model AI apa yang digunakan?</summary><p>TokenLine menggunakan DeepSeek V4 — model AI tercanggih dengan performa setara GPT-4, dioptimalkan untuk bahasa Indonesia.</p></details>
+    <details><summary>Bagaimana cara membayar?</summary><p>Kami menerima GoPay, OVO, DANA, QRIS, dan transfer bank melalui Xendit.</p></details>
+    <details><summary>Apakah data saya aman?</summary><p>Ya. Percakapan Anda dienkripsi. Kami mematuhi UU Perlindungan Data Pribadi Indonesia.</p></details>
+  </div>
+</section>
+
+<div class="cta"><h2>Siap untuk memulai?</h2><p>Daftar sekarang. Gratis. Tidak perlu kartu kredit.</p><a href="#" class="btn btn-dark" onclick="event.preventDefault();openRegister()">Daftar Gratis &rarr;</a></div>
+<footer>&copy; 2026 TokenLine &middot; Hong Kong &middot; DeepSeek V4</footer>
+
+<!-- MODALS -->
+<div class="modal" id="reg-modal"><div>
+  <button class="close" onclick="closeModals()">&times;</button>
+  <h3>Daftar Gratis</h3><p>10 pesan per hari. Tanpa kartu kredit.</p>
+  <input id="r-email" type="email" placeholder="Email"><input id="r-pass" type="password" placeholder="Kata sandi (min 6 karakter)">
+  <button class="btn btn-dark" onclick="doRegister()" style="width:100%">Daftar</button>
+  <div class="switch">Sudah punya akun? <a href="#" onclick="event.preventDefault();closeModals();document.getElementById('login-modal').classList.add('active')">Masuk</a></div>
+</div></div>
+<div class="modal" id="login-modal"><div>
+  <button class="close" onclick="closeModals()">&times;</button>
+  <h3>Masuk</h3><p>Lanjutkan percakapan Anda</p>
+  <input id="l-email" type="email" placeholder="Email"><input id="l-pass" type="password" placeholder="Kata sandi">
+  <button class="btn btn-dark" onclick="doLogin()" style="width:100%">Masuk</button>
+</div></div>
+
+<script>
+function openRegister(){document.getElementById('reg-modal').classList.add('active')}
+function closeModals(){document.querySelectorAll('.modal').forEach(m=>m.classList.remove('active'))}
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',function(e){if(e.target===m)this.classList.remove('active')}))
+async function doRegister(){
+  var e=document.getElementById('r-email').value.trim(),p=document.getElementById('r-pass').value;
+  if(!e||p.length<6)return alert('Email dan password minimal 6 karakter');
+  var r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})});
+  var d=await r.json();if(r.ok&&d.token){localStorage.setItem('tl_tok',d.token);location.href='/chat/'}else alert(d.message||'Gagal')
+}
+async function doLogin(){
+  var e=document.getElementById('l-email').value.trim(),p=document.getElementById('l-pass').value;
+  if(!e)return;var r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})});
+  var d=await r.json();if(r.ok&&d.token){localStorage.setItem('tl_tok',d.token);location.href='/chat/'}else alert(d.message||'Gagal')
+}
+if(localStorage.getItem('tl_tok'))location.href='/chat/'
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',scrollY>50))
+// Scroll reveal
+new IntersectionObserver(es=>es.forEach(e=>e.target.classList.toggle('visible',e.isIntersecting))).observe(document.querySelector('.reveal'))
+document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=i*80+'ms';(new IntersectionObserver(es=>es.forEach(e=>e.target.classList.toggle('visible',e.isIntersecting)))).observe(el)})
+</script>
+</body>
+</html>

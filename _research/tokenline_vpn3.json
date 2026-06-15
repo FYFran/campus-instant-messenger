@@ -1,0 +1,72 @@
+{
+  "dns": {
+    "servers": [
+      "https://1.1.1.1/dns-query",
+      "https://dns.google/dns-query",
+      "8.8.8.8",
+      "1.1.1.1"
+    ]
+  },
+  "inbounds": [
+    {
+      "port": 10808,
+      "listen": "127.0.0.1",
+      "protocol": "socks",
+      "settings": {
+        "udp": true
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vmess",
+      "tag": "proxy",
+      "settings": {
+        "vnext": [
+          {
+            "address": "47.82.103.247",
+            "port": 443,
+            "users": [
+              {
+                "id": "4873343b-636d-4f76-9da6-c8c23ad3ae3c",
+                "alterId": 0,
+                "security": "auto"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "wsSettings": {
+          "path": "/ws"
+        },
+        "tlsSettings": {
+          "serverName": "tokenline.top"
+        }
+      }
+    }
+  ],
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "outboundTag": "proxy",
+        "domain": [
+          "geosite:facebook",
+          "geosite:google",
+          "geosite:geolocation-!cn"
+        ]
+      }
+    ]
+  }
+}

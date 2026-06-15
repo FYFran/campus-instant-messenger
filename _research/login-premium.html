@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masuk — TokenLine</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#faf9f6;color:#1a1c2c;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+.card{background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:1.5rem;padding:2.5rem;max-width:420px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.03),0 8px 28px rgba(0,0,0,.05)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.875rem 1.75rem;border-radius:999px;font-weight:600;font-size:.9375rem;text-decoration:none;transition:all .2s ease;cursor:pointer;border:none;width:100%}
+.btn-dark{background:#1a1c2c;color:#fff}.btn-dark:hover{background:#2a2c3c;transform:translateY(-1px)}
+.btn-ghost{border:1px solid rgba(0,0,0,.12);background:transparent;color:#1a1c2c}.btn-ghost:hover{border-color:rgba(0,0,0,.25)}
+.input{width:100%;padding:.875rem 1rem;border:1px solid rgba(0,0,0,.1);border-radius:.75rem;font-size:.9375rem;font-family:inherit;transition:all .2s;outline:none;background:#fafaf9}.input:focus{border-color:rgba(26,28,44,.3);box-shadow:0 0 0 3px rgba(26,28,44,.06)}
+.label{font-size:.8125rem;font-weight:600;color:rgba(26,28,44,.5);margin-bottom:.375rem;display:block}
+.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}
+.text-center{text-align:center}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
+.text-muted{color:rgba(26,28,44,.4)}.text-subtle{color:rgba(26,28,44,.25)}
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}.gap-3{gap:.75rem}
+.msg{font-size:.8125rem;padding:.75rem;border-radius:.75rem;display:none}.msg.error{display:block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}.msg.success{display:block;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.spinner{display:none;width:1rem;height:1rem;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}.loading .spinner{display:inline-block}.loading .btn-text{display:none}@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="text-center mb-6">
+    <div style="width:3rem;height:3rem;border-radius:.75rem;background:#1a1c2c;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem"><span style="color:#fff;font-size:14px;font-weight:700">T</span></div>
+    <h2 style="font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.25rem">Selamat Datang</h2>
+    <p class="text-muted text-sm">Masuk ke akun TokenLine kamu</p>
+  </div>
+
+  <div class="msg" id="msg"></div>
+
+  <form id="form" onsubmit="login(event)">
+    <label class="label">Email</label>
+    <input type="email" class="input mb-4" id="email" placeholder="kamu@email.com" required autofocus>
+
+    <label class="label">Password</label>
+    <input type="password" class="input mb-6" id="password" placeholder="Minimal 6 karakter" required minlength="6">
+
+    <button type="submit" class="btn btn-dark mb-4" id="btn"><span class="btn-text">Masuk</span><span class="spinner"></span></button>
+  </form>
+
+  <div class="flex items-center justify-between text-sm mb-6">
+    <a href="#" class="text-muted" style="text-decoration:none" onclick="alert('Fitur menyusul')">Lupa password?</a>
+  </div>
+
+  <div class="text-center text-sm text-muted">
+    Belum punya akun? <a href="register.html" style="color:#1a1c2c;font-weight:600;text-decoration:none">Daftar</a>
+  </div>
+
+  <div class="text-center mt-6"><a href="/" class="text-xs text-subtle" style="text-decoration:none">← Kembali ke Beranda</a></div>
+</div>
+
+<script>
+function showMsg(text, type) { const m = document.getElementById('msg'); m.textContent = text; m.className = 'msg ' + type; }
+async function login(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  try {
+    const r = await fetch('https://tokenline.top/api/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email: document.getElementById('email').value, password: document.getElementById('password').value})
+    });
+    const d = await r.json();
+    if (r.ok) {
+      localStorage.setItem('tl_tok', d.token);
+      localStorage.setItem('tl_user', JSON.stringify(d.user));
+      showMsg('Berhasil! Mengalihkan...', 'success');
+      setTimeout(() => { window.location.href = 'chat-pro.html'; }, 800);
+    } else {
+      showMsg(typeof d === 'string' ? d : (d.message || d.detail || 'Email atau password salah'), 'error');
+    }
+  } catch(err) { showMsg('Gagal terhubung. Coba lagi.', 'error'); }
+  btn.classList.remove('loading');
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>

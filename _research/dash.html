@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Akun Saya - TokenLine</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+<style>:root{--pico-font-family:system-ui,sans-serif}body>main{max-width:800px;margin:2rem auto;padding:0 1rem}.big{font-size:2.5rem;font-weight:800}.stat{padding:1.5rem;border:1px solid var(--pico-muted-border-color,#e5e7eb);border-radius:1rem;margin-bottom:1rem}</style>
+</head><body><main>
+<h1>Akun Saya</h1><div id="loading">Memuat...</div><div id="dash" style="display:none"></div>
+<p style="margin-top:2rem"><a href="/chat/">Kembali ke Chat</a> | <a href="#" onclick="logout()">Keluar</a></p></main>
+<script>
+var T=localStorage.getItem("tl_tok");if(!T)location.href="/";
+fetch("/api/me",{headers:{Authorization:"Bearer "+T}}).then(r=>r.json()).then(d=>{
+document.getElementById("loading").remove();
+var h="";
+h+="<div class=stat><strong>Email</strong><br>"+d.email+"</div>";
+h+="<div class=stat><strong>Paket</strong><br>"+d.plan.toUpperCase()+"</div>";
+h+="<div class=stat><strong>Sisa Token</strong><br><span class=big>"+Number(d.token_balance).toLocaleString()+"</span> token</div>";
+h+="<div class=stat><strong>Token Terpakai</strong><br><span class=big>"+Number(d.tokens_used).toLocaleString()+"</span> token</div>";
+h+="<div class=stat><strong>Total Pembelian</strong><br>Rp "+Number(d.total_spent).toLocaleString()+"</div>";
+h+="<p>Butuh refund? <a href=\"#\" onclick=\"refund()\">Ajukan pengembalian dana</a></p>";
+document.getElementById("dash").innerHTML=h;document.getElementById("dash").style.display="block"
+});
+function refund(){var id=prompt("Invoice ID:");if(!id)return;var r=prompt("Alasan refund (min 10 karakter):");if(!r||r.length<10)return alert("Alasan minimal 10 karakter");fetch("/api/me/refund",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+T},body:JSON.stringify({invoice_id:id,reason:r})}).then(r=>r.json()).then(d=>{alert(d.message||"Gagal")})}
+function logout(){localStorage.removeItem("tl_tok");location.href="/"}
+</script></body></html>

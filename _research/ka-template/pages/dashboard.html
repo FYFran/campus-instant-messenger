@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard Demo | KA-Launchly</title>
+<meta name="description" content="Minimal SaaS dashboard demo page with analytics cards, charts, activity feed, user table and stats widgets." />
+<meta property="og:title" content="Dashboard Demo | KA-Launchly" />
+<meta property="og:description" content="Minimal SaaS dashboard demo page with analytics cards, charts, activity feed, user table and stats widgets." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="../assets/img/og-cover.svg" />
+<meta name="theme-color" content="#0B1120" />
+<link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script>(function(){const stored=window.localStorage.getItem("ka-theme");const useDark=stored?stored==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",useDark);document.documentElement.dataset.theme=useDark?"dark":"light";})();</script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography">
+</script>
+<script>tailwind.config={darkMode:"class"};</script>
+<link rel="stylesheet" href="../assets/css/styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" defer>
+</script>
+<script src="../assets/js/main.js" defer>
+</script>
+</head>
+<body class="bg-transparent text-slate-900 antialiased dark:text-white">
+<header class="fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6">
+<div class="mx-auto max-w-7xl">
+<div data-site-header class="nav-shell rounded-[1.5rem] px-4 py-3 sm:px-5">
+<div class="flex items-center justify-between gap-4">
+<a href="../index.html" class="inline-flex items-center gap-3">
+<img src="../assets/img/logo-mark.svg" alt="KA-Launchly" class="h-11 w-11 rounded-2xl" />
+<div class="hidden sm:block">
+<div class="text-sm font-bold tracking-tight text-slate-950 dark:text-white">KA-Launchly</div>
+<div class="text-xs uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Startup Template</div>
+</div>
+</a>
+<nav class="hidden items-center gap-1 lg:flex">
+<a href="../index.html" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white">Home</a>
+<a href="../pages/features.html" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white">Features</a>
+<a href="../pages/product-overview.html" class="rounded-full px-4 py-2 text-sm font-semibold bg-indigo-500 text-white">Product</a>
+<a href="../pages/pricing.html" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white">Pricing</a>
+<a href="../pages/blog/grid.html" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white">Blog</a>
+<a href="../pages/docs/index.html" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white">Docs</a>
+<a href="../pages/contact.html" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.04] dark:hover:text-white">Contact</a>
+</nav>
+<div class="hidden items-center gap-3 lg:flex">
+<button type="button" data-theme-toggle aria-pressed="true" class="btn-secondary !px-4 !py-3">
+<span class="hidden sm:inline" data-theme-label>Dark</span>
+<svg class="h-4 w-4 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M12 3v1.5m0 15V21m9-9h-1.5M4.5 12H3m15.36 6.36-1.06-1.06M6.7 6.7 5.64 5.64m12.72 0-1.06 1.06M6.7 17.3l-1.06 1.06M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+</svg>
+<svg class="hidden h-4 w-4 dark:inline-flex" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M21.75 15A9.72 9.72 0 0 1 12.75 21C7.36 21 3 16.64 3 11.25c0-4.27 2.74-7.9 6.56-9.22a.75.75 0 0 1 .96.9A7.5 7.5 0 0 0 20.82 14.23a.75.75 0 0 1 .93.77Z"/>
+</svg>
+</button>
+<a href="../pages/auth/login.html" class="btn-ghost">Login</a>
+<a href="../pages/auth/register.html" class="btn-primary !px-5 !py-3">Get Started</a>
+</div>
+<div class="flex items-center gap-3 lg:hidden">
+<button type="button" data-theme-toggle aria-pressed="true" class="btn-secondary !p-3">
+<svg class="h-4 w-4 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M12 3v1.5m0 15V21m9-9h-1.5M4.5 12H3m15.36 6.36-1.06-1.06M6.7 6.7 5.64 5.64m12.72 0-1.06 1.06M6.7 17.3l-1.06 1.06M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+</svg>
+<svg class="hidden h-4 w-4 dark:inline-flex" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M21.75 15A9.72 9.72 0 0 1 12.75 21C7.36 21 3 16.64 3 11.25c0-4.27 2.74-7.9 6.56-9.22a.75.75 0 0 1 .96.9A7.5 7.5 0 0 0 20.82 14.23a.75.75 0 0 1 .93.77Z"/>
+</svg>
+</button>
+<button type="button" data-mobile-toggle aria-expanded="false" class="btn-secondary !p-3">
+<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M3.75 5.25h16.5M3.75 12h16.5m-16.5 6.75h16.5"/>
+</svg>
+</button>
+</div>
+</div>
+<div data-mobile-menu class="hidden border-t border-slate-200/60 pt-4 dark:border-white/10 lg:hidden">
+<nav class="grid gap-2">
+<a href="../index.html" class="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 dark:text-slate-300 dark:hover:bg-white/[0.04]">Home</a>
+<a href="../pages/features.html" class="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 dark:text-slate-300 dark:hover:bg-white/[0.04]">Features</a>
+<a href="../pages/product-overview.html" class="rounded-2xl px-4 py-3 text-sm font-semibold bg-indigo-500 text-white">Product</a>
+<a href="../pages/pricing.html" class="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 dark:text-slate-300 dark:hover:bg-white/[0.04]">Pricing</a>
+<a href="../pages/blog/grid.html" class="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 dark:text-slate-300 dark:hover:bg-white/[0.04]">Blog</a>
+<a href="../pages/docs/index.html" class="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 dark:text-slate-300 dark:hover:bg-white/[0.04]">Docs</a>
+<a href="../pages/contact.html" class="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 dark:text-slate-300 dark:hover:bg-white/[0.04]">Contact</a>
+<a href="../pages/auth/login.html" class="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-950/5 dark:text-slate-300 dark:hover:bg-white/[0.04]">Login</a>
+<a href="../pages/auth/register.html" class="btn-primary mt-2 justify-center">Get Started</a>
+</nav>
+</div>
+</div>
+</div>
+</header>
+<main>
+<section class="relative overflow-hidden pt-36 sm:pt-40">
+<div class="hero-orb one left-[-4rem] top-28 h-36 w-36">
+</div>
+<div class="hero-orb two right-[-5rem] top-28 h-44 w-44">
+</div>
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<div class="grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-end">
+<div data-reveal class="reveal">
+<div class="section-kicker">Dashboard demo</div>
+<h1 class="mt-4 text-balance text-4xl font-extrabold tracking-tight text-slate-950 sm:text-5xl dark:text-white">A minimal SaaS dashboard that supports the website story without overpowering it.</h1>
+<p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">The dashboard page is intentionally restrained. It gives the template a data-rich surface for demos, hero mockups and product depth while keeping the main focus on the website system.</p>
+<div class="mt-8 flex flex-wrap gap-3">
+<div class="badge-pill text-sm font-semibold">Analytics</div>
+<div class="badge-pill text-sm font-semibold">Charts</div>
+<div class="badge-pill text-sm font-semibold">Activity</div>
+<div class="badge-pill text-sm font-semibold">User table</div>
+</div>
+</div>
+<div data-reveal class="surface reveal delay-1 rounded-[2rem] p-6 sm:p-8">
+<div class="grid gap-4 sm:grid-cols-2">
+<div class="rounded-3xl border border-slate-200/70 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-sm text-slate-500 dark:text-slate-400">Charts</div>
+<div class="mt-3 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">2</div>
+<div class="mt-2 text-sm text-slate-600 dark:text-slate-300">Revenue trend and funnel view.</div>
+</div>
+<div class="rounded-3xl border border-slate-200/70 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-sm text-slate-500 dark:text-slate-400">Widgets</div>
+<div class="mt-3 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">6</div>
+<div class="mt-2 text-sm text-slate-600 dark:text-slate-300">Compact stats for performance snapshots.</div>
+</div>
+<div class="rounded-3xl border border-slate-200/70 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-sm text-slate-500 dark:text-slate-400">Tables</div>
+<div class="mt-3 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">1</div>
+<div class="mt-2 text-sm text-slate-600 dark:text-slate-300">User and account health overview.</div>
+</div>
+<div class="rounded-3xl border border-slate-200/70 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-sm text-slate-500 dark:text-slate-400">Style</div>
+<div class="mt-3 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Minimal</div>
+<div class="mt-2 text-sm text-slate-600 dark:text-slate-300">Supports rather than dominates.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="py-20">
+<div class="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
+<div class="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+<div data-reveal class="surface reveal delay-1 rounded-[1.75rem] p-6">
+<div class="text-sm text-slate-500 dark:text-slate-400">Monthly recurring revenue</div>
+<div class="mt-4 text-3xl font-bold text-slate-950 dark:text-white">$96.4K</div>
+<div class="mt-2 text-sm font-semibold text-emerald-500">+18.4%</div>
+</div>
+<div data-reveal class="surface reveal delay-2 rounded-[1.75rem] p-6">
+<div class="text-sm text-slate-500 dark:text-slate-400">Net revenue retention</div>
+<div class="mt-4 text-3xl font-bold text-slate-950 dark:text-white">118%</div>
+<div class="mt-2 text-sm font-semibold text-emerald-500">+4.2%</div>
+</div>
+<div data-reveal class="surface reveal delay-3 rounded-[1.75rem] p-6">
+<div class="text-sm text-slate-500 dark:text-slate-400">Activation rate</div>
+<div class="mt-4 text-3xl font-bold text-slate-950 dark:text-white">83%</div>
+<div class="mt-2 text-sm font-semibold text-emerald-500">+7.1%</div>
+</div>
+<div data-reveal class="surface reveal delay-4 rounded-[1.75rem] p-6">
+<div class="text-sm text-slate-500 dark:text-slate-400">At-risk accounts</div>
+<div class="mt-4 text-3xl font-bold text-slate-950 dark:text-white">12</div>
+<div class="mt-2 text-sm font-semibold text-emerald-500">-3 this week</div>
+</div>
+</div>
+<div class="grid gap-6 xl:grid-cols-[1.18fr_.82fr]">
+<div data-reveal class="surface reveal rounded-[2rem] p-6 sm:p-8">
+<div class="text-lg font-bold text-slate-950 dark:text-white">Revenue trend</div>
+<div class="chart-wrap mt-6 h-[320px]">
+<canvas id="revenueChart">
+</canvas>
+</div>
+</div>
+<div data-reveal class="surface reveal delay-1 rounded-[2rem] p-6 sm:p-8">
+<div class="text-lg font-bold text-slate-950 dark:text-white">Funnel</div>
+<div class="chart-wrap mt-6 h-[320px]">
+<canvas id="funnelChart">
+</canvas>
+</div>
+</div>
+</div>
+<div class="grid gap-6 xl:grid-cols-[.95fr_1.05fr]">
+<div data-reveal class="surface reveal rounded-[2rem] p-6 sm:p-8">
+<div class="text-lg font-bold text-slate-950 dark:text-white">Activity feed</div>
+<div class="mt-6 space-y-4">
+<div class="rounded-[1.5rem] border border-slate-200/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-sm font-semibold text-slate-950 dark:text-white">Expansion candidate detected</div>
+</div>
+<div class="rounded-[1.5rem] border border-slate-200/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-sm font-semibold text-slate-950 dark:text-white">Enterprise trial converted</div>
+</div>
+<div class="rounded-[1.5rem] border border-slate-200/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-sm font-semibold text-slate-950 dark:text-white">NPS alert resolved</div>
+</div>
+<div class="rounded-[1.5rem] border border-slate-200/70 bg-white/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-sm font-semibold text-slate-950 dark:text-white">Roadmap update published</div>
+</div>
+</div>
+</div>
+<div data-reveal class="surface reveal delay-1 rounded-[2rem] p-6 sm:p-8">
+<div class="text-lg font-bold text-slate-950 dark:text-white">Customer health table</div>
+<div class="mt-6 overflow-x-auto rounded-[1.5rem]">
+<table class="w-full min-w-[580px] text-left text-sm">
+<thead class="bg-slate-950/5 dark:bg-white/[0.04]">
+<tr>
+<th class="px-5 py-4 font-semibold text-slate-500 dark:text-slate-400">Account</th>
+<th class="px-5 py-4 font-semibold text-slate-500 dark:text-slate-400">MRR</th>
+<th class="px-5 py-4 font-semibold text-slate-500 dark:text-slate-400">Health</th>
+<th class="px-5 py-4 font-semibold text-slate-500 dark:text-slate-400">Owner</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-t border-slate-200/70 dark:border-white/10">
+<td class="px-5 py-4 font-semibold text-slate-950 dark:text-white">Northstar AI</td>
+<td class="px-5 py-4 text-slate-600 dark:text-slate-300">$8.4K</td>
+<td class="px-5 py-4">
+<span class="badge-pill text-[11px] font-semibold">Healthy</span>
+</td>
+<td class="px-5 py-4 text-slate-600 dark:text-slate-300">Lina</td>
+</tr>
+<tr class="border-t border-slate-200/70 dark:border-white/10">
+<td class="px-5 py-4 font-semibold text-slate-950 dark:text-white">ClarifyOS</td>
+<td class="px-5 py-4 text-slate-600 dark:text-slate-300">$6.9K</td>
+<td class="px-5 py-4">
+<span class="badge-pill text-[11px] font-semibold">Growing</span>
+</td>
+<td class="px-5 py-4 text-slate-600 dark:text-slate-300">Mert</td>
+</tr>
+<tr class="border-t border-slate-200/70 dark:border-white/10">
+<td class="px-5 py-4 font-semibold text-slate-950 dark:text-white">FluxPay</td>
+<td class="px-5 py-4 text-slate-600 dark:text-slate-300">$5.2K</td>
+<td class="px-5 py-4">
+<span class="badge-pill text-[11px] font-semibold">Attention</span>
+</td>
+<td class="px-5 py-4 text-slate-600 dark:text-slate-300">Sara</td>
+</tr>
+<tr class="border-t border-slate-200/70 dark:border-white/10">
+<td class="px-5 py-4 font-semibold text-slate-950 dark:text-white">NovaGrid</td>
+<td class="px-5 py-4 text-slate-600 dark:text-slate-300">$4.7K</td>
+<td class="px-5 py-4">
+<span class="badge-pill text-[11px] font-semibold">Healthy</span>
+</td>
+<td class="px-5 py-4 text-slate-600 dark:text-slate-300">Ava</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="pb-24 pt-8">
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+<div data-reveal class="surface glow-border reveal relative overflow-hidden rounded-[2rem] px-8 py-10 sm:px-12 sm:py-14">
+<div class="hero-orb one -left-8 top-0 h-28 w-28">
+</div>
+<div class="hero-orb two right-0 bottom-0 h-32 w-32">
+</div>
+<div class="grid gap-8 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+<div>
+<div class="section-kicker">Final CTA</div>
+<h2 class="mt-4 text-balance text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl dark:text-white">Ship a startup website that already looks funded, polished and trusted.</h2>
+<p class="mt-5 max-w-2xl text-base leading-8 text-slate-600 dark:text-slate-300">Use KA-Launchly as the foundation for SaaS launches, AI products, agency deliverables or internal brand refreshes.</p>
+</div>
+<div class="flex flex-col gap-3 sm:flex-row lg:justify-end">
+<a href="../pages/auth/register.html" class="btn-primary">
+<span>Start with Launchly</span>
+<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
+</svg>
+</a>
+<a href="../components/ui-kit.html" class="btn-secondary">
+<span>Explore UI Kit</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<div id="watch-demo" data-modal class="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 px-4">
+<div class="modal-panel surface max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[2rem] p-6 sm:p-8">
+<div class="flex items-center justify-between gap-4">
+<div>
+<div class="section-kicker">Product demo</div>
+<h3 class="mt-2 text-2xl font-bold text-slate-950 dark:text-white">Launchly preview flow</h3>
+</div>
+<button type="button" data-modal-close class="btn-secondary !p-3">
+<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M6 18 18 6M6 6l12 12"/>
+</svg>
+</button>
+</div>
+<div class="mt-6 grid gap-6 lg:grid-cols-[1.05fr_.95fr]">
+<div class="rounded-[1.75rem] bg-gradient-to-br from-indigo-500/20 via-cyan-500/10 to-violet-500/20 p-4">
+<div class="grid-backdrop dashboard-screen rounded-[1.5rem] border border-white/20 bg-slate-950/90 p-6 text-white dark:bg-white/[0.04]">
+<div class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Template walkthrough</div>
+<div class="mt-4 text-3xl font-bold leading-tight">Explore landing, docs, pricing, dashboard and support flows with one visual language.</div>
+</div>
+</div>
+<div class="rounded-[1.75rem] border border-slate-200/70 bg-white/80 p-6 dark:border-white/10 dark:bg-white/[0.04]">
+<div class="text-lg font-bold text-slate-950 dark:text-white">What this modal demonstrates</div>
+<div class="mt-4">
+<ul class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+<li class="flex items-start gap-3">
+<span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="m4.5 12.75 6 6 9-13.5"/>
+</svg>
+</span>
+<span>Modal interaction pattern</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="m4.5 12.75 6 6 9-13.5"/>
+</svg>
+</span>
+<span>Reusable card surfaces</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="m4.5 12.75 6 6 9-13.5"/>
+</svg>
+</span>
+<span>CTA-friendly overlay styling</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">
+<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="m4.5 12.75 6 6 9-13.5"/>
+</svg>
+</span>
+<span>Premium dashboard preview block</span>
+</li>
+</ul>
+</div>
+<div class="mt-6 flex flex-wrap gap-3">
+<a href="../pages/dashboard.html" class="btn-primary">Open dashboard page</a>
+<a href="../components/ui-kit.html" class="btn-secondary">Open UI kit</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<footer class="border-t border-slate-200/60 py-14 dark:border-white/10">
+<div class="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[1.1fr_.9fr] lg:px-8">
+<div>
+<a href="../index.html" class="inline-flex items-center gap-3">
+<img src="../assets/img/logo-mark.svg" alt="KA-Launchly" class="h-11 w-11 rounded-2xl" />
+<div>
+<div class="text-lg font-bold tracking-tight text-slate-950 dark:text-white">KA-Launchly</div>
+<div class="text-sm text-slate-500 dark:text-slate-400">Startup & SaaS Website Template</div>
+</div>
+</a>
+<p class="mt-5 max-w-md text-sm leading-7 text-slate-600 dark:text-slate-300">A premium multi-page website template for SaaS teams, startup studios, AI tools and modern software products.</p>
+<form data-demo-form class="mt-6 flex flex-col gap-3 sm:max-w-md sm:flex-row">
+<input type="email" placeholder="Product updates email" class="w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/[0.04]" />
+<button type="submit" class="btn-primary shrink-0">Subscribe</button>
+</form>
+<p data-form-message class="mt-3 hidden text-sm text-emerald-500">
+</p>
+</div>
+<div class="grid gap-8 sm:grid-cols-3">
+<div>
+<div class="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Pages</div>
+<div class="mt-4 space-y-3 text-sm">
+<a href="../pages/features.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Features</a>
+<a href="../pages/product-overview.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Product</a>
+<a href="../pages/pricing.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Pricing</a>
+<a href="../pages/blog/grid.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Blog</a>
+</div>
+</div>
+<div>
+<div class="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Resources</div>
+<div class="mt-4 space-y-3 text-sm">
+<a href="../pages/docs/index.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Docs</a>
+<a href="../pages/dashboard.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Dashboard demo</a>
+<a href="../components/ui-kit.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">UI kit</a>
+<a href="../pages/support.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Support</a>
+</div>
+</div>
+<div>
+<div class="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Company</div>
+<div class="mt-4 space-y-3 text-sm">
+<a href="../pages/about.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">About</a>
+<a href="../pages/careers.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Careers</a>
+<a href="../pages/contact.html" class="block text-slate-600 hover:text-indigo-500 dark:text-slate-300">Contact</a>
+</div>
+</div>
+</div>
+</div>
+<div class="mx-auto mt-12 flex max-w-7xl flex-col gap-4 border-t border-slate-200/60 px-4 pt-6 text-sm text-slate-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8 dark:border-white/10 dark:text-slate-400">
+<div>&copy; <span data-current-year>
+</span> KA-Launchly. Crafted for premium startup launches.</div>
+<div class="flex items-center gap-5">
+<a href="../pages/maintenance.html" class="hover:text-indigo-500">Status</a>
+<a href="../pages/docs/changelog.html" class="hover:text-indigo-500">Changelog</a>
+<a href="../pages/blog/article.html" class="hover:text-indigo-500">Latest article</a>
+</div>
+</div>
+</footer>
+</body>
+</html>

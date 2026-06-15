@@ -1,0 +1,9 @@
+{
+  "name": "ka-launchly",
+  "private": true,
+  "version": "1.0.0",
+  "description": "KA-Launchly premium startup and SaaS website template",
+  "scripts": {
+    "build": "node scripts/build-site.mjs"
+  }
+}

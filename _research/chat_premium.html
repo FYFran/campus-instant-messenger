@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TokenLine — Affordable AI</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#0a0a0f; --surface:#13131a; --card:#1a1a24;
+  --accent:#6366f1; --accent2:#8b5cf6; --accent-glow:rgba(99,102,241,0.3);
+  --text:#f1f5f9; --muted:#64748b; --border:#1e293b;
+  --green:#10b981; --red:#ef4444;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  height:100vh;display:flex;overflow:hidden;
+}
+/* Sidebar */
+#sidebar{
+  width:280px;min-width:280px;height:100%;
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:20;
+  transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+#sidebar.hidden{transform:translateX(-280px);min-width:0;width:0;overflow:hidden}
+.sidebar-header{
+  padding:20px 16px 12px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.sidebar-header h2{
+  font-size:15px;font-weight:700;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.sidebar-header button{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;color:#fff;width:32px;height:32px;border-radius:8px;
+  font-size:18px;cursor:pointer;transition:opacity 0.2s;
+}
+.sidebar-header button:hover{opacity:0.85}
+.conv-list{flex:1;overflow-y:auto;padding:8px}
+.conv-item{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-radius:10px;cursor:pointer;transition:all 0.15s;
+  font-size:13px;color:var(--muted);border:1px solid transparent;
+  margin-bottom:2px;text-align:left;width:100%;background:none;
+}
+.conv-item:hover{background:var(--card);color:var(--text)}
+.conv-item.active{background:var(--card);border-color:var(--accent);color:var(--text)}
+.conv-item .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;opacity:0}
+.conv-item.active .dot{opacity:1}
+.sidebar-footer{padding:12px;border-top:1px solid var(--border)}
+.sidebar-footer input{
+  width:100%;padding:8px 12px;background:var(--card);color:var(--text);
+  border:1px solid var(--border);border-radius:8px;font-size:12px;margin-bottom:6px;
+}
+.sidebar-footer button{
+  width:100%;padding:8px;background:var(--card);color:var(--text);
+  border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;
+}
+/* Main */
+#main{
+  flex:1;display:flex;flex-direction:column;min-width:0;
+  background:radial-gradient(ellipse at top,var(--accent-glow),transparent 60%);
+}
+header{
+  padding:12px 20px;display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);background:var(--surface);
+}
+header .menu-btn{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px}
+header select{
+  background:var(--card);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;
+  font-family:'Inter',sans-serif;
+}
+header .badge{
+  margin-left:auto;font-size:11px;padding:4px 10px;border-radius:20px;
+  background:rgba(16,185,129,0.15);color:var(--green);font-weight:500;
+}
+/* Chat */
+#chat{flex:1;overflow-y:auto;padding:24px 20px}
+.msg{display:flex;gap:12px;margin-bottom:24px;animation:slideIn 0.3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg .avatar{
+  width:32px;height:32px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.msg.user .avatar{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.msg.assistant .avatar{background:var(--card);border:2px solid var(--accent)}
+.msg-content{flex:1;min-width:0}
+.msg.user .msg-content{align-items:flex-end}
+.msg .bubble{
+  padding:12px 16px;border-radius:16px;line-height:1.7;font-size:14px;
+  max-width:100%;word-break:break-word;
+}
+.msg.user .bubble{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-bottom-right-radius:4px}
+.msg.assistant .bubble{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg .time{font-size:10px;color:var(--muted);margin-top:4px}
+/* Input */
+#input-area{
+  padding:16px 20px;border-top:1px solid var(--border);
+  background:var(--surface);
+}
+.input-wrapper{
+  display:flex;gap:8px;align-items:flex-end;
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:6px;
+  transition:border-color 0.2s;
+}
+.input-wrapper:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.input-wrapper textarea{
+  flex:1;padding:8px 12px;background:transparent;color:var(--text);
+  border:none;font-size:14px;resize:none;outline:none;max-height:120px;
+  font-family:'Inter',sans-serif;line-height:1.5;
+}
+.input-wrapper textarea::placeholder{color:var(--muted)}
+.input-wrapper button{
+  width:40px;height:40px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;cursor:pointer;flex-shrink:0;font-size:16px;
+  transition:opacity 0.2s,transform 0.15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.input-wrapper button:hover{opacity:0.9}
+.input-wrapper button:active{transform:scale(0.95)}
+.input-wrapper button:disabled{opacity:0.3;cursor:default}
+.input-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:6px}
+/* Empty state */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--muted)}
+.empty-state .icon{font-size:48px;opacity:0.3}
+.empty-state h3{font-size:18px;font-weight:600;color:var(--text)}
+.empty-state p{font-size:13px;max-width:300px;text-align:center}
+/* Loading dots */
+.typing{display:flex;gap:4px;padding:4px 0}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1.4s infinite ease-in-out}
+.typing span:nth-child(2){animation-delay:0.2s}
+.typing span:nth-child(3){animation-delay:0.4s}
+@keyframes bounce{0%,80%,100%{transform:scale(0.4)}40%{transform:scale(1)}}
+/* Mobile */
+@media(max-width:768px){
+  #sidebar{position:fixed;left:0;z-index:30}
+  #sidebar.hidden{transform:translateX(-100%)}
+  #chat{padding:16px 12px}
+  #input-area{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sidebar-header">
+    <h2>TokenLine</h2>
+    <button onclick="newChat()" title="New Chat">+</button>
+  </div>
+  <div class="conv-list" id="conv-list"></div>
+  <div class="sidebar-footer">
+    <input id="apikey" type="password" placeholder="API Key (sk-...)">
+    <input id="apiurl" value="/v1" placeholder="API URL">
+    <button onclick="saveSettings()">Save Settings</button>
+  </div>
+</div>
+
+<div id="main">
+  <header>
+    <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+    <select id="model-select" onchange="switchModel()">
+      <option value="deepseek-v4-flash">DeepSeek V4 Flash</option>
+      <option value="deepseek-v4-pro">DeepSeek V4 Pro</option>
+    </select>
+    <span class="badge" id="status-badge">Ready</span>
+  </header>
+
+  <div id="chat">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">&#9678;</div>
+      <h3>TokenLine</h3>
+      <p>Affordable AI for everyone. Start a conversation below.</p>
+    </div>
+  </div>
+
+  <div id="input-area">
+    <div class="input-wrapper">
+      <textarea id="textin" rows="1" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+      <button id="sendbtn" onclick="send()" title="Send">&#8593;</button>
+    </div>
+    <div class="input-hint">Shift+Enter for new line</div>
+  </div>
+</div>
+
+<script>
+var chatEl=document.getElementById("chat"),textEl=document.getElementById("textin"),btn=document.getElementById("sendbtn");
+var keyEl=document.getElementById("apikey"),urlEl=document.getElementById("apiurl"),modelEl=document.getElementById("model-select");
+var convList=document.getElementById("conv-list"),emptyState=document.getElementById("empty-state");
+var statusBadge=document.getElementById("status-badge");
+
+keyEl.value=localStorage.getItem("tl_key")||"YOUR_DEEPSEEK_API_KEY";
+urlEl.value=localStorage.getItem("tl_url")||"/v1";
+modelEl.value=localStorage.getItem("tl_model")||"deepseek-v4-flash";
+
+var conversations=JSON.parse(localStorage.getItem("tl_convs2")||"{}");
+var activeConv=localStorage.getItem("tl_active2")||genId();
+if(!conversations[activeConv]){conversations[activeConv]={title:"New Chat",msgs:[],model:modelEl.value}}
+renderAll();
+
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function toggleSidebar(){document.getElementById("sidebar").classList.toggle("hidden")}
+
+function saveSettings(){
+  localStorage.setItem("tl_key",keyEl.value);localStorage.setItem("tl_url",urlEl.value);
+  localStorage.setItem("tl_model",modelEl.value);statusBadge.textContent="Saved";statusBadge.style.color="var(--green)";
+  setTimeout(function(){statusBadge.textContent="Ready"},2000);
+}
+function switchModel(){
+  localStorage.setItem("tl_model",modelEl.value);
+  conversations[activeConv].model=modelEl.value;saveConvs();
+}
+
+function newChat(){
+  var id=genId();conversations[id]={title:"New Chat",msgs:[],model:modelEl.value};
+  activeConv=id;saveConvs();renderAll();
+}
+
+function switchConv(id){activeConv=id;saveConvs();renderAll()}
+
+function renderAll(){renderConvs();renderChat();updateEmpty()}
+
+function renderConvs(){
+  convList.innerHTML="";
+  var keys=Object.keys(conversations);
+  keys.sort(function(a,b){return conversations[b].msgs.length-conversations[a].msgs.length||(conversations[b].id||b).localeCompare(conversations[a].id||a)});
+  keys.forEach(function(id){
+    var c=conversations[id];var b=document.createElement("button");
+    b.className="conv-item"+(id===activeConv?" active":"");
+    b.innerHTML='<span class="dot"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.title||"New Chat")+"</span>";
+    b.onclick=function(){switchConv(id)};
+    convList.appendChild(b);
+  });
+}
+
+function renderChat(){
+  chatEl.innerHTML="";
+  var msgs=conversations[activeConv]?conversations[activeConv].msgs:[];
+  msgs.forEach(function(m,i){addMsgEl(m.role,m.content,i===msgs.length-1&&m.role==="assistant"&&m.streaming)});
+  chatEl.scrollTop=chatEl.scrollHeight;
+}
+
+function addMsgEl(role,content,streaming){
+  var d=document.createElement("div");d.className="msg "+role;
+  var avatar=document.createElement("div");avatar.className="avatar";
+  avatar.textContent=role==="user"?"U":"AI";
+  var wrap=document.createElement("div");wrap.className="msg-content";
+  var bubble=document.createElement("div");bubble.className="bubble";bubble.textContent=content;
+  if(streaming){bubble.innerHTML+='<div class="typing"><span></span><span></span><span></span></div>'}
+  wrap.appendChild(bubble);
+  d.appendChild(avatar);d.appendChild(wrap);
+  chatEl.appendChild(d);chatEl.scrollTop=chatEl.scrollHeight;
+}
+
+function updateEmpty(){emptyState.style.display=Object.keys(conversations).length===0||(conversations[activeConv]&&conversations[activeConv].msgs.length===0)?"flex":"none"}
+
+function saveConvs(){
+  var msgs=conversations[activeConv]?conversations[activeConv].msgs:[];
+  if(msgs.length>0&&(!conversations[activeConv].title||conversations[activeConv].title==="New Chat")){
+    conversations[activeConv].title=msgs[0].content.slice(0,40)+(msgs[0].content.length>40?"...":"");
+  }
+  localStorage.setItem("tl_convs2",JSON.stringify(conversations));
+  localStorage.setItem("tl_active2",activeConv);
+}
+
+async function send(){
+  var key=keyEl.value,url=urlEl.value.replace(/\/$/,""),text=textEl.value.trim(),model=modelEl.value;
+  if(!key||!text)return;
+  var msgs=conversations[activeConv].msgs;
+  msgs.push({role:"user",content:text});addMsgEl("user",text);
+  textEl.value="";btn.disabled=true;updateEmpty();saveConvs();
+  statusBadge.textContent="Thinking...";statusBadge.style.color="var(--accent)";
+
+  var loadingEl=document.createElement("div");loadingEl.className="msg assistant";
+  loadingEl.innerHTML='<div class="avatar">AI</div><div class="msg-content"><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>';
+  chatEl.appendChild(loadingEl);chatEl.scrollTop=chatEl.scrollHeight;
+
+  try{
+    var r=await fetch(url+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+key},body:JSON.stringify({model:model,messages:msgs,stream:true})});
+    if(!r.ok){var e=await r.json();throw new Error(e.error?e.error.message:"HTTP "+r.status)}
+    var reader=r.body.getReader();var decoder=new TextDecoder();var full="";
+    var bubbleEl=loadingEl.querySelector(".bubble");bubbleEl.innerHTML="";
+    while(true){
+      var v=await reader.read();if(v.done)break;
+      var chunk=decoder.decode(v.value,{stream:true});var lines=chunk.split("\n");
+      for(var i=0;i<lines.length;i++){
+        var line=lines[i];if(!line.startsWith("data: "))continue;
+        var data=line.slice(6);if(data==="[DONE]")continue;
+        try{var j=JSON.parse(data);var c=j.choices&&j.choices[0]?j.choices[0].delta.content||"":"";full+=c;bubbleEl.textContent=full;chatEl.scrollTop=chatEl.scrollHeight}catch(err){}
+      }
+    }
+    msgs.push({role:"assistant",content:full});saveConvs();renderConvs();
+    statusBadge.textContent="Ready";statusBadge.style.color="var(--green)";
+  }catch(err){
+    loadingEl.querySelector(".bubble").textContent="Error: "+err.message;
+    loadingEl.querySelector(".bubble").style.color="var(--red)";
+    statusBadge.textContent="Error";statusBadge.style.color="var(--red)";
+  }
+  btn.disabled=false;textEl.focus();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+import paramiko, time
+c=paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect("47.82.103.247",username="root",password="ROOT_PASSWORD_CHANGED_20260615",timeout=15,look_for_keys=False,allow_agent=False)
+def r(cmd,t=10):
+    stdin,stdout,stderr=c.exec_command(cmd,timeout=t)
+    o=stdout.read().decode(errors='replace').strip()
+    e=stderr.read().decode(errors='replace').strip()
+    if o:print(o)
+    if e:print("E:",e)
+
+print("Upload...")
+s=c.open_sftp()
+s.put("f:/ClaudeFiles/_research/rewriter-go/rewriter-linux","/tmp/rewriter-linux")
+s.close()
+
+print("Update env with new pricing...")
+r("sed -i 's/DODO_BASE_URL=https.*/DODO_BASE_URL=https:\\/\\/test.dodopayments.com/' /app/rewriter-go/.env")
+
+print("Deploy+restart...")
+r("systemctl stop rewriter; fuser -k 9100/tcp 2>/dev/null; sleep 2")
+r("mv /tmp/rewriter-linux /app/rewriter-go/rewriter-linux && chown tokenline:tokenline /app/rewriter-go/rewriter-linux && chmod 755 /app/rewriter-go/rewriter-linux")
+r("systemctl start rewriter; sleep 3")
+r("systemctl status rewriter --no-pager | head -5")
+r("curl -s https://tokenline.top/api/health")
+print("\n=== New endpoints ===")
+r("curl -sk -o /dev/null -w 'send-otp(noauth): %{http_code}\n' -d '{}' https://tokenline.top/api/auth/send-otp")
+r("curl -sk -o /dev/null -w 'request-reset: %{http_code}\n' -d '{\"phone\":\"6281234567890\"}' https://tokenline.top/api/auth/request-reset")
+r("curl -sk -o /dev/null -w 'pricing-check: %{http_code}\n' -d '{\"plan\":\"bulanan\"}' -H 'Content-Type: application/json' https://tokenline.top/api/payment/plans 2>/dev/null || echo 'plans endpoint not added yet'")
+c.close()

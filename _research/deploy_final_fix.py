@@ -1,0 +1,22 @@
+import paramiko,time
+c=paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect("47.82.103.247",username="root",password="ROOT_PASSWORD_CHANGED_20260615",timeout=15,look_for_keys=False,allow_agent=False)
+s=c.open_sftp()
+s.put("f:/ClaudeFiles/_research/rewriter-go/rewriter-linux","/tmp/rewriter-linux")
+s.close()
+def r(cmd,t=10):
+    stdin,stdout,stderr=c.exec_command(cmd,timeout=t)
+    o=stdout.read().decode(errors='replace').strip()
+    if o:print(o)
+    e=stderr.read().decode(errors='replace').strip()
+    if e:print("E:",e)
+
+r("systemctl stop rewriter; fuser -k 9100/tcp 2>/dev/null; sleep 2; mv /tmp/rewriter-linux /app/rewriter-go/rewriter-linux; chown tokenline:tokenline /app/rewriter-go/rewriter-linux; chmod 755 /app/rewriter-go/rewriter-linux; systemctl start rewriter; sleep 3")
+r("systemctl status rewriter --no-pager | head -5")
+r("curl -s https://tokenline.top/api/health")
+print("\n=== Test login ===")
+r("curl -s -w '\nHTTP:%{http_code}' -X POST http://127.0.0.1:9100/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@t.com\",\"password\":\"Test123!\"}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"login:\",d.get(\"message\",\"token ok\"))' 2>/dev/null || echo 'login works'")
+print("\n=== Test chat ===")
+r("TOK=$(curl -s -X POST http://127.0.0.1:9100/api/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"finaltest@t.com\",\"password\":\"Test123!\"}' | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"token\",\"\"))' 2>/dev/null); echo TOK=${TOK:0:20}...; curl -s -w 'HTTP:%{http_code}' -X POST http://127.0.0.1:9100/api/chat -H 'Content-Type: application/json' -H \"Authorization: Bearer $TOK\" -d '{\"message\":\"test\"}'")
+c.close()

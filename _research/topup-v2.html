@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TokenLine — Pilih Paket Token</title>
+    <meta name="description" content="Isi ulang token TokenLine. Pilih paket Flash atau Pro sesuai kebutuhan menulis AI kamu." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
+        integrity="sha512-dPXYcDub/aeb08c63jRq/k6GaKccl256JQy/AnOq7CAnEZ9FzSL9wSbcZkMp4R26vBsMLFYH4kQ67/bbV8XaCQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --bg: #f9f8f6;
+            --surface: rgba(255, 255, 255, 0.8);
+            --accent: #1a1a28;
+            --accent-light: #2a2a3e;
+            --gold: #b8975a;
+            --gold-light: #d4b87a;
+            --text-primary: #1a1a2e;
+            --text-secondary: rgba(26, 26, 46, 0.7);
+            --text-muted: rgba(26, 26, 46, 0.45);
+            --card-bg: #ffffff;
+            --header-bg: rgba(255, 255, 255, 0.72);
+            --border-color: rgba(0, 0, 0, 0.08);
+            --navbar-bg: rgba(249, 248, 246, 0.85);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.12);
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        /* Glass header */
+        .glass-header {
+            background: var(--navbar-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .collapsible-header {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            overflow: hidden;
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        @media not all and (min-width: 1024px) {
+            header .collapsible-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                flex-direction: column;
+                opacity: 0;
+                height: 0vh;
+                min-height: 0vh;
+                width: 100vw;
+                justify-content: center;
+                padding: 5px;
+                padding-top: 80px;
+                padding-bottom: 5%;
+                place-items: center;
+                text-align: center;
+                background: rgba(249, 248, 246, 0.92);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                overflow-y: auto;
+                transition: opacity 0.3s ease, height 0.3s ease;
+                z-index: 40;
+                pointer-events: none;
+            }
+            header .collapsible-header.open {
+                opacity: 1;
+                height: 100vh;
+                pointer-events: all;
+            }
+        }
+
+        .header-links {
+            position: relative;
+            display: flex;
+            min-width: fit-content;
+            padding: 8px 16px;
+            z-index: 2;
+            cursor: pointer;
+            transition: background-color 0.5s, color 0.3s;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .header-links::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.05);
+            transform: scale(40%);
+            opacity: 0;
+            border-radius: 8px;
+            transition: all 300ms;
+        }
+
+        .header-links:hover {
+            color: var(--text-primary);
+        }
+
+        .header-links:hover::after {
+            transform: scale(100%);
+            opacity: 1;
+        }
+
+        .tl-logo-box {
+            background: linear-gradient(135deg, #1a1a28 0%, #2a2a3e 100%);
+            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* Glow effects */
+        .tl-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.35;
+            pointer-events: none;
+        }
+        .tl-glow-gold {
+            background: radial-gradient(circle, #d4b87a, #b8975a 40%, transparent 70%);
+        }
+        .tl-glow-accent {
+            background: radial-gradient(circle, #4a4a6a, #1a1a28 40%, transparent 70%);
+        }
+
+        /* Balance glass card */
+        .balance-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 28px 32px;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+        }
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--accent));
+            border-radius: 20px 20px 0 0;
+        }
+
+        /* Pricing cards */
+        .pricing-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 32px 28px;
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+        .pricing-card.featured {
+            border: 2px solid var(--gold);
+            box-shadow: 0 0 0 1px var(--gold), var(--shadow-lg);
+            transform: scale(1.03);
+        }
+        .pricing-card.featured:hover {
+            transform: scale(1.03) translateY(-8px);
+            box-shadow: 0 0 0 1px var(--gold), var(--shadow-xl);
+        }
+        .pricing-card.flash {
+            border-top: 3px solid var(--accent);
+        }
+        .pricing-card.pro {
+            border-top: 3px solid var(--gold);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 16px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .plan-tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 2px 10px;
+            border-radius: 6px;
+        }
+        .plan-tag.flash {
+            background: rgba(26, 26, 40, 0.08);
+            color: var(--accent);
+        }
+        .plan-tag.pro {
+            background: rgba(184, 151, 90, 0.15);
+            color: #8a6d3b;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 24px;
+            width: max-content;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            border: none;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: var(--accent-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(26, 26, 40, 0.25);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1.5px solid var(--border-color);
+        }
+        .btn-outline:hover {
+            border-color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            color: #fff;
+        }
+        .btn-gold:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(184, 151, 90, 0.4);
+        }
+        .btn-gold:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        .btn-accent-outline {
+            background: transparent;
+            color: var(--accent);
+            border: 1.5px solid var(--accent);
+        }
+        .btn-accent-outline:hover {
+            background: var(--accent);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* Section transitions */
+        .reveal-up {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .reveal-up.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Divider */
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 0;
+        }
+
+        .text-gold {
+            color: var(--gold);
+        }
+
+        /* FAQ Accordion */
+        .faq-accordion {
+            background-color: inherit;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 18px 0;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 1.05rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        .faq-accordion:hover {
+            color: var(--gold);
+        }
+        .faq-item .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .faq-item.active .content {
+            max-height: 300px;
+        }
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
+            color: var(--gold);
+        }
+        .faq-icon {
+            transition: transform 0.3s ease;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+
+        /* Payment method cards */
+        .payment-method {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px 24px;
+            transition: all 0.3s ease;
+        }
+        .payment-method:hover {
+            border-color: var(--gold);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent);
+            color: #fff;
+            padding: 14px 28px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+            opacity: 0;
+            transition: all 0.4s ease;
+            pointer-events: none;
+            max-width: 90vw;
+            text-align: center;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: all;
+        }
+        .toast.error {
+            background: #dc2626;
+        }
+        .toast.success {
+            background: #059669;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Footer links */
+        .footer-link {
+            color: var(--text-secondary);
+            transition: color 0.3s;
+            font-size: 0.9rem;
+        }
+        .footer-link:hover {
+            color: var(--text-primary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent) 0%, #4a4a6a 50%, var(--gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Mobile price card tweaks */
+        @media (max-width: 768px) {
+            .pricing-card {
+                padding: 24px 20px;
+            }
+            .pricing-card.featured {
+                transform: none;
+            }
+            .pricing-card.featured:hover {
+                transform: translateY(-4px);
+            }
+        }
+
+        /* Token amount large */
+        .token-amount {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        @media (min-width: 768px) {
+            .token-amount {
+                font-size: 2.2rem;
+            }
+        }
+
+        /* Price display */
+        .price-display {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        @media (min-width: 768px) {
+            .price-display {
+                font-size: 2rem;
+            }
+        }
+
+        /* Lang switcher */
+        .lang-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+        .lang-btn:hover, .lang-btn.active {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* Comparison highlight */
+        .feature-check {
+            color: var(--gold);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .feature-muted {
+            color: var(--text-muted);
+        }
+
+        /* Loading skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0ee 25%, #e8e8e4 50%, #f0f0ee 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+            border-radius: 8px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =========================== TOAST =========================== -->
+    <div class="toast" id="toast"></div>
+
+    <!-- =========================== HEADER =========================== -->
+    <header class="fixed top-0 left-0 z-50 w-full glass-header">
+        <div class="max-w-6xl mx-auto flex items-center justify-between h-16 px-4 lg:px-6">
+            <!-- Logo -->
+            <a class="flex items-center gap-3 flex-shrink-0" href="#">
+                <div class="tl-logo-box">TL</div>
+                <span class="font-semibold text-base tracking-tight text-[var(--text-primary)]" data-i18n="brandName">TokenLine</span>
+            </a>
+
+            <!-- Nav -->
+            <div class="collapsible-header" id="collapsible-nav">
+                <nav class="flex flex-col lg:flex-row items-center gap-1 lg:gap-1 w-full lg:w-auto">
+                    <a class="header-links" href="dashboard.html" data-i18n="navDashboard">Dashboard</a>
+                    <a class="header-links" href="chat-pro.html" data-i18n="navChatPro">Chat Pro</a>
+                    <a class="header-links" href="topup-v2.html" data-i18n="navTopup">Isi Token</a>
+                    <a class="header-links" href="login.html" data-i18n="navLogin">Masuk</a>
+                </nav>
+                <div class="flex items-center gap-3 mt-4 lg:mt-0 lg:ml-4">
+                    <a href="register.html" class="btn btn-primary text-sm px-5 py-2.5" data-i18n="navCta">
+                        Mulai Gratis
+                        <i class="bi bi-arrow-right text-sm"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mobile hamburger -->
+            <button class="bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50"
+                    onclick="toggleHeader()" aria-label="Menu" id="collapse-btn"></button>
+        </div>
+    </header>
+
+    <!-- =========================== PAGE CONTENT =========================== -->
+    <main class="pt-20">
+
+        <!-- =========================== HERO / PAGE TITLE =========================== -->
+        <section class="relative py-16 lg:py-20 overflow-hidden">
+            <div class="tl-glow tl-glow-gold" style="width:450px;height:450px;top:-10%;right:-8%;"></div>
+            <div class="tl-glow tl-glow-accent" style="width:300px;height:300px;bottom:5%;left:-5%;opacity:0.15;"></div>
+
+            <div class="max-w-6xl mx-auto px-4 lg:px-6 relative z-10">
+                <div class="text-center max-w-2xl mx-auto">
+                    <div class="reveal-up inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 border border-[var(--border-color)] text-sm font-medium text-[var(--text-secondary)] mb-6">
+                        <span class="w-2 h-2 rounded-full bg-[var(--gold)]"></span>
+                        <span data-i18n="pageTagline">Top Up Token AI</span>
+                    </div>
+                    <h1 class="reveal-up text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight" data-i18n="pageTitle">
+                        Pilih Paket <span class="text-[var(--gold)]">Token</span>
+                    </h1>
+                    <p class="reveal-up mt-4 text-lg text-[var(--text-secondary)] max-w-lg mx-auto" data-i18n="pageSubtitle">
+                        Pilih paket yang pas buat kebutuhan menulis AI kamu. Semakin banyak, semakin hemat.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================== BALANCE CARD =========================== -->
+        <section class="relative -mt-6 pb-4 z-10">
+            <div class="max-w-6xl mx-auto px-4 lg:px-6">
+                <div class="balance-card reveal-up max-w-2xl mx-auto" id="balanceCard">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-[var(--text-muted)]" data-i18n="balanceLabel">Saldo Token Kamu</p>
+                            <div id="balanceDisplay">
+                                <div class="skeleton h-8 w-36 mt-1"></div>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] mt-1" id="planDisplay">
+                                <span class="skeleton h-4 w-24 inline-block"></span>
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
+                            <span class="hidden sm:inline" data-i18n="balanceHint">Gratis selamanya, upgrade kapan pun</span>
+                            <i class="bi bi-shield-check text-[var(--gold)]"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================== PRICING GRID =========================== -->
+        <section class="relative py-12 lg:py-16 overflow-hidden">
+            <div class="tl-glow tl-glow-accent" style="width:400px;height:400px;top:20%;left:-10%;opacity:0.1;"></div>
+            <div class="tl-glow tl-glow-gold" style="width:350px;height:350px;bottom:10%;right:-8%;opacity:0.12;"></div>
+
+            <div class="max-w-6xl mx-auto px-4 lg:px-6 relative z-10">
+
+                <!-- Flash Tier Label -->
+                <div class="reveal-up flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center text-white text-sm"><i class="bi bi-lightning-fill"></i></div>
+                    <div>
+                        <h2 class="text-xl font-bold" data-i18n="flashTierTitle">Flash — Buat Pemakaian Harian</h2>
+                        <p class="text-sm text-[var(--text-muted)]" data-i18n="flashTierSub">Cocok buat nulis tugas, makalah, dan konten sehari-hari.</p>
+                    </div>
+                </div>
+
+                <!-- Flash Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6 mb-16">
+                    <!-- Flash 500K -->
+                    <div class="pricing-card flash reveal-up" data-plan="flash_500k" data-price="19900" data-tokens="500000">
+                        <span class="plan-tag flash mb-3" data-i18n="flashTag">FLASH</span>
+                        <h3 class="text-xl font-bold" data-i18n="planFlash500kName">Flash 500K</h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4" data-i18n="planFlash500kDesc">Untuk pemakaian ringan</p>
+                        <div class="mb-1">
+                            <span class="token-amount" data-i18n="planFlash500kTokens" data-i18n-raw>500,000</span>
+                            <span class="text-sm text-[var(--text-muted)] font-medium"> token</span>
+                        </div>
+                        <div class="mb-5">
+                            <span class="price-display">Rp 19.900</span>
+                        </div>
+                        <ul class="space-y-2.5 text-sm text-[var(--text-secondary)] mb-6 flex-1">
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featFlashAll">Akses semua mode menulis</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featTemplates">20+ template siap pakai</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featExport">Ekspor PDF, DOCX, TXT</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featCitation">Sitasi APA/MLA/Chicago</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-muted"></i>
+                                <span class="feature-muted" data-i18n="featNoPriority">Tanpa prioritas support</span>
+                            </li>
+                        </ul>
+                        <button class="btn btn-primary w-full justify-center rounded-xl py-3 select-plan"
+                                data-plan="flash_500k"
+                                data-i18n="btnPilih">
+                            Pilih
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Flash 1.5M (FEATURED) -->
+                    <div class="pricing-card flash featured" data-plan="flash_1.5m" data-price="49900" data-tokens="1500000">
+                        <div class="pricing-badge" data-i18n="popularBadge">&#11088; PALING POPULER</div>
+                        <span class="plan-tag flash mb-3" data-i18n="flashTag">FLASH</span>
+                        <h3 class="text-xl font-bold" data-i18n="planFlash1.5mName">Flash 1.5M</h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4" data-i18n="planFlash1.5mDesc">Untuk mahasiswa & profesional</p>
+                        <div class="mb-1">
+                            <span class="token-amount" data-i18n="planFlash1.5mTokens" data-i18n-raw>1,500,000</span>
+                            <span class="text-sm text-[var(--text-muted)] font-medium"> token</span>
+                        </div>
+                        <div class="mb-5">
+                            <span class="price-display">Rp 49.900</span>
+                        </div>
+                        <ul class="space-y-2.5 text-sm text-[var(--text-secondary)] mb-6 flex-1">
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featFlashAll">Akses semua mode menulis</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featTemplates">20+ template siap pakai</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featExport">Ekspor PDF, DOCX, TXT</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featCitation">Sitasi APA/MLA/Chicago</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featFlashPriority">Prioritas support</span>
+                            </li>
+                        </ul>
+                        <button class="btn btn-gold w-full justify-center rounded-xl py-3 shadow-lg select-plan"
+                                data-plan="flash_1.5m"
+                                data-i18n="btnPilih">
+                            Pilih
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Flash 4M -->
+                    <div class="pricing-card flash reveal-up" data-plan="flash_4m" data-price="99900" data-tokens="4000000">
+                        <span class="plan-tag flash mb-3" data-i18n="flashTag">FLASH</span>
+                        <h3 class="text-xl font-bold" data-i18n="planFlash4mName">Flash 4M</h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4" data-i18n="planFlash4mDesc">Untuk pemakaian berat</p>
+                        <div class="mb-1">
+                            <span class="token-amount" data-i18n="planFlash4mTokens" data-i18n-raw>4,000,000</span>
+                            <span class="text-sm text-[var(--text-muted)] font-medium"> token</span>
+                        </div>
+                        <div class="mb-5">
+                            <span class="price-display">Rp 99.900</span>
+                        </div>
+                        <ul class="space-y-2.5 text-sm text-[var(--text-secondary)] mb-6 flex-1">
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featFlashAll">Akses semua mode menulis</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featTemplates">20+ template siap pakai</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featExport">Ekspor PDF, DOCX, TXT</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featCitation">Sitasi APA/MLA/Chicago</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featFlashPriority">Prioritas support</span>
+                            </li>
+                        </ul>
+                        <button class="btn btn-primary w-full justify-center rounded-xl py-3 select-plan"
+                                data-plan="flash_4m"
+                                data-i18n="btnPilih">
+                            Pilih
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pro Tier Label -->
+                <div class="reveal-up flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 rounded-lg bg-[var(--gold)] flex items-center justify-center text-white text-sm"><i class="bi bi-gem"></i></div>
+                    <div>
+                        <h2 class="text-xl font-bold" data-i18n="proTierTitle">Pro — Buat Power User & Tim</h2>
+                        <p class="text-sm text-[var(--text-muted)]" data-i18n="proTierSub">Token lebih banyak, fitur lebih lengkap, support prioritas.</p>
+                    </div>
+                </div>
+
+                <!-- Pro Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
+                    <!-- Pro 500K -->
+                    <div class="pricing-card pro reveal-up" data-plan="pro_500k" data-price="399000" data-tokens="500000">
+                        <span class="plan-tag pro mb-3" data-i18n="proTag">PRO</span>
+                        <h3 class="text-xl font-bold" data-i18n="planPro500kName">Pro 500K</h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4" data-i18n="planPro500kDesc">Mulai ke level Pro</p>
+                        <div class="mb-1">
+                            <span class="token-amount" data-i18n="planPro500kTokens" data-i18n-raw>500,000</span>
+                            <span class="text-sm text-[var(--text-muted)] font-medium"> token</span>
+                        </div>
+                        <div class="mb-5">
+                            <span class="price-display">Rp 399.000</span>
+                        </div>
+                        <ul class="space-y-2.5 text-sm text-[var(--text-secondary)] mb-6 flex-1">
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProAll">Semua fitur Flash</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProSupport">Support prioritas 24/7</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProApi">Akses API (coming soon)</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProCollab">Kolaborasi tim (3 user)</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProAnalytics">Analytics lanjutan</span>
+                            </li>
+                        </ul>
+                        <button class="btn btn-accent-outline w-full justify-center rounded-xl py-3 select-plan"
+                                data-plan="pro_500k"
+                                data-i18n="btnPilihPro">
+                            Pilih Pro
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Pro 2M (featured equivalent — keep mid card prominent) -->
+                    <div class="pricing-card pro reveal-up" data-plan="pro_2m" data-price="1499000" data-tokens="2000000">
+                        <span class="plan-tag pro mb-3" data-i18n="proTag">PRO</span>
+                        <h3 class="text-xl font-bold" data-i18n="planPro2mName">Pro 2M</h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4" data-i18n="planPro2mDesc">Untuk power user</p>
+                        <div class="mb-1">
+                            <span class="token-amount" data-i18n="planPro2mTokens" data-i18n-raw>2,000,000</span>
+                            <span class="text-sm text-[var(--text-muted)] font-medium"> token</span>
+                        </div>
+                        <div class="mb-5">
+                            <span class="price-display">Rp 1.499.000</span>
+                        </div>
+                        <ul class="space-y-2.5 text-sm text-[var(--text-secondary)] mb-6 flex-1">
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProAll">Semua fitur Flash</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProSupport">Support prioritas 24/7</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProApi">Akses API (coming soon)</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProCollab">Kolaborasi tim (5 user)</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProAnalytics">Analytics lanjutan</span>
+                            </li>
+                        </ul>
+                        <button class="btn btn-accent-outline w-full justify-center rounded-xl py-3 select-plan"
+                                data-plan="pro_2m"
+                                data-i18n="btnPilihPro">
+                            Pilih Pro
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Pro 5M -->
+                    <div class="pricing-card pro reveal-up" data-plan="pro_5m" data-price="3499000" data-tokens="5000000">
+                        <span class="plan-tag pro mb-3" data-i18n="proTag">PRO</span>
+                        <h3 class="text-xl font-bold" data-i18n="planPro5mName">Pro 5M</h3>
+                        <p class="text-sm text-[var(--text-muted)] mb-4" data-i18n="planPro5mDesc">Untuk tim & enterprise</p>
+                        <div class="mb-1">
+                            <span class="token-amount" data-i18n="planPro5mTokens" data-i18n-raw>5,000,000</span>
+                            <span class="text-sm text-[var(--text-muted)] font-medium"> token</span>
+                        </div>
+                        <div class="mb-5">
+                            <span class="price-display">Rp 3.499.000</span>
+                        </div>
+                        <ul class="space-y-2.5 text-sm text-[var(--text-secondary)] mb-6 flex-1">
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProAll">Semua fitur Flash</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProSupport">Support prioritas 24/7</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProApi">Akses API (early access)</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProCollab">Kolaborasi tim (10 user)</span>
+                            </li>
+                            <li class="flex items-start gap-2.5">
+                                <i class="bi bi-check-circle-fill feature-check"></i>
+                                <span data-i18n="featProAnalytics">Analytics lanjutan + export</span>
+                            </li>
+                        </ul>
+                        <button class="btn btn-accent-outline w-full justify-center rounded-xl py-3 select-plan"
+                                data-plan="pro_5m"
+                                data-i18n="btnPilihPro">
+                            Pilih Pro
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hemat info -->
+                <div class="reveal-up mt-10 text-center">
+                    <p class="text-sm text-[var(--text-muted)]">
+                        <i class="bi bi-info-circle"></i>
+                        <span data-i18n="hematInfo">Makin banyak token, makin hemat per token-nya. Token tidak pernah kadaluarsa.</span>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================== PAYMENT METHODS =========================== -->
+        <section class="relative py-16 lg:py-20 bg-white/40 overflow-hidden">
+            <div class="tl-glow tl-glow-gold" style="width:300px;height:300px;top:5%;right:-5%;opacity:0.12;"></div>
+            <div class="max-w-4xl mx-auto px-4 lg:px-6">
+                <div class="text-center mb-12">
+                    <h2 class="reveal-up text-3xl md:text-4xl font-bold tracking-tight" data-i18n="paymentTitle">
+                        Metode <span class="text-[var(--gold)]">Pembayaran</span>
+                    </h2>
+                    <p class="reveal-up mt-3 text-lg text-[var(--text-secondary)]" data-i18n="paymentSub">
+                        Kami dukung berbagai metode pembayaran favorit Indonesia.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="payment-method reveal-up text-center">
+                        <div class="text-3xl mb-2"><i class="bi bi-credit-card-2-front"></i></div>
+                        <h4 class="font-semibold text-sm" data-i18n="pmDodo">Dodo Payments</h4>
+                        <p class="text-xs text-[var(--text-muted)] mt-0.5" data-i18n="pmDodoDesc">Kartu kredit/debit</p>
+                    </div>
+                    <div class="payment-method reveal-up text-center">
+                        <div class="text-3xl mb-2"><i class="bi bi-bank2"></i></div>
+                        <h4 class="font-semibold text-sm" data-i18n="pmTransfer">Transfer Bank</h4>
+                        <p class="text-xs text-[var(--text-muted)] mt-0.5" data-i18n="pmTransferDesc">BCA, Mandiri, BNI, BRI</p>
+                    </div>
+                    <div class="payment-method reveal-up text-center">
+                        <div class="text-3xl mb-2"><i class="bi bi-wallet2"></i></div>
+                        <h4 class="font-semibold text-sm" data-i18n="pmEwallet">E-Wallet</h4>
+                        <p class="text-xs text-[var(--text-muted)] mt-0.5" data-i18n="pmEwalletDesc">GoPay, OVO, DANA, LinkAja</p>
+                    </div>
+                    <div class="payment-method reveal-up text-center">
+                        <div class="text-3xl mb-2"><i class="bi bi-shop"></i></div>
+                        <h4 class="font-semibold text-sm" data-i18n="pmConvenience">Convenience Store</h4>
+                        <p class="text-xs text-[var(--text-muted)] mt-0.5" data-i18n="pmConvenienceDesc">Alfamart, Indomaret</p>
+                    </div>
+                </div>
+
+                <div class="reveal-up mt-8 bg-white/60 backdrop-blur border border-[var(--border-color)] rounded-2xl p-6 text-center">
+                    <p class="text-sm text-[var(--text-secondary)]" data-i18n="paymentNote">
+                        <i class="bi bi-shield-check text-[var(--gold)]"></i>
+                        Pembayaran diproses aman melalui Dodo Payments. Data kartu kamu tidak disimpan di server kami.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================== FAQ =========================== -->
+        <section class="relative py-16 lg:py-20 overflow-hidden">
+            <div class="tl-glow tl-glow-accent" style="width:350px;height:350px;top:-5%;left:-8%;opacity:0.1;"></div>
+            <div class="max-w-3xl mx-auto px-4 lg:px-6">
+                <div class="text-center mb-12">
+                    <h2 class="reveal-up text-3xl md:text-4xl font-bold tracking-tight" data-i18n="faqTitle">
+                        Pertanyaan <span class="text-[var(--gold)]">Token</span>
+                    </h2>
+                </div>
+
+                <div class="space-y-0">
+                    <!-- FAQ 1 -->
+                    <div class="faq-item border-b border-[var(--border-color)]">
+                        <button class="faq-accordion" onclick="toggleFaq(this)">
+                            <span data-i18n="faq1Q">Apa itu token dan bagaimana cara kerjanya?</span>
+                            <i class="bi bi-plus faq-icon"></i>
+                        </button>
+                        <div class="content px-0 pb-0 text-sm">
+                            <p data-i18n="faq1A">Token adalah unit pemakaian di TokenLine. Setiap kali kamu menulis atau menggunakan fitur AI, token akan terpakai sesuai panjang tulisan. 1.000 token kira-kira setara dengan 500-700 kata Bahasa Indonesia. Token tidak pernah kadaluarsa — bisa kamu simpan dan pakai kapan pun.</p>
+                        </div>
+                    </div>
+                    <!-- FAQ 2 -->
+                    <div class="faq-item border-b border-[var(--border-color)]">
+                        <button class="faq-accordion" onclick="toggleFaq(this)">
+                            <span data-i18n="faq2Q">Apa bedanya Flash sama Pro?</span>
+                            <i class="bi bi-plus faq-icon"></i>
+                        </button>
+                        <div class="content px-0 pb-0 text-sm">
+                            <p data-i18n="faq2A">Flash dan Pro punya kualitas AI yang sama. Bedanya di fitur tambahan: Pro punya support prioritas 24/7, akses API, kolaborasi tim, dan analytics lanjutan. Kalau kamu pemakai individu, Flash udah lebih dari cukup. Buat tim atau power user, Pro adalah pilihan tepat.</p>
+                        </div>
+                    </div>
+                    <!-- FAQ 3 -->
+                    <div class="faq-item border-b border-[var(--border-color)]">
+                        <button class="faq-accordion" onclick="toggleFaq(this)">
+                            <span data-i18n="faq3Q">Token-nya ada batas waktu pemakaian?</span>
+                            <i class="bi bi-plus faq-icon"></i>
+                        </button>
+                        <div class="content px-0 pb-0 text-sm">
+                            <p data-i18n="faq3A">Tidak. Token yang kamu beli tidak pernah kadaluarsa. Bisa kamu simpan selama-lamanya dan pakai kapan pun kamu butuh. Cocok buat kamu yang mau beli token banyak sekaligus pas ada promo.</p>
+                        </div>
+                    </div>
+                    <!-- FAQ 4 -->
+                    <div class="faq-item border-b border-[var(--border-color)]">
+                        <button class="faq-accordion" onclick="toggleFaq(this)">
+                            <span data-i18n="faq4Q">Kalau saya tidak puas, apa bisa refund?</span>
+                            <i class="bi bi-plus faq-icon"></i>
+                        </button>
+                        <div class="content px-0 pb-0 text-sm">
+                            <p data-i18n="faq4A">Kami punya garansi 7 hari uang kembali untuk pembelian pertama. Kalau kamu merasa TokenLine tidak sesuai, hubungi support kami di <strong>support@tokenline.top</strong> dalam 7 hari setelah pembelian. Untuk pembelian selanjutnya, refund diproses per-kasus.</p>
+                        </div>
+                    </div>
+                    <!-- FAQ 5 -->
+                    <div class="faq-item border-b border-[var(--border-color)]">
+                        <button class="faq-accordion" onclick="toggleFaq(this)">
+                            <span data-i18n="faq5Q">Bagaimana cara pembayarannya?</span>
+                            <i class="bi bi-plus faq-icon"></i>
+                        </button>
+                        <div class="content px-0 pb-0 text-sm">
+                            <p data-i18n="faq5A">Setelah kamu klik "Pilih", kami akan bikin invoice melalui Dodo Payments. Kamu bisa bayar pakai kartu kredit/debit, transfer bank (BCA, Mandiri, BNI, BRI), e-wallet (GoPay, OVO, DANA, LinkAja), atau di convenience store (Alfamart, Indomaret). Token akan masuk otomatis setelah pembayaran berhasil.</p>
+                        </div>
+                    </div>
+                    <!-- FAQ 6 -->
+                    <div class="faq-item border-b border-[var(--border-color)]">
+                        <button class="faq-accordion" onclick="toggleFaq(this)">
+                            <span data-i18n="faq6Q">Apakah ada biaya tersembunyi?</span>
+                            <i class="bi bi-plus faq-icon"></i>
+                        </button>
+                        <div class="content px-0 pb-0 text-sm">
+                            <p data-i18n="faq6A">Tidak ada. Harga yang tertera adalah harga final. Tidak ada biaya langganan bulanan, biaya aktivasi, atau biaya tersembunyi lainnya. Kamu beli token sekali, pakai sampai habis, tanpa kewajiban berulang.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================== CTA BOTTOM =========================== -->
+        <section class="relative py-16 lg:py-20 bg-white/40 overflow-hidden">
+            <div class="tl-glow tl-glow-gold" style="width:400px;height:400px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.15;"></div>
+            <div class="max-w-4xl mx-auto px-4 lg:px-6 text-center relative z-10">
+                <div class="reveal-up">
+                    <h2 class="text-3xl md:text-5xl font-bold tracking-tight leading-tight" data-i18n="ctaTitle">
+                        Masih bingung pilih paket?
+                    </h2>
+                    <p class="mt-5 text-lg text-[var(--text-secondary)] max-w-xl mx-auto" data-i18n="ctaSub">
+                        Mulai aja dari Flash 500K — cuma Rp 19.900. Kalau kurang, upgrade kapan pun.
+                    </p>
+                    <div class="mt-8">
+                        <a href="#pricing" class="btn btn-primary text-base px-10 py-4 rounded-full shadow-lg hover:shadow-xl" onclick="document.querySelector('.pricing-card')?.scrollIntoView({behavior:'smooth'})">
+                            <span data-i18n="ctaBtn">Lihat Semua Paket</span>
+                            <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================== FOOTER =========================== -->
+        <footer class="border-t border-[var(--border-color)] pt-16 pb-10 px-4 lg:px-6">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex flex-col md:flex-row gap-10 md:gap-16">
+                    <!-- Brand -->
+                    <div class="flex flex-col items-center md:items-start gap-4 md:max-w-[240px]">
+                        <a href="#" class="flex items-center gap-3">
+                            <div class="tl-logo-box">TL</div>
+                            <span class="font-semibold text-base" data-i18n="brandName">TokenLine</span>
+                        </a>
+                        <p class="text-sm text-[var(--text-muted)] text-center md:text-left" data-i18n="footerTagline">
+                            Asisten menulis AI premium untuk Indonesia. Bikin tulisan lebih cepat, lebih baik, lebih Indonesia.
+                        </p>
+                        <div class="flex gap-4 text-lg text-[var(--text-muted)]">
+                            <a href="#" class="hover:text-[var(--text-primary)] transition-colors" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+                            <a href="#" class="hover:text-[var(--text-primary)] transition-colors" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
+                            <a href="#" class="hover:text-[var(--text-primary)] transition-colors" aria-label="TikTok"><i class="bi bi-tiktok"></i></a>
+                            <a href="#" class="hover:text-[var(--text-primary)] transition-colors" aria-label="YouTube"><i class="bi bi-youtube"></i></a>
+                        </div>
+                    </div>
+
+                    <!-- Links -->
+                    <div class="flex flex-wrap gap-10 md:gap-16 flex-1 justify-around">
+                        <div>
+                            <h4 class="font-semibold text-sm mb-4" data-i18n="footerProduk">Produk</h4>
+                            <div class="flex flex-col gap-2.5">
+                                <a href="chat-pro.html" class="footer-link" data-i18n="navChatPro">Chat Pro</a>
+                                <a href="dashboard.html" class="footer-link" data-i18n="navDashboard">Dashboard</a>
+                                <a href="topup-v2.html" class="footer-link" data-i18n="navTopup">Isi Token</a>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-sm mb-4" data-i18n="footerResources">Sumber Daya</h4>
+                            <div class="flex flex-col gap-2.5">
+                                <a href="#" class="footer-link" data-i18n="footerBlog">Blog & Tips</a>
+                                <a href="#" class="footer-link" data-i18n="footerHelp">Pusat Bantuan</a>
+                                <a href="#" class="footer-link" data-i18n="footerStatus">Status</a>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-sm mb-4" data-i18n="footerCompany">Perusahaan</h4>
+                            <div class="flex flex-col gap-2.5">
+                                <a href="#" class="footer-link" data-i18n="footerAbout">Tentang</a>
+                                <a href="#" class="footer-link" data-i18n="footerPrivacy">Kebijakan Privasi</a>
+                                <a href="#" class="footer-link" data-i18n="footerTerms">Syarat & Ketentuan</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-8" />
+                <div class="flex flex-col md:flex-row items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
+                    <span>&copy; 2026 TokenLine. All rights reserved.</span>
+                    <span data-i18n="footerLove">Dibuat dengan <i class="bi bi-heart-fill text-[var(--gold)]"></i> untuk Indonesia</span>
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+    <!-- =========================== SCRIPTS =========================== -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/gsap.min.js"
+        integrity="sha512-B1lby8cGcAUU3GR+Fd809/ZxgHbfwJMp0jLTVfHiArTuUt++VqSlJpaJvhNtRf3NERaxDNmmxkdx2o+aHd4bvw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/ScrollTrigger.min.js"
+        integrity="sha512-AY2+JxnBETJ0wcXnLPCcZJIJx0eimyhz3OJ55k2Jx4RtYC+XdIi2VtJQ+tP3BaTst4otlGG1TtPJ9fKrAUnRdQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script>
+        // =========================== TOGGLE MOBILE HEADER ===========================
+        function toggleHeader() {
+            const nav = document.getElementById('collapsible-nav');
+            const btn = document.getElementById('collapse-btn');
+            nav.classList.toggle('open');
+            if (nav.classList.contains('open')) {
+                btn.className = 'bi bi-x text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.add('modal-open');
+            } else {
+                btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.remove('modal-open');
+            }
+        }
+
+        document.querySelectorAll('.collapsible-header a.header-links').forEach(function(link) {
+            link.addEventListener('click', function() {
+                const nav = document.getElementById('collapsible-nav');
+                const btn = document.getElementById('collapse-btn');
+                if (nav.classList.contains('open')) {
+                    nav.classList.remove('open');
+                    btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                    document.body.classList.remove('modal-open');
+                }
+            });
+        });
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) {
+                const nav = document.getElementById('collapsible-nav');
+                const btn = document.getElementById('collapse-btn');
+                nav.classList.remove('open');
+                btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.remove('modal-open');
+            }
+        });
+
+        let lastScroll = 0;
+        window.addEventListener('scroll', function() {
+            const nav = document.getElementById('collapsible-nav');
+            const btn = document.getElementById('collapse-btn');
+            if (nav && nav.classList.contains('open')) {
+                const currentScroll = window.pageYOffset;
+                if (Math.abs(currentScroll - lastScroll) > 50) {
+                    nav.classList.remove('open');
+                    btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                    document.body.classList.remove('modal-open');
+                }
+                lastScroll = currentScroll;
+            }
+        });
+
+        // =========================== FAQ ACCORDION ===========================
+        function toggleFaq(btn) {
+            const item = btn.parentElement;
+            const wasActive = item.classList.contains('active');
+            document.querySelectorAll('.faq-item').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            if (!wasActive) {
+                item.classList.add('active');
+            }
+        }
+
+        // =========================== TOAST ===========================
+        function showToast(message, type) {
+            var toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast';
+            if (type) toast.classList.add(type);
+            toast.classList.add('show');
+            setTimeout(function() {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+
+        // =========================== BALANCE / /api/me ===========================
+        async function fetchBalance() {
+            var balanceDisplay = document.getElementById('balanceDisplay');
+            var planDisplay = document.getElementById('planDisplay');
+            var token = localStorage.getItem('tl_tok');
+
+            if (!token) {
+                balanceDisplay.innerHTML = '<div class="flex items-center gap-2"><span class="text-xl font-bold">Login untuk lihat saldo</span></div>';
+                planDisplay.innerHTML = '<a href="login.html" class="text-xs text-[var(--gold)] font-medium">Masuk</a>';
+                return;
+            }
+
+            try {
+                var resp = await fetch('https://tokenline.top/api/me', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!resp.ok) {
+                    if (resp.status === 401) {
+                        balanceDisplay.innerHTML = '<div class="flex items-center gap-2"><span class="text-xl font-bold">Sesi habis</span></div>';
+                        planDisplay.innerHTML = '<a href="login.html" class="text-xs text-[var(--gold)] font-medium">Masuk ulang</a>';
+                    } else {
+                        balanceDisplay.innerHTML = '<div class="flex items-center gap-2"><span class="text-xl font-bold">--</span></div>';
+                        planDisplay.innerHTML = '<span class="text-xs text-[var(--text-muted)]">Gagal muat</span>';
+                    }
+                    return;
+                }
+
+                var data = await resp.json();
+                var user = data.user || data.data || data;
+                var balance = user.tokens || user.token_balance || user.balance || 0;
+                var plan = user.plan || user.subscription || 'Gratis';
+
+                balanceDisplay.innerHTML = '<div class="flex items-baseline gap-2">' +
+                    '<span class="text-2xl font-bold">' + balance.toLocaleString('id-ID') + '</span>' +
+                    '<span class="text-sm text-[var(--text-muted)]">token</span>' +
+                    '</div>';
+                planDisplay.innerHTML = '<span class="text-xs text-[var(--text-secondary)]">Paket: <strong>' + plan + '</strong></span>';
+            } catch (e) {
+                balanceDisplay.innerHTML = '<div class="flex items-center gap-2"><span class="text-xl font-bold">--</span></div>';
+                planDisplay.innerHTML = '<span class="text-xs text-[var(--text-muted)]">Gagal terhubung</span>';
+            }
+        }
+
+        // =========================== PAYMENT /api/payment/create ===========================
+        async function handlePayment(planId, btn) {
+            var token = localStorage.getItem('tl_tok');
+
+            if (!token) {
+                showToast('Silakan login terlebih dahulu', 'error');
+                setTimeout(function() {
+                    window.location.href = 'login.html?redirect=topup-v2.html';
+                }, 1500);
+                return;
+            }
+
+            // Loading state
+            var originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Memproses...';
+
+            try {
+                var resp = await fetch('https://tokenline.top/api/payment/create', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ plan: planId })
+                });
+
+                var data = await resp.json();
+
+                if (!resp.ok) {
+                    throw new Error(data.message || data.error || 'Gagal membuat invoice');
+                }
+
+                var invoiceUrl = data.invoice_url || data.url || data.payment_url || data.redirect_url;
+
+                if (invoiceUrl) {
+                    showToast('Mengarahkan ke pembayaran...', 'success');
+                    window.location.href = invoiceUrl;
+                } else {
+                    // Show payment instructions inline
+                    showToast('Invoice dibuat! Cek email atau dashboard untuk instruksi pembayaran.', 'success');
+                }
+
+            } catch (e) {
+                showToast(e.message || 'Terjadi kesalahan. Coba lagi.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // =========================== EVENT BINDINGS ===========================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch balance
+            fetchBalance();
+
+            // Bind payment buttons
+            document.querySelectorAll('.select-plan').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    var plan = this.getAttribute('data-plan');
+                    handlePayment(plan, this);
+                });
+            });
+
+            // =========================== GSAP SCROLL ANIMATIONS ===========================
+            gsap.registerPlugin(ScrollTrigger);
+
+            var reveals = document.querySelectorAll('.reveal-up');
+            reveals.forEach(function(el) {
+                ScrollTrigger.create({
+                    trigger: el,
+                    start: 'top 85%',
+                    onEnter: function() {
+                        el.classList.add('revealed');
+                    },
+                    once: true
+                });
+            });
+
+            window.addEventListener('load', function() {
+                ScrollTrigger.refresh();
+            });
+        });
+
+        // =========================== LANGUAGE SWITCHER ===========================
+        var i18n = {
+            id: {
+                brandName: 'TokenLine',
+                pageTitle: 'Pilih Paket <span class="text-[var(--gold)]">Token</span>',
+                pageTagline: 'Top Up Token AI',
+                pageSubtitle: 'Pilih paket yang pas buat kebutuhan menulis AI kamu. Semakin banyak, semakin hemat.',
+                navDashboard: 'Dashboard',
+                navChatPro: 'Chat Pro',
+                navTopup: 'Isi Token',
+                navLogin: 'Masuk',
+                navCta: 'Mulai Gratis',
+                balanceLabel: 'Saldo Token Kamu',
+                balanceHint: 'Gratis selamanya, upgrade kapan pun',
+                flashTierTitle: 'Flash — Buat Pemakaian Harian',
+                flashTierSub: 'Cocok buat nulis tugas, makalah, dan konten sehari-hari.',
+                flashTag: 'FLASH',
+                proTag: 'PRO',
+                popularBadge: '⭐ PALING POPULER',
+                planFlash500kName: 'Flash 500K',
+                planFlash500kDesc: 'Untuk pemakaian ringan',
+                planFlash500kTokens: '500,000',
+                planFlash1.5mName: 'Flash 1.5M',
+                planFlash1.5mDesc: 'Untuk mahasiswa & profesional',
+                planFlash1.5mTokens: '1,500,000',
+                planFlash4mName: 'Flash 4M',
+                planFlash4mDesc: 'Untuk pemakaian berat',
+                planFlash4mTokens: '4,000,000',
+                planPro500kName: 'Pro 500K',
+                planPro500kDesc: 'Mulai ke level Pro',
+                planPro500kTokens: '500,000',
+                planPro2mName: 'Pro 2M',
+                planPro2mDesc: 'Untuk power user',
+                planPro2mTokens: '2,000,000',
+                planPro5mName: 'Pro 5M',
+                planPro5mDesc: 'Untuk tim & enterprise',
+                planPro5mTokens: '5,000,000',
+                btnPilih: 'Pilih',
+                btnPilihPro: 'Pilih Pro',
+                featFlashAll: 'Akses semua mode menulis',
+                featTemplates: '20+ template siap pakai',
+                featExport: 'Ekspor PDF, DOCX, TXT',
+                featCitation: 'Sitasi APA/MLA/Chicago',
+                featNoPriority: 'Tanpa prioritas support',
+                featFlashPriority: 'Prioritas support',
+                featProAll: 'Semua fitur Flash',
+                featProSupport: 'Support prioritas 24/7',
+                featProApi: 'Akses API (coming soon)',
+                featProCollab3: 'Kolaborasi tim (3 user)',
+                featProCollab5: 'Kolaborasi tim (5 user)',
+                featProCollab10: 'Kolaborasi tim (10 user)',
+                featProAnalytics: 'Analytics lanjutan',
+                featProAnalyticsPlus: 'Analytics lanjutan + export',
+                hematInfo: 'Makin banyak token, makin hemat per token-nya. Token tidak pernah kadaluarsa.',
+                paymentTitle: 'Metode <span class="text-[var(--gold)]">Pembayaran</span>',
+                paymentSub: 'Kami dukung berbagai metode pembayaran favorit Indonesia.',
+                pmDodo: 'Dodo Payments',
+                pmDodoDesc: 'Kartu kredit/debit',
+                pmTransfer: 'Transfer Bank',
+                pmTransferDesc: 'BCA, Mandiri, BNI, BRI',
+                pmEwallet: 'E-Wallet',
+                pmEwalletDesc: 'GoPay, OVO, DANA, LinkAja',
+                pmConvenience: 'Convenience Store',
+                pmConvenienceDesc: 'Alfamart, Indomaret',
+                paymentNote: 'Pembayaran diproses aman melalui Dodo Payments. Data kartu kamu tidak disimpan di server kami.',
+                faqTitle: 'Pertanyaan <span class="text-[var(--gold)]">Token</span>',
+                faq1Q: 'Apa itu token dan bagaimana cara kerjanya?',
+                faq1A: 'Token adalah unit pemakaian di TokenLine. Setiap kali kamu menulis atau menggunakan fitur AI, token akan terpakai sesuai panjang tulisan. 1.000 token kira-kira setara dengan 500-700 kata Bahasa Indonesia. Token tidak pernah kadaluarsa — bisa kamu simpan dan pakai kapan pun.',
+                faq2Q: 'Apa bedanya Flash sama Pro?',
+                faq2A: 'Flash dan Pro punya kualitas AI yang sama. Bedanya di fitur tambahan: Pro punya support prioritas 24/7, akses API, kolaborasi tim, dan analytics lanjutan. Kalau kamu pemakai individu, Flash udah lebih dari cukup. Buat tim atau power user, Pro adalah pilihan tepat.',
+                faq3Q: 'Token-nya ada batas waktu pemakaian?',
+                faq3A: 'Tidak. Token yang kamu beli tidak pernah kadaluarsa. Bisa kamu simpan selama-lamanya dan pakai kapan pun kamu butuh. Cocok buat kamu yang mau beli token banyak sekaligus pas ada promo.',
+                faq4Q: 'Kalau saya tidak puas, apa bisa refund?',
+                faq4A: 'Kami punya garansi 7 hari uang kembali untuk pembelian pertama. Kalau kamu merasa TokenLine tidak sesuai, hubungi support kami di support@tokenline.top dalam 7 hari setelah pembelian. Untuk pembelian selanjutnya, refund diproses per-kasus.',
+                faq5Q: 'Bagaimana cara pembayarannya?',
+                faq5A: 'Setelah kamu klik "Pilih", kami akan bikin invoice melalui Dodo Payments. Kamu bisa bayar pakai kartu kredit/debit, transfer bank (BCA, Mandiri, BNI, BRI), e-wallet (GoPay, OVO, DANA, LinkAja), atau di convenience store (Alfamart, Indomaret). Token akan masuk otomatis setelah pembayaran berhasil.',
+                faq6Q: 'Apakah ada biaya tersembunyi?',
+                faq6A: 'Tidak ada. Harga yang tertera adalah harga final. Tidak ada biaya langganan bulanan, biaya aktivasi, atau biaya tersembunyi lainnya. Kamu beli token sekali, pakai sampai habis, tanpa kewajiban berulang.',
+                ctaTitle: 'Masih bingung pilih paket?',
+                ctaSub: 'Mulai aja dari Flash 500K — cuma Rp 19.900. Kalau kurang, upgrade kapan pun.',
+                ctaBtn: 'Lihat Semua Paket',
+                footerTagline: 'Asisten menulis AI premium untuk Indonesia. Bikin tulisan lebih cepat, lebih baik, lebih Indonesia.',
+                footerProduk: 'Produk',
+                footerResources: 'Sumber Daya',
+                footerCompany: 'Perusahaan',
+                footerBlog: 'Blog & Tips',
+                footerHelp: 'Pusat Bantuan',
+                footerStatus: 'Status',
+                footerAbout: 'Tentang',
+                footerPrivacy: 'Kebijakan Privasi',
+                footerTerms: 'Syarat & Ketentuan',
+                footerLove: 'Dibuat dengan <i class="bi bi-heart-fill text-[var(--gold)]"></i> untuk Indonesia'
+            },
+            en: {
+                brandName: 'TokenLine',
+                pageTitle: 'Choose Your <span class="text-[var(--gold)]">Token</span> Pack',
+                pageTagline: 'Top Up AI Tokens',
+                pageSubtitle: 'Pick the pack that fits your AI writing needs. The more tokens, the better the value.',
+                navDashboard: 'Dashboard',
+                navChatPro: 'Chat Pro',
+                navTopup: 'Top Up',
+                navLogin: 'Login',
+                navCta: 'Get Started Free',
+                balanceLabel: 'Your Token Balance',
+                balanceHint: 'Free forever, upgrade anytime',
+                flashTierTitle: 'Flash — For Daily Use',
+                flashTierSub: 'Great for assignments, papers, and everyday content.',
+                flashTag: 'FLASH',
+                proTag: 'PRO',
+                popularBadge: '⭐ MOST POPULAR',
+                planFlash500kName: 'Flash 500K',
+                planFlash500kDesc: 'For light usage',
+                planFlash500kTokens: '500,000',
+                planFlash1.5mName: 'Flash 1.5M',
+                planFlash1.5mDesc: 'For students & professionals',
+                planFlash1.5mTokens: '1,500,000',
+                planFlash4mName: 'Flash 4M',
+                planFlash4mDesc: 'For heavy usage',
+                planFlash4mTokens: '4,000,000',
+                planPro500kName: 'Pro 500K',
+                planPro500kDesc: 'Entry to Pro level',
+                planPro500kTokens: '500,000',
+                planPro2mName: 'Pro 2M',
+                planPro2mDesc: 'For power users',
+                planPro2mTokens: '2,000,000',
+                planPro5mName: 'Pro 5M',
+                planPro5mDesc: 'For teams & enterprise',
+                planPro5mTokens: '5,000,000',
+                btnPilih: 'Select',
+                btnPilihPro: 'Select Pro',
+                featFlashAll: 'Access all writing modes',
+                featTemplates: '20+ ready-to-use templates',
+                featExport: 'Export to PDF, DOCX, TXT',
+                featCitation: 'APA/MLA/Chicago citations',
+                featNoPriority: 'No priority support',
+                featFlashPriority: 'Priority support',
+                featProAll: 'All Flash features',
+                featProSupport: '24/7 priority support',
+                featProApi: 'API access (coming soon)',
+                featProCollab3: 'Team collaboration (3 users)',
+                featProCollab5: 'Team collaboration (5 users)',
+                featProCollab10: 'Team collaboration (10 users)',
+                featProAnalytics: 'Advanced analytics',
+                featProAnalyticsPlus: 'Advanced analytics + export',
+                hematInfo: 'More tokens = better value per token. Tokens never expire.',
+                paymentTitle: '<span class="text-[var(--gold)]">Payment</span> Methods',
+                paymentSub: 'We support Indonesia\'s favorite payment methods.',
+                pmDodo: 'Dodo Payments',
+                pmDodoDesc: 'Credit/debit card',
+                pmTransfer: 'Bank Transfer',
+                pmTransferDesc: 'BCA, Mandiri, BNI, BRI',
+                pmEwallet: 'E-Wallet',
+                pmEwalletDesc: 'GoPay, OVO, DANA, LinkAja',
+                pmConvenience: 'Convenience Store',
+                pmConvenienceDesc: 'Alfamart, Indomaret',
+                paymentNote: 'Payments securely processed via Dodo Payments. Your card data is never stored on our servers.',
+                faqTitle: 'Token <span class="text-[var(--gold)]">FAQ</span>',
+                faq1Q: 'What are tokens and how do they work?',
+                faq1A: 'Tokens are usage units in TokenLine. Each time you write or use AI features, tokens are consumed based on text length. 1,000 tokens is roughly equivalent to 500-700 Indonesian words. Tokens never expire — store them and use them anytime.',
+                faq2Q: 'What\'s the difference between Flash and Pro?',
+                faq2A: 'Flash and Pro have the same AI quality. The difference is in extra features: Pro has 24/7 priority support, API access, team collaboration, and advanced analytics. For individual users, Flash is more than enough. For teams or power users, Pro is the right choice.',
+                faq3Q: 'Do tokens expire?',
+                faq3A: 'No. Tokens you purchase never expire. You can keep them forever and use them whenever you need. Great for buying in bulk during promos.',
+                faq4Q: 'Can I get a refund if I\'m not satisfied?',
+                faq4A: 'We offer a 7-day money-back guarantee for first purchases. If you feel TokenLine isn\'t for you, contact us at support@tokenline.top within 7 days. Subsequent purchases are handled case by case.',
+                faq5Q: 'How does payment work?',
+                faq5A: 'After clicking "Select", we\'ll create an invoice via Dodo Payments. You can pay with credit/debit card, bank transfer (BCA, Mandiri, BNI, BRI), e-wallet (GoPay, OVO, DANA, LinkAja), or at convenience stores (Alfamart, Indomaret). Tokens are credited automatically after successful payment.',
+                faq6Q: 'Are there any hidden fees?',
+                faq6A: 'No. The price shown is the final price. No monthly subscriptions, activation fees, or hidden costs. Buy tokens once, use them up, with no recurring obligations.',
+                ctaTitle: 'Still unsure which pack?',
+                ctaSub: 'Start with Flash 500K — only Rp 19,900. Need more? Upgrade anytime.',
+                ctaBtn: 'View All Packs',
+                footerTagline: 'Premium AI writing assistant for Indonesia. Write faster, better, more Indonesian.',
+                footerProduk: 'Product',
+                footerResources: 'Resources',
+                footerCompany: 'Company',
+                footerBlog: 'Blog & Tips',
+                footerHelp: 'Help Center',
+                footerStatus: 'Status',
+                footerAbout: 'About',
+                footerPrivacy: 'Privacy Policy',
+                footerTerms: 'Terms & Conditions',
+                footerLove: 'Made with <i class="bi bi-heart-fill text-[var(--gold)]"></i> for Indonesia'
+            }
+        };
+
+        var currentLang = localStorage.getItem('tl_lang') || 'id';
+
+        function applyLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('tl_lang', lang);
+
+            var dict = i18n[lang];
+            if (!dict) return;
+
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                var key = el.getAttribute('data-i18n');
+                if (dict[key] !== undefined) {
+                    var isRaw = el.getAttribute('data-i18n-raw') !== null;
+                    if (isRaw) {
+                        // For raw values (token amounts etc), just text content
+                        el.textContent = dict[key];
+                    } else {
+                        el.innerHTML = dict[key];
+                    }
+                }
+            });
+
+            // Update active lang button
+            document.querySelectorAll('.lang-btn').forEach(function(b) {
+                b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+            });
+
+            document.documentElement.lang = lang;
+        }
+
+        // Add lang switcher to nav
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inject lang switcher in header
+            var nav = document.querySelector('.collapsible-header nav');
+            if (nav) {
+                var langDiv = document.createElement('div');
+                langDiv.className = 'flex items-center gap-1.5 mt-2 lg:mt-0 lg:ml-2';
+                langDiv.innerHTML =
+                    '<button class="lang-btn active" data-lang="id" onclick="applyLang(\'id\')">ID</button>' +
+                    '<button class="lang-btn" data-lang="en" onclick="applyLang(\'en\')">EN</button>';
+                nav.appendChild(langDiv);
+            }
+
+            // Apply initial language
+            applyLang(currentLang);
+        });
+
+        // Also inject lang switcher on DOMContentLoaded if nav wasn't available yet
+        var origReady = document.addEventListener;
+        // Already handled above
+    </script>
+</body>
+</html>

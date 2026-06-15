@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>TokenLine Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#fff;--sidebar:#f8fafc;--hover:#f1f5f9;--accent:#6366f1;--accent-hover:#4f46e5;--accent-light:#eef2ff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--surface:#f8fafc;--shadow-sm:0 1px 2px rgba(0,0,0,.04);--shadow:0 4px 16px rgba(0,0,0,.06);--shadow-lg:0 12px 40px rgba(0,0,0,.08)}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden}
+/* Sidebar */
+#sidebar{width:260px;min-width:260px;background:var(--sidebar);display:flex;flex-direction:column;border-right:1px solid var(--border);z-index:20}
+#sidebar .logo{padding:20px 20px 16px;font-size:18px;font-weight:800;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.3px}
+#sidebar .btn-new{margin:0 16px 12px;padding:10px 16px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;color:var(--text);text-align:left;transition:all .2s;display:flex;align-items:center;gap:8px}
+#sidebar .btn-new:hover{border-color:var(--accent);background:var(--accent-light);color:var(--accent)}
+#sidebar .btn-new svg{width:16px;height:16px}
+#sidebar .conv-list{flex:1;overflow-y:auto;padding:0 8px 8px}
+.conv-item{padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:2px;transition:all .15s;color:var(--muted);font-weight:450;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conv-item:hover{background:var(--hover);color:var(--text)}
+.conv-item.active{background:var(--accent-light);color:var(--accent);font-weight:600}
+#sidebar .user-bar{padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
+#sidebar .user-bar .avatar{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+#sidebar .user-bar .info{flex:1;min-width:0}
+#sidebar .user-bar .email{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sidebar .user-bar .balance{font-size:11px;color:var(--muted)}
+#sidebar .user-bar .logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;font-family:inherit;padding:4px 8px;border-radius:6px;transition:all .15s}
+#sidebar .user-bar .logout-btn:hover{background:var(--hover);color:#ef4444}
+/* Main */
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--bg)}
+header .model-pills{display:flex;gap:4px;background:var(--surface);padding:3px;border-radius:10px}
+header .model-pill{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .2s;background:transparent;color:var(--muted)}
+header .model-pill.active{background:var(--bg);color:var(--text);box-shadow:var(--shadow-sm)}
+header .token-display{margin-left:auto;display:flex;align-items:center;gap:6px;padding:6px 12px;background:linear-gradient(135deg,#eef2ff,#f8fafc);border-radius:20px;font-size:12px;font-weight:600}
+header .token-display .dot{width:6px;height:6px;border-radius:50%;background:#22c55e}
+/* Chat area */
+#chat{flex:1;overflow-y:auto;padding:24px 20px;scroll-behavior:smooth}
+#chat-inner{max-width:740px;margin:0 auto}
+.msg-group{margin-bottom:28px;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg-group.user{display:flex;justify-content:flex-end;align-items:flex-start;gap:10px}
+.msg-group.bot{display:flex;justify-content:flex-start;align-items:flex-start;gap:10px}
+.msg-avatar{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.msg-group.user .msg-avatar{background:var(--accent);color:#fff;order:2}
+.msg-group.bot .msg-avatar{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.msg-content{max-width:80%}
+.msg-group.user .msg-content{text-align:right}
+.msg-bubble{padding:12px 16px;border-radius:14px;line-height:1.7;font-size:14px;word-break:break-word}
+.msg-group.user .msg-bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.msg-group.bot .msg-bubble{background:var(--surface);color:var(--text);border-bottom-left-radius:4px;border:1px solid var(--border)}
+.msg-group.bot .msg-bubble p{margin:6px 0}
+.msg-group.bot .msg-bubble p:first-child{margin-top:0}
+.msg-group.bot .msg-bubble code{background:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:12px;font-family:'SF Mono','Fira Code',monospace}
+.msg-group.bot .msg-bubble pre{background:#1e293b;color:#e2e8f0;padding:14px 18px;border-radius:10px;overflow-x:auto;margin:10px 0;font-size:13px;line-height:1.6}
+.msg-group.bot .msg-bubble strong{font-weight:700;color:#0f172a}
+.msg-group.bot .msg-bubble h1,.msg-group.bot .msg-bubble h2,.msg-group.bot .msg-bubble h3{font-weight:700;margin:12px 0 6px;color:#0f172a}
+.msg-group.bot .msg-bubble ul,.msg-group.bot .msg-bubble ol{padding-left:20px;margin:8px 0}
+.msg-group.bot .msg-bubble li{margin:4px 0}
+.msg-group.bot .msg-bubble blockquote{border-left:3px solid var(--accent);padding-left:14px;margin:10px 0;color:var(--muted)}
+.msg-typing .msg-bubble{background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:14px 18px}
+.typing-dot{width:6px;height:6px;border-radius:50%;background:#cbd5e1;animation:typing 1.4s infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+/* Landing */
+.landing{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:40px 20px}
+.landing .icon-hero{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:20px;box-shadow:0 8px 30px rgba(99,102,241,.25)}
+.landing h2{font-size:24px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px}
+.landing .sub{color:var(--muted);font-size:14px;margin-bottom:32px;max-width:400px}
+.landing .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:620px;width:100%;margin-bottom:24px}
+.landing .card{padding:16px 14px;border:1.5px solid var(--border);border-radius:12px;cursor:pointer;text-align:left;transition:all .2s;background:var(--bg)}
+.landing .card:hover{border-color:var(--accent);background:var(--accent-light);transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,.08)}
+.landing .card .emoji{font-size:22px;margin-bottom:6px}
+.landing .card .ttl{font-size:13px;font-weight:600;margin-bottom:2px;color:var(--text)}
+.landing .card .sub{font-size:11px;color:var(--muted);margin-bottom:0}
+/* Input */
+#input-area{padding:12px 20px 18px;background:var(--bg)}
+#input-inner{max-width:740px;margin:0 auto}
+.input-wrap{display:flex;align-items:flex-end;gap:8px;border:1.5px solid var(--border);border-radius:14px;padding:8px 8px 8px 18px;background:var(--bg);transition:all .2s}
+.input-wrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px rgba(99,102,241,.08)}
+.input-wrap textarea{flex:1;border:none;outline:none;resize:none;font-size:14px;max-height:140px;line-height:1.6;font-family:inherit;background:transparent}
+.input-wrap textarea::placeholder{color:#94a3b8}
+.input-wrap .send-btn{width:38px;height:38px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;box-shadow:0 2px 8px rgba(99,102,241,.25)}
+.input-wrap .send-btn:hover{transform:scale(1.03);box-shadow:0 4px 16px rgba(99,102,241,.35)}
+.input-wrap .send-btn:disabled{opacity:.35;transform:none;box-shadow:none;cursor:default}
+.input-disclaimer{text-align:center;font-size:10px;color:#94a3b8;margin-top:8px}
+/* Upgrade banner */
+.upgrade-bar{display:none;padding:10px 20px;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-bottom:1px solid #fde68a;font-size:12px;text-align:center;font-weight:500}
+.upgrade-bar.show{display:block}
+.upgrade-bar a{color:var(--accent);font-weight:700;margin:0 6px;text-decoration:none}
+.upgrade-bar a:hover{text-decoration:underline}
+/* Toast */
+.toast{position:fixed;top:16px;right:16px;background:#0f172a;color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:500;z-index:100;animation:slideIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.15)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+/* Mobile */
+@media(max-width:768px){
+  #sidebar{display:none}
+  header{padding:10px 14px}
+  #chat{padding:16px 12px}
+  #chat-inner{max-width:100%}
+  .msg-content{max-width:92%}
+  .msg-bubble{font-size:13px;padding:10px 14px}
+  .landing .grid{grid-template-columns:1fr 1fr}
+  .landing h2{font-size:20px}
+  #input-area{padding:8px 12px 14px}
+  .input-wrap{border-radius:20px}
+}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="logo">TokenLine</div>
+  <button class="btn-new" onclick="newChat()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Percakapan Baru</button>
+  <div class="conv-list" id="conv-list"></div>
+  <div class="user-bar">
+    <div class="avatar" id="user-avatar">?</div>
+    <div class="info">
+      <div class="email" id="user-email">—</div>
+      <div class="balance" id="user-balance">—</div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Keluar</button>
+  </div>
+</div>
+
+<div id="main">
+  <div class="upgrade-bar" id="upgrade-bar">Token habis — <a href="/topup.html">Isi Token</a> mulai Rp 39.900</div>
+  <header>
+    <div class="model-pills">
+      <button class="model-pill active" data-model="deepseek-v4-flash" onclick="switchModel('deepseek-v4-flash',this)">Flash</button>
+      <button class="model-pill" data-model="deepseek-v4-pro" onclick="switchModel('deepseek-v4-pro',this)">Pro</button>
+    </div>
+    <div class="token-display"><span class="dot"></span> <span id="token-count">—</span> token</div>
+  </header>
+
+  <div id="chat"><div id="chat-inner">
+    <div class="landing" id="landing-state">
+      <div class="icon-hero">✦</div>
+      <h2>Apa yang bisa saya bantu?</h2>
+      <p class="sub">AI asisten berbahasa Indonesia, siap membantu tugas, bisnis, dan belajar Anda</p>
+      <div class="grid">
+        <div class="card" onclick="quickAsk('Bantu saya menulis makalah tentang')"><div class="emoji">📝</div><div class="ttl">Tugas Kuliah</div><div class="sub">Bantuan akademik</div></div>
+        <div class="card" onclick="quickAsk('Buatkan caption Instagram untuk produk saya')"><div class="emoji">🏪</div><div class="ttl">Bisnis UMKM</div><div class="sub">Copywriting & ide</div></div>
+        <div class="card" onclick="quickAsk('Jelaskan cara mulai belajar Python untuk pemula')"><div class="emoji">💻</div><div class="ttl">Belajar Coding</div><div class="sub">Python, JS, SQL</div></div>
+        <div class="card" onclick="quickAsk('Ajar saya bahasa Inggris dasar, mulai dari daily conversation')"><div class="emoji">🇬🇧</div><div class="ttl">Bahasa Inggris</div><div class="sub">Latihan conversation</div></div>
+        <div class="card" onclick="quickAsk('Buatkan skrip video TikTok tentang tips produktivitas')"><div class="emoji">📱</div><div class="ttl">Konten Kreator</div><div class="sub">Skrip & ide konten</div></div>
+        <div class="card" onclick="quickAsk('Bantu saya menulis CV profesional untuk lamaran kerja')"><div class="emoji">💼</div><div class="ttl">Karir</div><div class="sub">CV & lamaran kerja</div></div>
+      </div>
+    </div>
+  </div></div>
+
+  <div id="input-area"><div id="input-inner">
+    <div class="input-wrap">
+      <textarea id="textin" rows="1" placeholder="Ketik pesan..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+      <button class="send-btn" id="sendbtn" onclick="send()" title="Kirim">↑</button>
+    </div>
+    <div class="input-disclaimer">TokenLine dapat membuat kesalahan. Verifikasi info penting.</div>
+  </div></div>
+</div>
+
+<script>
+var T=localStorage.getItem('tl_tok');
+if(!T)location.href='/login.html';
+var chatEl=document.getElementById('chat'),chatInner=document.getElementById('chat-inner');
+var ti=document.getElementById('textin'),bt=document.getElementById('sendbtn');
+var ub=document.getElementById('upgrade-bar'),ls=document.getElementById('landing-state');
+var model=localStorage.getItem('tl_model')||'deepseek-v4-flash';
+// Init model pill
+document.querySelectorAll('.model-pill').forEach(function(p){
+  p.classList.toggle('active',p.dataset.model===model);
+});
+
+var conversations=JSON.parse(localStorage.getItem('tl_cv')||'{}'),activeId=genId();
+if(!conversations[activeId])conversations[activeId]={title:'Percakapan Baru',msgs:[]};
+
+// Load user info
+fetch('/api/me',{headers:{Authorization:'Bearer '+T}}).then(function(r){return r.json()}).then(function(d){
+  document.getElementById('user-email').textContent=d.email||'User';
+  document.getElementById('user-avatar').textContent=(d.email||'U')[0].toUpperCase();
+  document.getElementById('token-count').textContent=Number(d.token_balance||0).toLocaleString();
+  document.getElementById('user-balance').textContent=Number(d.token_balance||0).toLocaleString()+' token';
+});
+renderConvs();loadChat();
+
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function switchModel(m,el){
+  model=m;localStorage.setItem('tl_model',m);
+  document.querySelectorAll('.model-pill').forEach(function(p){p.classList.remove('active')});
+  el.classList.add('active');
+}
+function newChat(){var id=genId();conversations[id]={title:'Percakapan Baru',msgs:[]};activeId=id;saveAndRender()}
+function selectConv(id){activeId=id;saveAndRender()}
+function logout(){localStorage.removeItem('tl_tok');localStorage.removeItem('tl_cv');location.href='/'}
+function quickAsk(q){ti.value=q;send()}
+
+function saveAndRender(){saveConvs();renderConvs();loadChat()}
+
+function renderConvs(){
+  var el=document.getElementById('conv-list'),ks=Object.keys(conversations);
+  el.innerHTML=ks.length?ks.map(function(id){
+    return '<div class=\"conv-item'+(id===activeId?' active':'')+'\" onclick=\"selectConv(\''+id+'\')\">'+escapeHtml(conversations[id].title||'Percakapan Baru')+'</div>';
+  }).join(''):'<div style=\"font-size:12px;color:var(--muted);padding:16px 8px;text-align:center\">Belum ada<br>percakapan</div>';
+}
+
+function loadChat(){
+  chatInner.innerHTML='';ls.style.display='none';
+  var msgs=conversations[activeId]?conversations[activeId].msgs:[];
+  if(!msgs.length){chatInner.innerHTML='';ls.style.display='flex';return}
+  msgs.forEach(function(m){appendMsg(m.role,m.content,false)});
+  chatEl.scrollTop=chatEl.scrollHeight;
+}
+
+function appendMsg(role,content,animate){
+  var grp=document.createElement('div');grp.className='msg-group '+role;
+  if(animate)grp.style.animation='fadeUp .3s ease';
+  var avatarHtml=role==='user'?'<div class=\"msg-avatar\">U</div>':'<div class=\"msg-avatar\">AI</div>';
+  var bubbleHtml=role==='user'?escapeHtml(content):formatBot(content);
+  grp.innerHTML=role==='user'
+    ?'<div class=\"msg-content\"><div class=\"msg-bubble\">'+bubbleHtml+'</div></div>'+avatarHtml
+    :avatarHtml+'<div class=\"msg-content\"><div class=\"msg-bubble\">'+bubbleHtml+'</div></div>';
+  chatInner.appendChild(grp);chatEl.scrollTop=chatEl.scrollHeight;
+  return grp.querySelector('.msg-bubble');
+}
+
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function formatBot(s){
+  return s.replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+function saveConvs(){
+  var msgs=conversations[activeId]?conversations[activeId].msgs:[];
+  if(msgs.length&&(!conversations[activeId].title||conversations[activeId].title==='Percakapan Baru'))
+    conversations[activeId].title=msgs[0].content.slice(0,35)+(msgs[0].content.length>35?'…':'');
+  localStorage.setItem('tl_cv',JSON.stringify(conversations));
+}
+
+async function send(){
+  if(!T)return;
+  var t=ti.value.trim();if(!t)return;
+  if(!conversations[activeId].msgs.length)ls.style.display='none';
+  conversations[activeId].msgs.push({role:'user',content:t});
+  appendMsg('user',t,true);
+  ti.value='';bt.disabled=true;ub.classList.remove('show');
+  // Typing indicator
+  var typingGrp=document.createElement('div');typingGrp.className='msg-group bot msg-typing';
+  typingGrp.innerHTML='<div class="msg-avatar">AI</div><div class="msg-content"><div class="msg-bubble"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>';
+  chatInner.appendChild(typingGrp);chatEl.scrollTop=chatEl.scrollHeight;
+
+  try{
+    var r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:JSON.stringify({message:t,model:model})});
+    typingGrp.remove();
+    if(r.status===401){appendMsg('bot','Sesi habis. Silakan login ulang.',true);logout();return}
+    if(r.status===403){appendMsg('bot','Token habis. Silakan isi ulang.',true);ub.classList.add('show');return}
+    if(!r.ok){var e=await r.json();appendMsg('bot','Error: '+(e.message||r.status),true);return}
+
+    var rd=r.body.getReader(),dc=new TextDecoder(),full='';
+    var bubble=appendMsg('bot','',true);
+    while(true){
+      var v=await rd.read();if(v.done)break;
+      var lines=dc.decode(v.value,{stream:true}).split('\n');
+      for(var i=0;i<lines.length;i++){
+        var ln=lines[i];if(!ln.startsWith('data: ')||ln.includes('[DONE]'))continue;
+        try{var j=JSON.parse(ln.slice(6));if(j.choices&&j.choices[0]){full+=j.choices[0].delta.content||'';bubble.innerHTML=formatBot(full);chatEl.scrollTop=chatEl.scrollHeight}}catch(e){}
+      }
+    }
+    conversations[activeId].msgs.push({role:'assistant',content:full||'(tidak ada respons)'});
+  }catch(e){typingGrp.remove();appendMsg('bot','Koneksi gagal. Coba lagi.',true)}
+  bt.disabled=false;ti.focus();saveConvs();renderConvs();
+  // Refresh balance
+  fetch('/api/me/balance',{headers:{Authorization:'Bearer '+T}}).then(function(r){return r.json()}).then(function(d){
+    var bal=d.balance||d.token_balance||0;
+    document.getElementById('token-count').textContent=Number(bal).toLocaleString();
+    document.getElementById('user-balance').textContent=Number(bal).toLocaleString()+' token';
+  });
+}
+</script>
+</body>
+</html>

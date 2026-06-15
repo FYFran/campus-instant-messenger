@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Masuk — TokenLine</title>
+    <meta name="description" content="Masuk ke akun TokenLine. Asisten menulis AI premium untuk Indonesia." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css"
+        integrity="sha512-dPXYcDub/aeb08c63jRq/k6GaKccl256JQy/AnOq7CAnEZ9FzSL9wSbcZkMp4R26vBsMLFYH4kQ67/bbV8XaCQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="lang-switcher.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+            --bg: #f9f8f6;
+            --surface: rgba(255, 255, 255, 0.8);
+            --accent: #1a1a28;
+            --accent-light: #2a2a3e;
+            --gold: #b8975a;
+            --gold-light: #d4b87a;
+            --text-primary: #1a1a2e;
+            --text-secondary: rgba(26, 26, 46, 0.7);
+            --text-muted: rgba(26, 26, 46, 0.45);
+            --card-bg: #ffffff;
+            --header-bg: rgba(255, 255, 255, 0.72);
+            --border-color: rgba(0, 0, 0, 0.08);
+            --navbar-bg: rgba(249, 248, 246, 0.85);
+            --hero-gradient: #f9f8f6;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.12);
+            --shadow-3: 0 32px 80px rgba(0, 0, 0, 0.14);
+            --input-bg: rgba(255, 255, 255, 0.75);
+        }
+
+        html {
+            scroll-behavior: smooth;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        /* Glass header — identical to index-v6 */
+        .glass-header {
+            background: var(--navbar-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .collapsible-header {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            overflow: hidden;
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        @media not all and (min-width: 1024px) {
+            header .collapsible-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                flex-direction: column;
+                opacity: 0;
+                height: 0vh;
+                min-height: 0vh;
+                width: 100vw;
+                justify-content: center;
+                padding: 5px;
+                padding-top: 80px;
+                padding-bottom: 5%;
+                place-items: center;
+                text-align: center;
+                background: rgba(249, 248, 246, 0.92);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                overflow-y: auto;
+                transition: opacity 0.3s ease, height 0.3s ease;
+                z-index: 40;
+                pointer-events: none;
+            }
+            header .collapsible-header.open {
+                opacity: 1;
+                height: 100vh;
+                pointer-events: all;
+            }
+        }
+
+        .header-links {
+            position: relative;
+            display: flex;
+            min-width: fit-content;
+            padding: 8px 16px;
+            z-index: 2;
+            cursor: pointer;
+            transition: background-color 0.5s, color 0.3s;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .header-links::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.05);
+            transform: scale(40%);
+            opacity: 0;
+            border-radius: 8px;
+            transition: all 300ms;
+        }
+
+        .header-links:hover {
+            color: var(--text-primary);
+        }
+
+        .header-links:hover::after {
+            transform: scale(100%);
+            opacity: 1;
+        }
+
+        /* TL Logo Box */
+        .tl-logo-box {
+            background: linear-gradient(135deg, #1a1a28 0%, #2a2a3e 100%);
+            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        /* TL Logo — large version */
+        .tl-logo-large {
+            background: linear-gradient(135deg, #1a1a28 0%, #2a2a3e 100%);
+            border-radius: 16px;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 22px;
+            letter-spacing: 0.5px;
+            color: #fff;
+            flex-shrink: 0;
+            margin: 0 auto;
+        }
+
+        /* Glow effects */
+        .tl-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .tl-glow-gold {
+            background: radial-gradient(circle, #d4b87a, #b8975a 40%, transparent 70%);
+        }
+
+        .tl-glow-accent {
+            background: radial-gradient(circle, #4a4a6a, #1a1a28 40%, transparent 70%);
+        }
+
+        /* Background pattern */
+        .bg-pattern {
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background-position: center;
+            background-repeat: repeat;
+            background-size: 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Gradient overlay on bg pattern */
+        .bg-gradient-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg, var(--hero-gradient) 10%, rgba(249, 248, 246, 0) 50%, var(--hero-gradient) 90%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 24px;
+            width: max-content;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            border: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(26, 26, 40, 0.25);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1.5px solid var(--border-color);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        /* === Premium Input Styles === */
+        .input-group {
+            position: relative;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px;
+            padding-left: 44px;
+            background: var(--input-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 14px;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(26, 26, 40, 0.08);
+        }
+
+        .input-group .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.15rem;
+            transition: color 0.3s ease;
+            pointer-events: none;
+        }
+
+        .input-group input:focus ~ .input-icon {
+            color: var(--accent);
+        }
+
+        .input-group .input-toggle-pw {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            background: none;
+            border: none;
+            padding: 4px;
+        }
+
+        .input-group .input-toggle-pw:hover {
+            color: var(--text-secondary);
+        }
+
+        /* === Glass Login Card === */
+        .login-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: var(--shadow-3);
+            transition: box-shadow 0.4s ease;
+            position: relative;
+        }
+
+        .login-card:hover {
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.16);
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--accent));
+            opacity: 0.6;
+            border-radius: 24px 24px 0 0;
+        }
+
+        @media (max-width: 640px) {
+            .login-card {
+                padding: 28px 24px;
+                border-radius: 20px;
+                margin: 0 12px;
+                background: rgba(255, 255, 255, 0.85);
+            }
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        /* Accent link */
+        .link-accent {
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: color 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .link-accent:hover {
+            color: var(--gold);
+        }
+
+        /* Error message */
+        .error-msg {
+            display: none;
+            padding: 12px 16px;
+            background: rgba(220, 38, 38, 0.08);
+            border: 1px solid rgba(220, 38, 38, 0.15);
+            border-radius: 12px;
+            color: #b91c1c;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .error-msg.show {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Fade-up animation */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        .fade-up.revealed {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .fade-up-delay-1 { transition-delay: 0.1s; }
+        .fade-up-delay-2 { transition-delay: 0.2s; }
+        .fade-up-delay-3 { transition-delay: 0.3s; }
+        .fade-up-delay-4 { transition-delay: 0.4s; }
+        .fade-up-delay-5 { transition-delay: 0.5s; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d0d0d0;
+            border-radius: 3px;
+        }
+
+        .text-gold {
+            color: var(--gold);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ======================= BACKGROUND ======================= -->
+    <div class="bg-pattern"></div>
+    <div class="bg-gradient-overlay"></div>
+
+    <!-- Glow orbs -->
+    <div class="tl-glow tl-glow-gold" style="width:450px;height:450px;top:-8%;right:-5%;z-index:0;"></div>
+    <div class="tl-glow tl-glow-accent" style="width:350px;height:350px;bottom:10%;left:-6%;z-index:0;"></div>
+    <div class="tl-glow tl-glow-gold" style="width:200px;height:200px;bottom:5%;right:15%;opacity:0.2;z-index:0;"></div>
+
+    <!-- ======================= HEADER ======================= -->
+    <header class="fixed top-0 left-0 z-50 w-full glass-header">
+        <div class="max-w-6xl mx-auto flex items-center justify-between h-16 px-4 lg:px-6">
+            <a class="flex items-center gap-3 flex-shrink-0" href="index-v6.html">
+                <div class="tl-logo-box">TL</div>
+                <span class="font-semibold text-base tracking-tight text-[var(--text-primary)]">TokenLine</span>
+            </a>
+
+            <div class="collapsible-header" id="collapsible-nav">
+                <nav class="flex flex-col lg:flex-row items-center gap-1 lg:gap-1 w-full lg:w-auto">
+                    <a class="header-links" href="login-v2.html" data-i18n="nav_login">Masuk</a>
+                    <a class="header-links" href="register.html" data-i18n="nav_start">Daftar</a>
+                    <a class="header-links" href="chat-pro.html">Chat Pro</a>
+                    <a class="header-links" href="dashboard.html">Dashboard</a>
+                </nav>
+                <div class="flex items-center gap-3 mt-4 lg:mt-0 lg:ml-4">
+                    <a href="register.html" class="btn btn-primary text-sm px-5 py-2.5" data-i18n="nav_start">
+                        Mulai Gratis
+                        <i class="bi bi-arrow-right text-sm"></i>
+                    </a>
+                </div>
+            </div>
+
+            <button class="bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50"
+                    onclick="toggleHeader()" aria-label="Menu" id="collapse-btn"></button>
+        </div>
+    </header>
+
+    <!-- ======================= MAIN ======================= -->
+    <main class="relative z-10 flex items-center justify-center min-h-screen px-4 pt-24 pb-16">
+        <div class="w-full max-w-md">
+
+            <!-- Login Card -->
+            <div class="login-card fade-up" id="login-card">
+
+                <!-- Language Switcher — top right -->
+                <div class="flex justify-end mb-2">
+                    <div class="lang-switcher lang-switch" id="lang-switcher">
+                        <button data-lang="id" class="active" onclick="TL_I18N.switch('id')">ID</button>
+                        <button data-lang="en" onclick="TL_I18N.switch('en')">EN</button>
+                        <button data-lang="zh" onclick="TL_I18N.switch('zh')">中文</button>
+                    </div>
+                </div>
+
+                <!-- Logo -->
+                <div class="fade-up fade-up-delay-1">
+                    <div class="tl-logo-large">TL</div>
+                </div>
+
+                <!-- Title -->
+                <h1 class="fade-up fade-up-delay-1 text-center text-2xl font-bold mt-4 mb-1" data-i18n="login_title">
+                    Selamat Datang Kembali
+                </h1>
+                <p class="fade-up fade-up-delay-1 text-center text-sm text-[var(--text-muted)] mb-8" data-i18n="login_subtitle">
+                    Masuk ke akun TokenLine kamu
+                </p>
+
+                <!-- Error Message -->
+                <div class="fade-up fade-up-delay-2 error-msg mb-6" id="error-msg">
+                    <i class="bi bi-exclamation-circle flex-shrink-0 mt-0.5"></i>
+                    <span id="error-text"></span>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" class="space-y-5" novalidate>
+                    <!-- Email -->
+                    <div class="fade-up fade-up-delay-2 input-group">
+                        <input
+                            type="email"
+                            id="email"
+                            autocomplete="email"
+                            placeholder="Email"
+                            data-i18n="login_email_placeholder"
+                            required
+                        />
+                        <span class="input-icon"><i class="bi bi-envelope"></i></span>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="fade-up fade-up-delay-3 input-group">
+                        <input
+                            type="password"
+                            id="password"
+                            autocomplete="current-password"
+                            placeholder="Password"
+                            data-i18n="login_password_placeholder"
+                            required
+                        />
+                        <span class="input-icon"><i class="bi bi-lock"></i></span>
+                        <button type="button" class="input-toggle-pw" onclick="togglePassword()" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye-slash" id="pw-toggle-icon"></i>
+                        </button>
+                    </div>
+
+                    <!-- Forgot Password + Submit row -->
+                    <div class="fade-up fade-up-delay-3 flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer select-none">
+                            <input type="checkbox" class="w-4 h-4 rounded border-[var(--border-color)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer" />
+                            <span data-i18n="login_remember">Ingat saya</span>
+                        </label>
+                        <a href="request-reset.html" class="link-accent text-sm" data-i18n="login_forgot">Lupa password?</a>
+                    </div>
+
+                    <!-- Submit -->
+                    <button
+                        type="submit"
+                        class="fade-up fade-up-delay-4 btn btn-primary w-full justify-center rounded-xl py-3.5 text-base font-semibold"
+                        id="login-btn"
+                    >
+                        <span id="btn-text" data-i18n="login_submit">Masuk</span>
+                        <span id="btn-spinner" class="hidden"><span class="spinner"></span></span>
+                    </button>
+                </form>
+
+                <!-- Divider -->
+                <div class="fade-up fade-up-delay-4 divider mt-7">
+                    <span data-i18n="login_or">atau</span>
+                </div>
+
+                <!-- Register link -->
+                <div class="fade-up fade-up-delay-5 text-center mt-6">
+                    <p class="text-sm text-[var(--text-secondary)]">
+                        <span data-i18n="login_no_account">Belum punya akun?</span>
+                        <a href="register.html" class="font-semibold text-[var(--accent)] hover:text-[var(--gold)] transition-colors ml-1" data-i18n="login_register">
+                            Daftar akun baru
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Footer note -->
+            <p class="fade-up fade-up-delay-5 text-center text-xs text-[var(--text-muted)] mt-8">
+                <span data-i18n="login_agreement">Dengan masuk, kamu menyetujui</span>
+                <a href="#" class="hover:text-[var(--gold)] transition-colors underline underline-offset-2" data-i18n="login_terms">Syarat & Ketentuan</a>
+                <span data-i18n="login_and">dan</span>
+                <a href="#" class="hover:text-[var(--gold)] transition-colors underline underline-offset-2" data-i18n="login_privacy">Kebijakan Privasi</a>
+            </p>
+        </div>
+    </main>
+
+    <!-- ======================= SCRIPTS ======================= -->
+    <script src="tokenline-i18n.js"></script>
+    <script>
+        // ======================= EXTEND i18n WITH LOGIN KEYS =======================
+        if (typeof TL_I18N !== 'undefined') {
+            Object.assign(TL_I18N.dict, {
+                // ====== LOGIN PAGE ======
+                login_title: {
+                    id: 'Selamat Datang Kembali',
+                    en: 'Welcome Back',
+                    zh: '欢迎回来'
+                },
+                login_subtitle: {
+                    id: 'Masuk ke akun TokenLine kamu',
+                    en: 'Sign in to your TokenLine account',
+                    zh: '登录您的TokenLine账户'
+                },
+                login_email_placeholder: {
+                    id: 'Email',
+                    en: 'Email',
+                    zh: '邮箱'
+                },
+                login_password_placeholder: {
+                    id: 'Password',
+                    en: 'Password',
+                    zh: '密码'
+                },
+                login_remember: {
+                    id: 'Ingat saya',
+                    en: 'Remember me',
+                    zh: '记住我'
+                },
+                login_forgot: {
+                    id: 'Lupa password?',
+                    en: 'Forgot password?',
+                    zh: '忘记密码？'
+                },
+                login_submit: {
+                    id: 'Masuk',
+                    en: 'Sign In',
+                    zh: '登录'
+                },
+                login_or: {
+                    id: 'atau',
+                    en: 'or',
+                    zh: '或'
+                },
+                login_no_account: {
+                    id: 'Belum punya akun?',
+                    en: 'Don\'t have an account?',
+                    zh: '还没有账户？'
+                },
+                login_register: {
+                    id: 'Daftar akun baru',
+                    en: 'Create new account',
+                    zh: '注册新账户'
+                },
+                login_agreement: {
+                    id: 'Dengan masuk, kamu menyetujui',
+                    en: 'By signing in, you agree to the',
+                    zh: '登录即表示您同意'
+                },
+                login_terms: {
+                    id: 'Syarat & Ketentuan',
+                    en: 'Terms & Conditions',
+                    zh: '服务条款'
+                },
+                login_and: {
+                    id: 'dan',
+                    en: 'and',
+                    zh: '和'
+                },
+                login_privacy: {
+                    id: 'Kebijakan Privasi',
+                    en: 'Privacy Policy',
+                    zh: '隐私政策'
+                },
+                login_loading: {
+                    id: 'Memproses...',
+                    en: 'Signing in...',
+                    zh: '登录中...'
+                },
+                login_error_generic: {
+                    id: 'Email atau password salah. Coba lagi.',
+                    en: 'Invalid email or password. Please try again.',
+                    zh: '邮箱或密码错误，请重试。'
+                },
+                login_error_network: {
+                    id: 'Gagal terhubung ke server. Periksa koneksi internet kamu.',
+                    en: 'Failed to connect to server. Check your internet connection.',
+                    zh: '无法连接到服务器，请检查网络连接。'
+                }
+            });
+
+            // Re-apply with extended dict
+            TL_I18N.apply();
+        }
+
+        // ======================= TOGGLE MOBILE HEADER =======================
+        function toggleHeader() {
+            const nav = document.getElementById('collapsible-nav');
+            const btn = document.getElementById('collapse-btn');
+            nav.classList.toggle('open');
+            if (nav.classList.contains('open')) {
+                btn.className = 'bi bi-x text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.add('modal-open');
+            } else {
+                btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.remove('modal-open');
+            }
+        }
+
+        document.querySelectorAll('.collapsible-header a.header-links').forEach(function(link) {
+            link.addEventListener('click', function() {
+                const nav = document.getElementById('collapsible-nav');
+                const btn = document.getElementById('collapse-btn');
+                if (nav.classList.contains('open')) {
+                    nav.classList.remove('open');
+                    btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                    document.body.classList.remove('modal-open');
+                }
+            });
+        });
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 1024) {
+                const nav = document.getElementById('collapsible-nav');
+                const btn = document.getElementById('collapse-btn');
+                nav.classList.remove('open');
+                btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                document.body.classList.remove('modal-open');
+            }
+        });
+
+        // Close menu on scroll
+        let lastScroll = 0;
+        window.addEventListener('scroll', function() {
+            const nav = document.getElementById('collapsible-nav');
+            const btn = document.getElementById('collapse-btn');
+            if (nav && nav.classList.contains('open')) {
+                const currentScroll = window.pageYOffset;
+                if (Math.abs(currentScroll - lastScroll) > 50) {
+                    nav.classList.remove('open');
+                    btn.className = 'bi bi-list text-2xl text-[var(--text-secondary)] lg:hidden z-50';
+                    document.body.classList.remove('modal-open');
+                }
+                lastScroll = currentScroll;
+            }
+        });
+
+        // ======================= TOGGLE PASSWORD VISIBILITY =======================
+        function togglePassword() {
+            const pw = document.getElementById('password');
+            const icon = document.getElementById('pw-toggle-icon');
+            if (pw.type === 'password') {
+                pw.type = 'text';
+                icon.className = 'bi bi-eye';
+            } else {
+                pw.type = 'password';
+                icon.className = 'bi bi-eye-slash';
+            }
+        }
+
+        // ======================= FADE-UP ON SCROLL =======================
+        function revealFadeUp() {
+            const els = document.querySelectorAll('.fade-up');
+            els.forEach(function(el) {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight - 40) {
+                    el.classList.add('revealed');
+                }
+            });
+        }
+
+        // ======================= LOGIN FORM HANDLING =======================
+        const API_URL = 'https://tokenline.top/api/auth/login';
+
+        function showError(message) {
+            const el = document.getElementById('error-msg');
+            const text = document.getElementById('error-text');
+            text.textContent = message;
+            el.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('error-msg').classList.remove('show');
+        }
+
+        function setLoading(loading) {
+            const btn = document.getElementById('login-btn');
+            const btnText = document.getElementById('btn-text');
+            const spinner = document.getElementById('btn-spinner');
+
+            btn.disabled = loading;
+
+            if (loading) {
+                const lang = localStorage.getItem('tl_lang') || 'id';
+                const loadingTexts = { id: 'Memproses...', en: 'Signing in...', zh: '登录中...' };
+                btnText.textContent = loadingTexts[lang] || 'Memproses...';
+                spinner.classList.remove('hidden');
+            } else {
+                spinner.classList.add('hidden');
+                // Restore text via i18n
+                if (typeof TL_I18N !== 'undefined') {
+                    btnText.textContent = TL_I18N.t('login_submit');
+                } else {
+                    btnText.textContent = 'Masuk';
+                }
+            }
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            hideError();
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            // Basic validation
+            if (!email || !password) {
+                const lang = localStorage.getItem('tl_lang') || 'id';
+                const messages = {
+                    id: 'Harap isi email dan password.',
+                    en: 'Please fill in email and password.',
+                    zh: '请填写邮箱和密码。'
+                };
+                showError(messages[lang] || messages.id);
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    localStorage.setItem('tl_tok', data.token);
+                    if (data.user) {
+                        localStorage.setItem('tl_user', JSON.stringify(data.user));
+                    }
+                    window.location.href = '/chat-pro.html';
+                } else {
+                    const lang = localStorage.getItem('tl_lang') || 'id';
+                    const messages = {
+                        id: 'Email atau password salah. Coba lagi.',
+                        en: 'Invalid email or password. Please try again.',
+                        zh: '邮箱或密码错误，请重试。'
+                    };
+                    showError(data.message || messages[lang] || messages.id);
+                }
+            } catch (err) {
+                const lang = localStorage.getItem('tl_lang') || 'id';
+                const messages = {
+                    id: 'Gagal terhubung ke server. Periksa koneksi internet kamu.',
+                    en: 'Failed to connect to server. Check your internet connection.',
+                    zh: '无法连接到服务器，请检查网络连接。'
+                };
+                showError(messages[lang] || messages.id);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // ======================= KEYBOARD: ENTER =======================
+        // Already handled by form submit event.
+
+        // ======================= INIT =======================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Reveal card immediately
+            setTimeout(function() {
+                document.getElementById('login-card').classList.add('revealed');
+                revealFadeUp();
+            }, 100);
+
+            // Reveal remaining fade-up elements as they appear
+            window.addEventListener('scroll', revealFadeUp);
+            window.addEventListener('resize', revealFadeUp);
+        });
+    </script>
+</body>
+</html>
