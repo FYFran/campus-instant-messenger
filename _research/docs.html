@@ -1,0 +1,10 @@
+<!DOCTYPE html><html lang="id" data-theme="light"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>API — TokenLine</title><link rel="icon" href="/favicon.svg"><style>:root{--acc:#6366f1;--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;--card:#fff;--hair:#e5e7eb}@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--fg:#f0f0f0;--muted:#999;--card:#1a1a1a;--hair:#2a2a2a}}body{font:400 15px/1.6 system-ui,sans-serif;color:var(--fg);background:var(--bg);max-width:700px;margin:0 auto;padding:2rem 1.5rem}h1{font-size:1.6rem}h1 span{color:var(--acc)}h2{font-size:1.2rem;margin-top:2rem}code{background:var(--hair);padding:2px 6px;border-radius:4px;font-size:13px}pre{background:var(--card);border:1px solid var(--hair);border-radius:8px;padding:14px;overflow-x:auto;font-size:13px}a{color:var(--acc)}</style></head><body><h1>API <span>TokenLine</span></h1><p>TokenLine menggunakan API REST. Semua endpoint prefix <code>/api/</code>.</p><h2>Autentikasi</h2><p>Gunakan JWT token dari login/register. Kirim via header: <code>Authorization: Bearer &lt;token&gt;</code></p><h2>Endpoint</h2><pre>POST /api/auth/register   — Daftar akun baru
+POST /api/auth/login      — Masuk
+GET  /api/me              — Profil & saldo
+POST /api/chat            — Chat AI (streaming SSE)
+GET  /api/chat/history    — Riwayat chat
+POST /api/payment/create  — Buat invoice
+GET  /api/packs           — Daftar paket token
+POST /api/auth/send-otp   — Kirim OTP SMS
+POST /api/auth/verify-otp — Verifikasi OTP
+POST /api/auth/change-password — Ganti password</pre><h2>Model AI</h2><p><strong>Flash</strong> — DeepSeek V4 Flash, cepat dan terjangkau<br><strong>Pro</strong> — DeepSeek V4 Pro, kualitas premium</p><p style="margin-top:3rem"><a href="/">← Kembali</a></p></body></html>
