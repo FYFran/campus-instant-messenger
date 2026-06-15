@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """TokenLine smoke test — quick verification of all critical endpoints."""
-import urllib.request, json, sys, time
+import urllib.request, json, sys, time, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 BASE = "https://tokenline.top"
 FAIL = 0

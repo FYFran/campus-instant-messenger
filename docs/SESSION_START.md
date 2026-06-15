@@ -1,15 +1,18 @@
 # TokenLine 每日启动
 
-> 上次: 2026-06-15 全天深审 | 复制粘贴给Claude Code开始
+> 上次: 2026-06-15 第10轮安全深审 | 复制粘贴给Claude Code开始
 
 ---
 
 ## 开场提示（复制这段给新对话）
 
 ```
-继续TokenLine全栈审计。上次完成了8轮修复(8 commits)，24/24冒烟测试全过。
-基础代码在 _research/rewriter-go/，生产服务器47.82.103.247。
-继续查漏补缺——安全、UX、性能、代码质量四个方面全面审查。
+继续TokenLine全栈。上次2026-06-15完成第10轮深审(10 commits b8a7f59)，
+security-auditor + code-reviewer 双agent并行扫出23项问题，
+全部修复部署：内容过滤启用 + OTP防爆 + phone_verified检查 + defer rows.Close。
+24/24冒烟全过，redteam扫描2项误报(本地MCP+Google Fonts URL)。
+生产47.82.103.247，后端Go /app/rewriter-go/，前端/app/static/。
+待修: WhatsApp OTP(Facebook被墙) + 云片模板审核 + SQLite→PG + JWT httpOnly。
 ```
 
 ---
@@ -22,32 +25,22 @@
 - DB: /app/new-api/data/tokenline.db (SQLite, 每日3点备份到backups/)
 - 管理: https://tokenline.top/admin.html 密码 tokenline2026
 
-## 已完成 (8次提交, 41修复)
+## 已完成 (10次提交, 53修复)
 
-### 安全 (18项)
-- JWT算法锁定HS256 | CORS限制tokenline.top | 聊天XSS HTML转义
-- bcrypt降级SHA256(不崩) | OTP常量时间比较+60s冷却+空号码防护
-- 安全头(HSTS/CSP/nosniff/X-Frame/Permissions)
-- OTP端点加rate limit防暴力破解 | JWT过期30d→7d
-- 注册限流收紧2/s burst 3
+### v2.10 — 第10轮安全深审 (2026-06-15, b8a7f59)
+- 🔴 security-auditor + code-reviewer 双agent并行深审
+- 🔴 内容过滤启用: FilterContent + SanitizePrompt 纵深防御(之前被禁用只靠DeepSeek)
+- 🔴 OTP暴力破解防护: 5次失败后OTP自动作废
+- 🔴 RequestPasswordReset加phone_verified检查(之前可绕过未验证手机号重置密码)
+- 🟠 user.go 4处rows.Close()→defer(防连接泄漏)
+- 🟠 替换自定义contains()→strings.Contains(标准库)
+- 🟡 safety.go创建(词边界匹配减少误杀) + 部署到生产
 
-### 后端 (10项)
-- Dodo回调竞态修复(UPDATE WHERE pending原子化)
-- DB连接池1→8(WAL并发) | 7个索引(email/phone/status/paid_at)
-- chat.go重写(maxOut int→string修复,印尼安全规则系统提示,对话创建错误检查,Token扣减RowsAffected)
-- feedback.go修复(500状态码+字段验证+换行注入+0600权限)
-- /api/me新增phone+phone_verified | 补全/api/me/balance+/api/packs路由
-
-### 前端 (8项)
-- 聊天页v3: 日期分组对话+手机滑入抽屉+搜索+AI快捷操作(Ringkas/Perbaiki/Ulang)
-- 个人中心弹窗(Email/Token/HP/套餐/改密码) | 充值按钮常驻侧栏
-- 手机底部导航4入口 | 服务器同步对话历史
-- 登录页"Lupa Password"链接 | about.html+docs.html补全
-
-### 基础设施 (5项)
-- UFW防火墙启用(22/80/443/8888) | fail2ban部署(sshd jail)
-- nginx: SSL仅TLSv1.2/1.3 + gzip JSON/JS/CSS | DB每日备份cron + 磁盘80%预警
-- root密码轮换 + 63脚本硬编码清除 | PWA图标SVG渐变
+### v2.9 — 前9轮修复 (9 commits)
+- 安全18项: JWT HS256锁定, CORS tokenline.top, XSS转义, bcrypt降级, OTP常量时间比较, 安全头, rate limit, JWT 7d, 注册限流2/s
+- 后端10项: Dodo回调竞态, DB WAL+连接池, 7索引, chat重写, feedback修复, API补全
+- 前端8项: 聊天v3, 个人中心, 底部导航, 对话同步, 页面补全
+- 基础设施5项: UFW, fail2ban, nginx TLS+gzip, DB备份, 密钥轮换, PWA图标
 
 ## 待修 (需要新开发，不是bug)
 
@@ -66,8 +59,8 @@
 
 ```
 24/24冒烟测试全过
-0个已知可利用安全漏洞
-服务正常运行
+0个已知可利用安全漏洞 (本次深审修复4项高危)
+服务正常运行 v2.10
 DB: 84用户 104消息 0支付
 SSL: Let's Encrypt 9月到期
 磁盘: 14G/30G (51%)

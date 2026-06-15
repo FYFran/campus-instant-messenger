@@ -71,7 +71,7 @@ func (h *UserHandler) Stats(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&day, &cnt)
 			dailyStats = append(dailyStats, map[string]interface{}{"date": day, "messages": cnt})
 		}
-		rows.Close()
+		defer rows.Close()
 	}
 
 	payments := []map[string]interface{}{}
@@ -84,7 +84,7 @@ func (h *UserHandler) Stats(w http.ResponseWriter, r *http.Request) {
 			pRows.Scan(&plan, &amount, &status, &created)
 			payments = append(payments, map[string]interface{}{"plan": plan, "amount": amount, "status": status, "date": created})
 		}
-		pRows.Close()
+		defer pRows.Close()
 	}
 
 	writeJSON(w, 200, map[string]interface{}{"daily": dailyStats, "payments": payments})
@@ -191,7 +191,7 @@ func (h *UserHandler) History(w http.ResponseWriter, r *http.Request) {
 				rows.Scan(&id, &title, &created)
 				list = append(list, map[string]interface{}{"id": id, "title": title, "created_at": created})
 			}
-			rows.Close()
+			defer rows.Close()
 		}
 		if list == nil {
 			list = []map[string]interface{}{}
@@ -217,7 +217,7 @@ func (h *UserHandler) History(w http.ResponseWriter, r *http.Request) {
 			rows.Scan(&role, &content, &model, &created)
 			msgs = append(msgs, map[string]interface{}{"role": role, "content": content, "model": model, "created_at": created})
 		}
-		rows.Close()
+		defer rows.Close()
 	}
 	if msgs == nil {
 		msgs = []map[string]interface{}{}

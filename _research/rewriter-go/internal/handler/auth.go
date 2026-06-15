@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -180,7 +181,7 @@ func hashPassword(pw string) string {
 }
 
 func verifyPassword(pw, stored string) (ok bool, rehash string) {
-	if len(stored) == 64 && !contains(stored, "$") {
+	if len(stored) == 64 && !strings.Contains(stored, "$") {
 		sum := sha256.Sum256([]byte(pw))
 		if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(sum[:])), []byte(stored)) == 1 {
 			return true, hashPassword(pw)
@@ -214,7 +215,7 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 }
 
 func isUniqueErr(err error) bool {
-	return err != nil && (contains(err.Error(), "UNIQUE") || contains(err.Error(), "unique"))
+	return err != nil && (strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique"))
 }
 
 func isValidEmail(email string) bool {
@@ -323,6 +324,18 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, "Kode OTP diperlukan")
 		return
 	}
+
+	// Brute-force: max 5 failed OTP attempts, then OTP is invalidated
+	key := fmt.Sprintf("otp_%d", userID)
+	if checkCooldown(key, 300) {
+		if otpAttemptsExceeded(userID) {
+			h.DB.ExecContext(r.Context(),
+				"UPDATE users SET otp_hash='', otp_expires_at='' WHERE id=?", userID)
+			writeJSON(w, 429, "Terlalu banyak percobaan OTP. Kirim ulang kode verifikasi.")
+			return
+		}
+	}
+
 	var phone, otpHash, expiresStr string
 	err := h.DB.QueryRowContext(r.Context(),
 		"SELECT COALESCE(phone,''), otp_hash, COALESCE(otp_expires_at,'') FROM users WHERE id=?",
@@ -337,9 +350,11 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !verifyOTP(req.OTP, otpHash) {
+		recordOTPFailure(userID)
 		writeJSON(w, 400, "Kode OTP salah")
 		return
 	}
+	clearOTPFailures(userID)
 	h.DB.ExecContext(r.Context(),
 		"UPDATE users SET phone_verified=1, otp_hash='', otp_expires_at='' WHERE id=?", userID)
 	writeJSON(w, 200, map[string]string{"message": "Nomor telepon berhasil diverifikasi", "phone": phone})
@@ -359,6 +374,10 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 		"SELECT id, phone_verified FROM users WHERE phone=? AND status=1", req.Phone).Scan(&userID, &phoneVerified)
 	if err != nil {
 		writeJSON(w, 404, "Nomor telepon tidak terdaftar")
+		return
+	}
+	if phoneVerified == 0 {
+		writeJSON(w, 400, "Nomor telepon belum diverifikasi. Tidak bisa reset password.")
 		return
 	}
 	otp := generateOTP()
@@ -436,11 +455,26 @@ func isValidPhone(phone string) bool {
 	return true
 }
 
-func contains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+// OTP brute-force protection: max 5 failed attempts per OTP session
+var (
+	otpFailures   = map[int64]int{}
+	otpFailuresMu sync.Mutex
+)
+
+func otpAttemptsExceeded(userID int64) bool {
+	otpFailuresMu.Lock()
+	defer otpFailuresMu.Unlock()
+	return otpFailures[userID] >= 5
+}
+
+func recordOTPFailure(userID int64) {
+	otpFailuresMu.Lock()
+	otpFailures[userID]++
+	otpFailuresMu.Unlock()
+}
+
+func clearOTPFailures(userID int64) {
+	otpFailuresMu.Lock()
+	delete(otpFailures, userID)
+	otpFailuresMu.Unlock()
 }

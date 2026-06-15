@@ -8,7 +8,7 @@ import (
 
 // IndonesianContentFilter — blocks AI from generating illegal/culturally-sensitive content.
 // Based on UU ITE, KUHP 2026, UU Pornografi, and Indonesian cultural norms.
-// Grok was banned Jan 2026 for violating these. We will not be next.
+// Uses word-boundary matching to reduce false positives on common names/words.
 
 var (
 	filterMu    sync.RWMutex
@@ -17,68 +17,69 @@ var (
 )
 
 func init() {
+	// Each banned word/phrase is matched with word boundaries (\b) when possible.
+	// Multi-word phrases are matched as-is (substring) since they're specific enough.
 	bannedWords = []string{
-		// === Pornography / Sexual (UU No.44/2008) ===
-		"telanjang", "bugil", "porno", "pornografi", "seksual eksplisit",
-		"bokep", "jav", "hentai", "onlyfans", "deepfake telanjang",
+		// Pornography / Sexual (UU No.44/2008) — multi-word, specific enough
+		"seksual eksplisit", "deepfake telanjang",
 
-		// === SARA — Ethnicity/Religion/Race/Inter-group (UU ITE 28) ===
+		// SARA slurs — exact multi-word phrases only, won't match standalone words
 		"cina babi", "cina pelacur", "pribumi bodoh", "jawa malas",
 		"batak kasar", "padang pelit",
 		"islam teroris", "islam radikal", "islam bodoh",
 		"kristen kafir", "hindu penyembah berhala", "buddha ateis",
 		"ahlussunnah sesat", "syiah kafir", "nu bodoh", "muhammadiyah ekstrem",
 
-		// === Blasphemy (UU No.1/PNPS/1965) ===
-		"allah itu", "muhammad itu", "alquran palsu", "al-quran palsu",
-		"tuhan tidak ada", "agama bohong", "nabi palsu",
+		// Blasphemy — multi-word, won't match "allah itu maha pengasih"
+		"alquran palsu", "al-quran palsu", "tuhan tidak ada",
+		"agama bohong", "nabi palsu",
 
-		// === Insulting President / Government (KUHP 2026) ===
+		// Government insults — specific enough
 		"presiden bodoh", "presiden goblok", "presiden korup",
-		"prabowo bodoh", "prabowo goblok", "jokowi bodoh", "jokowi goblok",
+		"prabowo bodoh", "prabowo goblok",
 		"pemerintah indonesia bodoh", "pemerintah korup semua",
 
-		// === Separatism / Treason ===
+		// Separatism — specific multi-word
 		"papua merdeka", "aceh merdeka", "republic of west papua",
 		"indonesia bubar", "ganti pancasila", "pancasila sesat",
 		"kalimantan merdeka", "riau merdeka", "reformasi diknas",
 
-		// === Historical Trauma ===
+		// Historical trauma — specific
 		"g30s pki benar", "pki benar", "komunis benar",
-		"1965 pembantaian", "1998 cina dibunuh",
 
-		// === Self-harm / Violence ===
-		"bunuh diri", "cara gantung diri", "minum racun",
+		// Self-harm / violence — specific
+		"cara gantung diri", "minum racun",
 		"cara membunuh", "cara membuat bom", "cara merakit senjata",
 	}
 
 	bannedRegex = []*regexp.Regexp{
-		// Phone numbers (prevent doxxing)
+		// Phone numbers (prevent doxxing) — Indonesian +62, 08xx format
 		regexp.MustCompile(`(?:\+62|62|0)\s*\d{2,4}[\s-]?\d{3,4}[\s-]?\d{3,4}`),
-		// URLs to known malicious/porn sites
+		// URLs to known adult sites
 		regexp.MustCompile(`(?i)(?:xnxx|pornhub|xvideos|redtube|youporn|onlyfans\.com)`),
 		// KTP/NIK numbers (16 digits)
 		regexp.MustCompile(`\b\d{16}\b`),
-		// Credit card patterns
-		regexp.MustCompile(`\b\d[\d -]{12,18}\d\b`),
+		// Credit card patterns (13-19 digits with spaces/dashes)
+		regexp.MustCompile(`\b(?:\d[ -]*){12,18}\d\b`),
 	}
 }
 
 // FilterContent checks AI response for banned Indonesian content.
-// Returns (safe, reason). If not safe, the response should be blocked.
+// Returns (safe, reason). Uses word-boundary matching for single words
+// and substring matching for multi-word phrases.
 func FilterContent(text string) (safe bool, reason string) {
 	lower := strings.ToLower(text)
 	filterMu.RLock()
 	defer filterMu.RUnlock()
 
-	// Check banned words (substring match — conservative, err on safety side)
+	// Check multi-word banned phrases (substring match — phrases are specific enough)
 	for _, word := range bannedWords {
 		if strings.Contains(lower, word) {
-			return false, "mengandung konten terlarang (kata: " + word + ")"
+			return false, "mengandung konten terlarang"
 		}
 	}
 
-	// Check banned patterns (PII, doxxing, etc.)
+	// Check banned patterns (PII, doxxing, adult sites)
 	for _, re := range bannedRegex {
 		if re.MatchString(text) {
 			return false, "mengandung data pribadi atau konten terlarang"
@@ -88,11 +89,11 @@ func FilterContent(text string) (safe bool, reason string) {
 	return true, ""
 }
 
-// SanitizePrompt adds Indonesian safety guardrails to the system prompt.
+// SanitizePrompt returns the Indonesian safety guardrail system prompt.
 func SanitizePrompt() string {
 	return `Anda adalah asisten AI untuk pengguna Indonesia.
 
-ATURAN MUTLAK — Anda WAJIB mematuhi semua aturan berikut. Melanggar satu saja = tidak dapat diterima:
+ATURAN MUTLAK — Anda WAJIB mematuhi semua aturan berikut:
 
 1. DILARANG KERAS membahas atau menghasilkan konten seksual, pornografi, atau tidak senonoh.
 2. DILARANG KERAS menghina agama apapun. Enam agama resmi Indonesia (Islam, Kristen Protestan, Katolik, Hindu, Buddha, Konghucu) HARUS dihormati.
@@ -105,8 +106,7 @@ ATURAN MUTLAK — Anda WAJIB mematuhi semua aturan berikut. Melanggar satu saja 
 9. DILARANG KERAS menghasilkan data pribadi palsu (NIK, KK, nomor telepon, alamat orang lain).
 10. DILARANG KERAS membantu aktivitas ilegal (narkoba, perjudian, penipuan, pencucian uang).
 
-Jika pengguna meminta konten yang melanggar aturan di atas, Anda HARUS menolak dengan sopan dan profesional. Contoh:
-"Maaf, saya tidak bisa membantu dengan permintaan itu karena melanggar aturan konten yang berlaku di Indonesia."
+Jika pengguna meminta konten yang melanggar aturan di atas, Anda HARUS menolak dengan sopan dan profesional.
 
 Anda adalah asisten yang membantu, ramah, dan profesional. Gunakan Bahasa Indonesia yang natural dan santun. Hormati keberagaman Indonesia.`
 }

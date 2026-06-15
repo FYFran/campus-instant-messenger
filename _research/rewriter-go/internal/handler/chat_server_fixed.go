@@ -99,7 +99,7 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.QueryContext(r.Context(),
 		"SELECT role, content FROM messages WHERE conversation_id=? ORDER BY id ASC LIMIT 30", convID)
 	var history []deepseek.Message
-	history = append(history, deepseek.Message{Role: "system", Content: `Anda adalah asisten AI untuk pengguna Indonesia. Jawab dalam Bahasa Indonesia yang natural, ramah, dan profesional. Hormati keberagaman Indonesia. Tolak permintaan yang melanggar hukum Indonesia.`})
+	history = append(history, deepseek.Message{Role: "system", Content: SanitizePrompt()})
 	if err == nil && rows != nil {
 		defer rows.Close()
 		for rows.Next() {
@@ -130,7 +130,10 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 
 	fullResp := extractContent(buf.String())
 
-	_ = fullResp // content safety: server filters via DeepSeek system prompt
+	if safe, reason := FilterContent(fullResp); !safe {
+		slog.Warn("blocked unsafe AI response", "user", userID, "reason", reason)
+		fullResp = "Maaf, saya tidak bisa menampilkan jawaban itu karena melanggar aturan konten yang berlaku di Indonesia."
+	}
 
 	// Save assistant response
 	if fullResp != "" {
