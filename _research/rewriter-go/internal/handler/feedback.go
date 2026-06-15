@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -36,9 +37,19 @@ func FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 		os.Rename(path, path+".old")
 	}
 
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// Validate field lengths to prevent log injection and disk abuse
+	if len(d.Kategori) > 50 { d.Kategori = d.Kategori[:50] }
+	if len(d.Email) > 100 { d.Email = d.Email[:100] }
+	if len(d.Pesan) > 5000 { d.Pesan = d.Pesan[:5000] }
+	// Sanitize newlines to prevent log injection
+	d.Kategori = strings.ReplaceAll(d.Kategori, "\n", " ")
+	d.Email = strings.ReplaceAll(d.Email, "\n", " ")
+	d.Pesan = strings.ReplaceAll(d.Pesan, "\n", "\\n")
+
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		slog.Error("feedback write", "error", err)
+		w.WriteHeader(500)
 		w.Write([]byte(`{"ok":false,"message":"Gagal menyimpan feedback"}`))
 		return
 	}

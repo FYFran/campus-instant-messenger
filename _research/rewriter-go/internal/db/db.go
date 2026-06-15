@@ -18,8 +18,8 @@ func Open(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+	db.SetMaxOpenConns(8) // WAL mode supports concurrent readers + 1 writer
+	db.SetMaxIdleConns(2)
 	db.SetConnMaxLifetime(0)
 	return db, nil
 }
