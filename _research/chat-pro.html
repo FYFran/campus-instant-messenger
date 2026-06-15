@@ -236,13 +236,20 @@ body {
         </div>
         <span onclick="logout()" class="text-[10px] text-black/20 hover:text-red-400 font-medium px-2 py-1 rounded-full hover:bg-black/[0.03] cursor-pointer transition-all">Keluar</span>
       </div>
-      <div class="mt-3 space-y-1.5">
+      <div class="mt-3 space-y-2">
         <div class="flex justify-between text-[10px]">
-          <span class="text-black/25">Sisa Token</span>
-          <span class="font-semibold text-black/40" id="token-display-side">—</span>
+          <span class="text-black/25">⚡ Flash</span>
+          <span class="font-semibold text-black/40" id="flash-display-side">—</span>
         </div>
-        <div class="h-1.5 rounded-full bg-black/[0.04] overflow-hidden">
-          <div class="h-full rounded-full bg-gradient-to-r from-[#1a1a28] to-[#3d3d5c] transition-all duration-500" id="token-bar" style="width:0%"></div>
+        <div class="h-1 rounded-full bg-black/[0.04] overflow-hidden">
+          <div class="h-full rounded-full bg-gradient-to-r from-[#1a1a28] to-[#3d3d5c] transition-all duration-500" id="flash-bar" style="width:0%"></div>
+        </div>
+        <div class="flex justify-between text-[10px]">
+          <span class="text-black/25">💎 Pro</span>
+          <span class="font-semibold text-black/40" id="pro-display-side">—</span>
+        </div>
+        <div class="h-1 rounded-full bg-black/[0.04] overflow-hidden">
+          <div class="h-full rounded-full bg-gradient-to-r from-[#b8975a] to-[#d4b87a] transition-all duration-500" id="pro-bar" style="width:0%"></div>
         </div>
       </div>
     </div>
@@ -260,17 +267,21 @@ body {
       <button onclick="toggleSidebar()" class="hidden max-md:flex items-center justify-center w-8 h-8 rounded-xl hover:bg-black/[0.03] text-black/30">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <div class="surface-2 rounded-full px-3.5 py-2 flex items-center gap-2.5 border border-black/[0.03] elevation-1">
-        <div class="w-2 h-2 rounded-full bg-emerald-400/80 pulse-dot shadow-[0_0_6px_rgba(52,211,153,0.3)]"></div>
-        <span class="text-[12px] font-medium text-black/35 tracking-wide" id="model-display">DeepSeek V4 Flash</span>
+      <!-- Model Switcher -->
+      <div class="surface-2 rounded-full p-1 flex items-center gap-0.5 border border-black/[0.03] elevation-1" id="model-switcher">
+        <button onclick="switchModel('deepseek-v4-flash')" id="sw-flash" class="px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 bg-black/[0.06] text-black/60">⚡ Flash</button>
+        <button onclick="switchModel('deepseek-v4-pro')" id="sw-pro" class="px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 text-black/25 hover:text-black/40">💎 Pro</button>
       </div>
-      <span class="text-[11px] text-black/16">·</span>
-      <span class="text-[11px] text-black/22" id="model-context">Flash 500K</span>
+      <div class="w-2 h-2 rounded-full bg-emerald-400/80 pulse-dot shadow-[0_0_6px_rgba(52,211,153,0.3)]"></div>
+      <span class="text-[11px] text-black/22 hidden sm:block" id="model-context">Flash 500K</span>
     </div>
     <div class="flex items-center gap-3">
-      <span class="text-[12px] text-black/25 font-medium hidden sm:block"><span id="token-count-header">—</span> token</span>
-      <button onclick="location.href='/topup.html'" class="accent-btn text-[12px] font-semibold text-white/95 px-5 py-2.5 rounded-2xl tracking-wide">
-        Upgrade Pro →
+      <div class="text-right hidden sm:block">
+        <div class="text-[12px] font-semibold text-black/50" id="token-count-header">—</div>
+        <div class="text-[10px] text-black/20" id="token-sub-header">Flash · Pro</div>
+      </div>
+      <button onclick="location.href='/topup.html'" id="upgrade-btn" class="accent-btn text-[12px] font-semibold text-white/95 px-5 py-2.5 rounded-2xl tracking-wide">
+        Isi Token →
       </button>
     </div>
   </header>
@@ -554,24 +565,34 @@ function loadUserData() {
     .then(function(d) {
       userData = d;
       var name = d.name || d.email || 'User';
-      var email = d.email || '—';
-      var bal = Number(d.token_balance || 0);
-      var maxBal = Number(d.max_balance || d.quota || 500000);
+      var flashBal = Number(d.flash_balance || 0);
+      var proBal = Number(d.pro_balance || 0);
+      var packType = d.plan || 'gratis'; // API returns pack_type as 'plan'
 
       document.getElementById('user-name-side').textContent = name;
       document.getElementById('user-avatar-side').textContent = name.charAt(0).toUpperCase();
-      document.getElementById('user-plan-side').textContent = d.plan || 'Gratis';
-      document.getElementById('token-display-side').textContent = bal.toLocaleString() + ' token';
-      document.getElementById('token-count-header').textContent = bal.toLocaleString();
+      document.getElementById('user-plan-side').textContent = packLabel(packType);
+      document.getElementById('flash-display-side').textContent = flashBal.toLocaleString();
+      document.getElementById('pro-display-side').textContent = proBal.toLocaleString();
+      document.getElementById('token-count-header').textContent = (flashBal + proBal).toLocaleString() + ' token';
+      document.getElementById('token-sub-header').textContent = '⚡' + flashBal.toLocaleString() + ' · 💎' + proBal.toLocaleString();
 
-      var pct = maxBal > 0 ? Math.min((bal / maxBal) * 100, 100) : 0;
-      document.getElementById('token-bar').style.width = pct + '%';
+      var flashMax = packMaxFlash(packType);
+      var proMax = packMaxPro(packType);
+      document.getElementById('flash-bar').style.width = (flashMax > 0 ? Math.min((flashBal / flashMax) * 100, 100) : 0) + '%';
+      document.getElementById('pro-bar').style.width = (proMax > 0 ? Math.min((proBal / proMax) * 100, 100) : 0) + '%';
 
-      if (bal < 10000) { ub.classList.remove('hidden'); } else { ub.classList.add('hidden'); }
+      if (flashBal < 10000) { ub.classList.remove('hidden'); } else { ub.classList.add('hidden'); }
 
-      // Update model display
-      document.getElementById('model-display').textContent = currentModel === 'deepseek-v4-flash' ? 'DeepSeek V4 Flash' : 'DeepSeek V4 Pro';
-      document.getElementById('model-context').textContent = currentModel === 'deepseek-v4-flash' ? 'Flash 500K' : 'Pro 1M';
+      // Upgrade button
+      var ubtn = document.getElementById('upgrade-btn');
+      if (packType === 'ultimate') { ubtn.style.display = 'none'; }
+      else if (packType === 'pro') { ubtn.textContent = 'Upgrade Ultimate →'; }
+      else if (packType === 'flash') { ubtn.textContent = 'Upgrade Pro →'; }
+      else { ubtn.textContent = 'Isi Token →'; }
+
+      // Model switcher
+      updateModelSwitcher(packType);
     })
     .catch(function() {
       toast('Gagal memuat profil', 'err');
@@ -878,13 +899,18 @@ function refreshBalance() {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       userData = d;
-      var bal = Number(d.token_balance || 0);
-      var maxBal = Number(d.max_balance || d.quota || 500000);
-      document.getElementById('token-display-side').textContent = bal.toLocaleString() + ' token';
-      document.getElementById('token-count-header').textContent = bal.toLocaleString();
-      var pct = maxBal > 0 ? Math.min((bal / maxBal) * 100, 100) : 0;
-      document.getElementById('token-bar').style.width = pct + '%';
-      if (bal < 10000) { ub.classList.remove('hidden'); } else { ub.classList.add('hidden'); }
+      var flashBal = Number(d.flash_balance || 0);
+      var proBal = Number(d.pro_balance || 0);
+      var packType = d.plan || 'gratis';
+      document.getElementById('flash-display-side').textContent = flashBal.toLocaleString();
+      document.getElementById('pro-display-side').textContent = proBal.toLocaleString();
+      document.getElementById('token-count-header').textContent = (flashBal + proBal).toLocaleString() + ' token';
+      document.getElementById('token-sub-header').textContent = '⚡' + flashBal.toLocaleString() + ' · 💎' + proBal.toLocaleString();
+      var flashMax = packMaxFlash(packType);
+      var proMax = packMaxPro(packType);
+      document.getElementById('flash-bar').style.width = (flashMax > 0 ? Math.min((flashBal / flashMax) * 100, 100) : 0) + '%';
+      document.getElementById('pro-bar').style.width = (proMax > 0 ? Math.min((proBal / proMax) * 100, 100) : 0) + '%';
+      if (flashBal < 10000) { ub.classList.remove('hidden'); } else { ub.classList.add('hidden'); }
     });
 }
 
@@ -937,6 +963,54 @@ function shareContent() {
     navigator.share({ title: conversations[activeConvId] ? conversations[activeConvId].title : 'TokenLine Chat', text: text }).catch(function() {});
   } else {
     navigator.clipboard.writeText(text).then(function() { toast('Konten disalin ke clipboard', 'ok'); });
+  }
+}
+
+// === HELPERS ===
+function packLabel(packType) {
+  var labels = { gratis: 'Gratis', flash: '⚡ Flash', pro: '💎 Pro', ultimate: '👑 Ultimate' };
+  return labels[packType] || 'Gratis';
+}
+function packMaxFlash(packType) {
+  var maxes = { gratis: 10000, flash: 4000000, pro: 0, ultimate: 16000000 };
+  return maxes[packType] || 10000;
+}
+function packMaxPro(packType) {
+  var maxes = { gratis: 0, flash: 0, pro: 5000000, ultimate: 4000000 };
+  return maxes[packType] || 0;
+}
+
+// === MODEL SWITCHER ===
+function switchModel(model) {
+  if (isStreaming) return;
+  currentModel = model;
+  localStorage.setItem('tl_model', model);
+  updateModelSwitcher(userData ? (userData.plan || 'gratis') : 'gratis');
+  document.getElementById('model-context').textContent = model === 'deepseek-v4-flash' ? 'Flash 500K' : 'Pro 1M';
+  var modeLabel = model === 'deepseek-v4-flash' ? '⚡ Flash' : '💎 Pro';
+  toast('Model: ' + modeLabel, 'info');
+}
+
+function updateModelSwitcher(packType) {
+  var sf = document.getElementById('sw-flash');
+  var sp = document.getElementById('sw-pro');
+  if (!sf || !sp) return;
+
+  // Update active state
+  if (currentModel === 'deepseek-v4-flash') {
+    sf.className = 'px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 bg-black/[0.06] text-black/60';
+    sp.className = 'px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 text-black/25 hover:text-black/40';
+  } else {
+    sp.className = 'px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 bg-black/[0.06] text-black/60';
+    sf.className = 'px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 text-black/25 hover:text-black/40';
+  }
+
+  // Pro model requires Pro or Ultimate pack
+  var canUsePro = packType === 'pro' || packType === 'ultimate';
+  sp.style.opacity = canUsePro ? '1' : '0.4';
+  sp.style.pointerEvents = canUsePro ? 'auto' : 'none';
+  if (!canUsePro && currentModel === 'deepseek-v4-pro') {
+    switchModel('deepseek-v4-flash');
   }
 }
 

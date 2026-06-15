@@ -465,11 +465,13 @@
     const email = u.email || 'Pengguna';
     const name = email.split('@')[0] || 'Pengguna';
     const initial = name.charAt(0).toUpperCase();
-    const plan = u.plan || 'Free';
+    var planLabel = u.plan || 'gratis';
+    var planNames = { gratis: 'Gratis', flash: '⚡ Flash', pro: '💎 Pro', ultimate: '👑 Ultimate' };
+    var planDisplay = planNames[planLabel] || 'Gratis';
 
     $('user-avatar').textContent = initial;
     $('user-name').textContent = name;
-    $('user-plan').textContent = plan;
+    $('user-plan').textContent = planDisplay;
   }
 
   // ============================================================
@@ -481,13 +483,15 @@
 
     const docs = conversations.length;
     const timeSaved = totalWords > 0 ? Math.round(totalWords / 500) : 0;
-    const tokenBalance = u.token_balance || 0;
+    const flashBal = u.flash_balance || 0;
+    const proBal = u.pro_balance || 0;
+    const tokenBalance = flashBal + proBal;
     const tokensUsed = u.tokens_used || 0;
     const totalTokens = tokenBalance + tokensUsed;
 
     // Total words
     $('stat-words-value').textContent = formatNumber(totalWords) + (totalWords >= 1000 ? '' : '');
-    const growth = u.total_deposited > 0 ? 'Terpakai ' + formatNumber(tokensUsed) + ' token' : 'Belum ada aktivitas';
+    const growth = tokensUsed > 0 ? 'Terpakai ' + formatNumber(tokensUsed) + ' token' : 'Belum ada aktivitas';
     $('stat-words-sub').innerHTML = `<span class="text-[10px] lg:text-[11px] text-black/25">${growth}</span>`;
 
     // Documents
@@ -502,8 +506,8 @@
       ? `<span class="text-[10px] lg:text-[11px] text-black/25">Setara ${formatNumber(totalWords)} kata</span>`
       : `<span class="text-[10px] lg:text-[11px] text-black/25">Estimasi</span>`;
 
-    // Token balance
-    $('stat-tokens-value').textContent = formatNumber(tokenBalance);
+    // Token balance — dual currency
+    $('stat-tokens-value').innerHTML = formatNumber(flashBal) + ' <span class="text-[10px] text-black/15">⚡</span> + ' + formatNumber(proBal) + ' <span class="text-[10px] text-black/15">💎</span>';
     const pct = totalTokens > 0 ? Math.min((tokensUsed / totalTokens) * 100, 100) : 0;
     $('token-progress').style.width = pct + '%';
     $('stat-tokens-sub').textContent = formatNumber(tokensUsed) + ' / ' + formatNumber(totalTokens) + ' terpakai';

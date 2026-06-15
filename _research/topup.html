@@ -162,13 +162,14 @@ async function load(){
   try{
     var r=await fetch('/api/me',{headers:{Authorization:'Bearer '+tok}});
     var d=await r.json();
-    var bal=d.token_balance||0,depo=d.total_deposited||0,used=d.tokens_used||0;
-    document.getElementById('balance-display').textContent=bal>0?fmtNum(bal)+' token':'0 token';
-    document.getElementById('bal-detail').textContent=bal>0?'Bisa dipakai kapan saja — tidak kedaluwarsa 🎉':'Yuk isi token biar bisa chat sepuasnya!';
+    var flashBal=d.flash_balance||0,proBal=d.pro_balance||0,totalBal=flashBal+proBal;
+    var depo=d.total_deposited||0,used=d.tokens_used||0;
+    document.getElementById('balance-display').textContent=totalBal>0?'⚡'+fmtNum(flashBal)+' + 💎'+fmtNum(proBal):'0 token';
+    document.getElementById('bal-detail').textContent=totalBal>0?'Bisa dipakai kapan saja — tidak kedaluwarsa 🎉':'Yuk isi token biar bisa chat sepuasnya!';
     // Progress bar: token used vs total deposited (estimated)
-    var total=bal+used||1,pct=Math.min(100,Math.round(used/total*100));
+    var total=totalBal+used||1,pct=Math.min(100,Math.round(used/total*100));
     document.getElementById('progress-fill').style.width=pct+'%';
-    if(bal===0&&depo>0)document.getElementById('bal-detail').textContent='Token habis! Isi ulang untuk lanjut chat ⚡';
+    if(totalBal===0&&depo>0)document.getElementById('bal-detail').textContent='Token habis! Isi ulang untuk lanjut chat ⚡';
   }catch(e){}
 }
 function fmtNum(n){if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e3)return (n/1e3).toFixed(0)+'K';return String(n)}
