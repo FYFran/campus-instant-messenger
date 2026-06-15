@@ -235,35 +235,44 @@ func (h *PayHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Idempotency guard: if already processed, skip token grant.
-	var currentStatus string
-	err = h.DB.QueryRowContext(r.Context(),
-		"SELECT status FROM payments WHERE xendit_invoice_id=?", invoiceID).Scan(&currentStatus)
+	// Atomic race-condition guard: use UPDATE WHERE status='pending' as a
+	// compare-and-swap. Only ONE concurrent webhook will succeed.
+	// First, mark as paid atomically — if RowsAffected=0, another webhook won.
+	res, err := h.DB.ExecContext(r.Context(),
+		"UPDATE payments SET status='paid', paid_at=datetime('now') WHERE xendit_invoice_id=? AND status='pending'",
+		invoiceID)
 	if err != nil {
-		slog.Error("callback invoice not found", "invoice_id", invoiceID, "error", err)
-		writeJSON(w, 404, "Invoice not found")
+		slog.Error("callback update failed", "invoice_id", invoiceID, "error", err)
+		writeJSON(w, 500, "Gagal memproses pembayaran")
 		return
 	}
-	if currentStatus == "paid" {
-		slog.Info("callback duplicate ignored", "invoice_id", invoiceID)
-		writeJSON(w, 200, map[string]string{"status": "already_paid"})
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		// Check if already paid (idempotent retry) or invoice doesn't exist
+		var currentStatus string
+		h.DB.QueryRowContext(r.Context(),
+			"SELECT status FROM payments WHERE xendit_invoice_id=?", invoiceID).Scan(&currentStatus)
+		if currentStatus == "paid" {
+			slog.Info("callback duplicate ignored", "invoice_id", invoiceID)
+			writeJSON(w, 200, map[string]string{"status": "already_paid"})
+			return
+		}
+		slog.Error("callback invoice not pending", "invoice_id", invoiceID)
+		writeJSON(w, 404, "Invoice not found or already processed")
 		return
 	}
 
+	// Fetch invoice details (now guaranteed to be ours exclusively)
 	var userID int64
 	var plan string
 	err = h.DB.QueryRowContext(r.Context(),
-		"SELECT user_id, plan FROM payments WHERE xendit_invoice_id=? AND status='pending'",
+		"SELECT user_id, plan FROM payments WHERE xendit_invoice_id=?",
 		invoiceID).Scan(&userID, &plan)
 	if err != nil {
-		slog.Error("callback invoice not pending", "invoice_id", invoiceID, "error", err)
-		writeJSON(w, 404, "Invoice not found")
+		slog.Error("callback invoice read after update", "invoice_id", invoiceID, "error", err)
+		writeJSON(w, 500, "Gagal membaca invoice")
 		return
 	}
-
-	h.DB.ExecContext(r.Context(),
-		"UPDATE payments SET status='paid', paid_at=datetime('now') WHERE xendit_invoice_id=?",
-		invoiceID)
 
 	pk, ok := tokenPacks[plan]
 	if !ok {
