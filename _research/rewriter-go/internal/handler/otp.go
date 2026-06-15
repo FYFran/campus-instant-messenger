@@ -92,7 +92,7 @@ func SendSMSOTP(to, otp string) error {
 	}
 
 	to = normalizePhone(to)
-	message := fmt.Sprintf("【TokenLine】Kode verifikasi Anda: %s. Jangan berikan kode ini kepada siapapun.", otp)
+	message := fmt.Sprintf("[TokenLine] Kode verifikasi Anda: %s. Jangan berikan kode ini kepada siapapun.", otp)
 
 	form := url.Values{}
 	form.Set("apikey", ypAPIKey)
