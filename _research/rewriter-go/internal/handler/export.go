@@ -168,11 +168,49 @@ h2{font-size:18pt;border-bottom:2px solid #222;padding-bottom:8px;margin-top:30p
 }
 
 func simpleMarkdownToHTML(s string) string {
-	// Bold
-	s = strings.ReplaceAll(s, "**", "")
+	// Bold: **text** → <strong>text</strong>
+	for strings.Count(s, "**") >= 2 {
+		idx1 := strings.Index(s, "**")
+		idx2 := strings.Index(s[idx1+2:], "**")
+		if idx2 < 0 {
+			break
+		}
+		bold := s[idx1+2 : idx1+2+idx2]
+		s = s[:idx1] + "<strong>" + bold + "</strong>" + s[idx1+2+idx2+2:]
+	}
+	// Inline code: `text` → <code>text</code>
+	for strings.Count(s, "`") >= 2 {
+		idx1 := strings.Index(s, "`")
+		idx2 := strings.Index(s[idx1+1:], "`")
+		if idx2 < 0 {
+			break
+		}
+		code := s[idx1+1 : idx1+1+idx2]
+		s = s[:idx1] + "<code>" + code + "</code>" + s[idx1+1+idx2+1:]
+	}
+	// Headings: ### text → <h3>text</h3>
+	s = replaceHeading(s, "### ", "h3")
+	s = replaceHeading(s, "## ", "h2")
+	s = replaceHeading(s, "# ", "h1")
 	// Newlines to <br>
 	s = strings.ReplaceAll(s, "\n", "<br>")
 	return s
+}
+
+func replaceHeading(s string, prefix string, tag string) string {
+	var result strings.Builder
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if i > 0 {
+			result.WriteString("\n")
+		}
+		if after, ok := strings.CutPrefix(line, prefix); ok {
+			result.WriteString("<" + tag + ">" + after + "</" + tag + ">")
+		} else {
+			result.WriteString(line)
+		}
+	}
+	return result.String()
 }
 
 func sanitizeFilename(s string) string {

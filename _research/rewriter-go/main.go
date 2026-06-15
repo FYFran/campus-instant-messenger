@@ -43,12 +43,15 @@ func main() {
 	// Rate limiters
 	authLimiter := middleware.NewRateLimiter(3, 5)  // 3/sec burst 5 for auth
 	chatLimiter := middleware.NewRateLimiter(5, 10) // 5/sec burst 10 for chat
+	pubLimiter := middleware.NewRateLimiter(10, 20) // 10/sec burst 20 for public reads
 
 	// Handlers
 	authH := &handler.AuthHandler{DB: database, JWTSecret: cfg.JWTSecret}
 	chatH := &handler.ChatHandler{DB: database, DeepSeek: ds}
 	payH := &handler.PayHandler{DB: database}
 	userH := &handler.UserHandler{DB: database}
+	exportH := &handler.ExportHandler{DB: database}
+	tmplH := &handler.TemplateHandler{DB: database}
 	handler.InitDodo()
 	handler.InitOTP()
 
@@ -150,7 +153,9 @@ func main() {
 	// Protected routes with rate limiting
 	mux.HandleFunc("POST /api/chat", chain(chatH.Chat, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
 	mux.HandleFunc("GET /api/chat/history", chain(userH.History, middleware.Auth(cfg.JWTSecret)))
-	mux.HandleFunc("GET /api/packs", payH.ListPacks)
+	mux.HandleFunc("GET /api/packs", chain(payH.ListPacks, middleware.RateLimit(pubLimiter)))
+	mux.HandleFunc("GET /api/templates", chain(tmplH.List, middleware.RateLimit(pubLimiter)))
+	mux.HandleFunc("POST /api/export", chain(exportH.Export, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
 	mux.HandleFunc("POST /api/payment/create", chain(payH.Create, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("POST /api/payment/callback", payH.Callback)
 	mux.HandleFunc("GET /api/me", chain(userH.Me, middleware.Auth(cfg.JWTSecret)))
