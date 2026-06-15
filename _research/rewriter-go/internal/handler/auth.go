@@ -326,14 +326,12 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Brute-force: max 5 failed OTP attempts, then OTP is invalidated
-	key := fmt.Sprintf("otp_%d", userID)
-	if checkCooldown(key, 300) {
-		if otpAttemptsExceeded(userID) {
-			h.DB.ExecContext(r.Context(),
-				"UPDATE users SET otp_hash='', otp_expires_at='' WHERE id=?", userID)
-			writeJSON(w, 429, "Terlalu banyak percobaan OTP. Kirim ulang kode verifikasi.")
-			return
-		}
+	if otpAttemptsExceeded(userID) {
+		h.DB.ExecContext(r.Context(),
+			"UPDATE users SET otp_hash='', otp_expires_at='' WHERE id=?", userID)
+		clearOTPFailures(userID)
+		writeJSON(w, 429, "Terlalu banyak percobaan OTP. Kirim ulang kode verifikasi.")
+		return
 	}
 
 	var phone, otpHash, expiresStr string
