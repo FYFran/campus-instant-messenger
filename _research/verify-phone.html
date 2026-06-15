@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verifikasi Nomor — TokenLine</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--acc:#6366f1;--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;--card:#fff;--hair:#e5e7eb;--green:#16a34a;--warn:#ea580c}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--fg:#f0f0f0;--muted:#999;--card:#1a1a1a;--hair:#2a2a2a}}
+body{font:400 15px/1.6 system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:2rem;width:100%;max-width:380px}
+h1{font-size:1.3rem;margin:0 0 .25rem}h1 span{color:var(--acc)}
+p.desc{color:var(--muted);font-size:.85rem;margin:0 0 1.5rem}
+label{display:block;font-size:.8rem;margin-bottom:.25rem;color:var(--muted)}
+input{width:100%;padding:.65rem .75rem;border:1px solid var(--hair);border-radius:8px;font-size:.95rem;background:var(--bg);color:var(--fg);box-sizing:border-box;margin-bottom:1rem;letter-spacing:.1em}
+input:focus{outline:none;border-color:var(--acc)}
+button{width:100%;padding:.7rem;background:var(--acc);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--warn);font-size:.8rem;margin-bottom:.75rem;display:none}
+.ok{color:var(--green);font-size:.8rem;margin-bottom:.75rem;display:none}
+#voiceBtn{background:transparent;color:var(--acc);border:1px solid var(--acc);margin-top:.5rem;display:none}
+.timer{text-align:center;font-size:.8rem;color:var(--muted);margin:.5rem 0}
+.step{display:none}.step.active{display:block}
+.otp-box{display:flex;gap:.5rem;justify-content:center;margin:1rem 0}
+.otp-box input{width:44px;height:52px;text-align:center;font-size:1.3rem;padding:0;margin:0}
+.success-icon{text-align:center;font-size:3rem;margin:1rem 0}
+</style>
+</head>
+<body>
+<div class="card">
+  <!-- Step 1: phone input -->
+  <div id="step1" class="step active">
+    <h1>Verifikasi <span>Nomor</span></h1>
+    <p class="desc">Verifikasi nomor WhatsApp Anda untuk keamanan akun dan pemulihan password. <strong>Granis, tidak dipungut biaya.</strong></p>
+    <div class="err" id="err1"></div>
+    <form onsubmit="sendOTP(event)">
+      <label>Nomor WhatsApp (Indonesia)</label>
+      <input type="tel" id="phone" placeholder="0812xxxxxxxx" pattern="^(0|62|\+62)\d{8,14}$" required autofocus>
+      <p style="font-size:.7rem;color:var(--muted);margin:-.5rem 0 1rem">Contoh: 08123456789 atau +628123456789</p>
+      <button type="submit" id="sendBtn">Kirim Kode Verifikasi via SMS</button>
+    </form>
+  </div>
+
+  <!-- Step 2: OTP input -->
+  <div id="step2" class="step">
+    <h1>Masukkan <span>Kode</span></h1>
+    <p class="desc">Kode 6 digit telah dikirim ke <strong id="phoneDisplay"></strong></p>
+    <div class="err" id="err2"></div>
+    <div class="otp-box">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="otp-digit" oninput="otpInput(this)" onkeydown="otpBackspace(event,this)" onpaste="otpPaste(event)">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="otp-digit" oninput="otpInput(this)" onkeydown="otpBackspace(event,this)" onpaste="otpPaste(event)">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="otp-digit" oninput="otpInput(this)" onkeydown="otpBackspace(event,this)" onpaste="otpPaste(event)">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="otp-digit" oninput="otpInput(this)" onkeydown="otpBackspace(event,this)" onpaste="otpPaste(event)">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="otp-digit" oninput="otpInput(this)" onkeydown="otpBackspace(event,this)" onpaste="otpPaste(event)">
+      <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" class="otp-digit" oninput="otpInput(this)" onkeydown="otpBackspace(event,this)" onpaste="otpPaste(event)">
+    </div>
+    <button onclick="verifyOTP()" id="verifyBtn">Verifikasi</button>
+    <div class="timer" id="timer"></div>
+    <button id="resendBtn" disabled onclick="sendOTP()">Kirim Ulang SMS</button>
+    <button id="voiceBtn" onclick="sendVoice()">📞 Panggilan Suara (gratis)</button>
+  </div>
+
+  <!-- Step 3: success -->
+  <div id="step3" class="step">
+    <div class="success-icon">✅</div>
+    <h1 style="text-align:center">Nomor <span>Terverifikasi!</span></h1>
+    <p class="desc" style="text-align:center">Akun Anda sekarang lebih aman. Password bisa direset via WhatsApp.</p>
+    <button onclick="window.location.href='/chat'">Mulai Chat →</button>
+  </div>
+</div>
+
+<script>
+const API = '';
+let countdownTimer = null;
+let voiceShown = false;
+
+// Get token from localStorage (set during register/login)
+function token() { return localStorage.getItem('tl_tok') || ''; }
+function api(path, body) {
+  return fetch(API + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() },
+    body: JSON.stringify(body)
+  }).then(r => r.json());
+}
+
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(e => e.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+}
+
+function showErr(id, msg) {
+  const e = document.getElementById(id);
+  e.textContent = msg; e.style.display = 'block';
+}
+
+// Step 1: Send SMS OTP
+function sendOTP(e) {
+  if (e) e.preventDefault();
+  const phone = document.getElementById('phone').value.trim();
+  if (!phone) return;
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true; btn.textContent = 'Mengirim...';
+
+  api('/api/auth/send-otp', { phone }).then(data => {
+    if (data.message) {
+      document.getElementById('phoneDisplay').textContent = phone;
+      showStep(2);
+      startCountdown(60);
+      voiceShown = false;
+    } else {
+      showErr('err1', data.error || data.message || 'Gagal mengirim. Coba lagi.');
+      btn.disabled = false; btn.textContent = 'Kirim Kode Verifikasi via SMS';
+    }
+  }).catch(() => {
+    showErr('err1', 'Gagal terhubung ke server.');
+    btn.disabled = false; btn.textContent = 'Kirim Kode Verifikasi via SMS';
+  });
+}
+
+// Countdown timer
+function startCountdown(sec) {
+  clearInterval(countdownTimer);
+  const resend = document.getElementById('resendBtn');
+  const timer = document.getElementById('timer');
+  let remaining = sec;
+  resend.disabled = true;
+
+  countdownTimer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      timer.textContent = '';
+      resend.disabled = false;
+      if (!voiceShown) document.getElementById('voiceBtn').style.display = 'block';
+    } else {
+      timer.textContent = 'Kirim ulang dalam ' + remaining + ' detik';
+    }
+  }, 1000);
+}
+
+// Voice call OTP
+function sendVoice() {
+  const btn = document.getElementById('voiceBtn');
+  btn.disabled = true; btn.textContent = 'Menghubungi...';
+  voiceShown = true;
+
+  api('/api/auth/send-otp-voice', {}).then(data => {
+    if (data.message) {
+      btn.textContent = '📞 Panggilan sedang berlangsung...';
+      btn.style.display = 'none';
+      startCountdown(90);
+    } else {
+      showErr('err2', data.error || 'Gagal menghubungi.');
+      btn.disabled = false; btn.textContent = '📞 Panggilan Suara (gratis)';
+    }
+  }).catch(() => {
+    showErr('err2', 'Gagal terhubung.');
+    btn.disabled = false; btn.textContent = '📞 Panggilan Suara (gratis)';
+  });
+}
+
+// OTP digit input handling
+function otpInput(el) {
+  el.value = el.value.replace(/[^0-9]/g, '');
+  if (el.value && el.nextElementSibling) el.nextElementSibling.focus();
+}
+
+function otpBackspace(e, el) {
+  if (e.key === 'Backspace' && !el.value && el.previousElementSibling) {
+    el.previousElementSibling.focus();
+  }
+}
+
+function otpPaste(e) {
+  e.preventDefault();
+  const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\s/g, '');
+  if (!/^\d{6}$/.test(paste)) return;
+  const boxes = document.querySelectorAll('.otp-digit');
+  paste.split('').forEach((d, i) => { if (boxes[i]) { boxes[i].value = d; boxes[i].dispatchEvent(new Event('input')); } });
+}
+
+function verifyOTP() {
+  const code = [...document.querySelectorAll('.otp-digit')].map(e => e.value).join('');
+  if (code.length !== 6) { showErr('err2', 'Masukkan 6 digit kode.'); return; }
+
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true; btn.textContent = 'Memverifikasi...';
+
+  api('/api/auth/verify-otp', { otp: code }).then(data => {
+    if (data.message && data.phone) {
+      clearInterval(countdownTimer);
+      showStep(3);
+    } else {
+      showErr('err2', data.error || 'Kode salah atau kadaluarsa.');
+      btn.disabled = false; btn.textContent = 'Verifikasi';
+    }
+  }).catch(() => {
+    showErr('err2', 'Gagal terhubung.');
+    btn.disabled = false; btn.textContent = 'Verifikasi';
+  });
+}
+</script>
+</body>
+</html>

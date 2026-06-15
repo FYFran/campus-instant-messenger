@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Masuk — TokenLine</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--acc:#6366f1;--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;--card:#fff;--hair:#e5e7eb;--err:#e94560}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--fg:#f0f0f0;--muted:#999;--card:#1a1a1a;--hair:#2a2a2a}}
+body{font:400 15px/1.6 system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:2rem;width:100%;max-width:380px}
+h1{font-size:1.4rem;margin:0 0 .25rem}h1 span{color:var(--acc)}
+p.desc{color:var(--muted);font-size:.85rem;margin:0 0 1.5rem}
+label{display:block;font-size:.8rem;margin-bottom:.25rem;color:var(--muted)}
+input{width:100%;padding:.65rem .75rem;border:1px solid var(--hair);border-radius:8px;font-size:.95rem;background:var(--bg);color:var(--fg);box-sizing:border-box;margin-bottom:1rem}
+input:focus{outline:none;border-color:var(--acc)}
+button{width:100%;padding:.7rem;background:var(--acc);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5}
+.err{color:var(--err);font-size:.8rem;margin-bottom:.75rem;display:none}
+.link{text-align:center;margin-top:1rem;font-size:.85rem;color:var(--muted)}
+.link a{color:var(--acc);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Masuk ke <span>TokenLine</span></h1>
+<p class="desc">Lanjutkan chat AI-mu</p>
+<div class="err" id="err"></div>
+<form id="form" onsubmit="login(event)">
+<label>Email</label>
+<input type="email" id="email" placeholder="kamu@email.com" required autofocus>
+<label>Password</label>
+<input type="password" id="pw" placeholder="••••••" required>
+<button type="submit" id="btn">Masuk</button>
+</form>
+<div class="link">Belum punya akun? <a href="/register.html">Daftar gratis</a></div>
+</div>
+<script>
+async function login(e){
+e.preventDefault();
+var em=document.getElementById('email').value.trim();
+var pw=document.getElementById('pw').value;
+var err=document.getElementById('err');
+var btn=document.getElementById('btn');
+err.style.display='none';btn.disabled=true;btn.textContent='Masuk...';
+try{
+var r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});
+var d=await r.json();
+if(!r.ok){err.textContent=d.message||'Email atau password salah';err.style.display='block';btn.disabled=false;btn.textContent='Masuk';return}
+var t=d.token||d.data?.token;
+if(t){localStorage.setItem('tl_tok',t);location.href='/chat/'}
+}catch(ex){err.textContent='Koneksi gagal. Coba lagi.';err.style.display='block';btn.disabled=false;btn.textContent='Masuk'}
+}
+</script>
+</body>
+</html>

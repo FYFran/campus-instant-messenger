@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daftar — TokenLine</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--acc:#6366f1;--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;--card:#fff;--hair:#e5e7eb;--err:#e94560}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--fg:#f0f0f0;--muted:#999;--card:#1a1a1a;--hair:#2a2a2a}}
+body{font:400 15px/1.6 system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:2rem;width:100%;max-width:380px}
+h1{font-size:1.4rem;margin:0 0 .25rem}h1 span{color:var(--acc)}
+p.desc{color:var(--muted);font-size:.85rem;margin:0 0 1.5rem}
+label{display:block;font-size:.8rem;margin-bottom:.25rem;color:var(--muted)}
+input{width:100%;padding:.65rem .75rem;border:1px solid var(--hair);border-radius:8px;font-size:.95rem;background:var(--bg);color:var(--fg);box-sizing:border-box;margin-bottom:1rem}
+input:focus{outline:none;border-color:var(--acc)}
+button{width:100%;padding:.7rem;background:var(--acc);color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5}
+.err{color:var(--err);font-size:.8rem;margin-bottom:.75rem;display:none}
+.link{text-align:center;margin-top:1rem;font-size:.85rem;color:var(--muted)}
+.link a{color:var(--acc);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Daftar <span>TokenLine</span></h1>
+<p class="desc">AI berbahasa Indonesia, mulai dari Rp 5.000</p>
+<div class="err" id="err"></div>
+<form id="form" onsubmit="register(event)">
+<label>Email</label>
+<input type="email" id="email" placeholder="kamu@email.com" required autofocus>
+<label>Password (minimal 6 karakter)</label>
+<input type="password" id="pw" placeholder="••••••" minlength="6" required>
+<label style="display:flex;align-items:flex-start;gap:.5rem;font-size:.78rem;line-height:1.5;margin-bottom:1rem;cursor:pointer">
+  <input type="checkbox" id="agree" style="width:auto;margin-top:.2rem;flex-shrink:0" required>
+  <span>Saya setuju dengan <a href="/tos.html" target="_blank">Syarat & Ketentuan</a>, <a href="/privacy.html" target="_blank">Kebijakan Privasi</a>, dan <a href="/refund.html" target="_blank">Kebijakan Refund</a> TokenLine.</span>
+</label>
+<button type="submit" id="btn">Daftar Gratis</button>
+</form>
+<div class="link">Sudah punya akun? <a href="/login.html">Masuk</a></div>
+</div>
+<script>
+async function register(e){
+e.preventDefault();
+var em=document.getElementById('email').value.trim();
+var pw=document.getElementById('pw').value;
+var err=document.getElementById('err');
+var btn=document.getElementById('btn');
+if(pw.length<6){err.textContent='Password minimal 6 karakter';err.style.display='block';return}
+	if(!document.getElementById('agree').checked){err.textContent='Anda harus menyetujui Syarat & Ketentuan';err.style.display='block';return}
+err.style.display='none';btn.disabled=true;btn.textContent='Mendaftar...';
+var ref=new URLSearchParams(location.search).get('ref')||'';
+try{
+var r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw,ref:ref})});
+var d=await r.json();
+if(!r.ok){err.textContent=d.message||'Gagal mendaftar';err.style.display='block';btn.disabled=false;btn.textContent='Daftar Gratis';return}
+var t=d.token||d.data?.token;
+if(t){localStorage.setItem('tl_tok',t);location.href='/chat/'}
+}catch(ex){err.textContent='Koneksi gagal. Coba lagi.';err.style.display='block';btn.disabled=false;btn.textContent='Daftar Gratis'}
+}
+</script>
+</body>
+</html>

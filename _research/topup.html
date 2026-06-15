@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Isi token TokenLine — beli token AI tanpa kedaluwarsa. Flash mulai Rp 19.900, Pro mulai Rp 399.000. Bayar GoPay, OVO, DANA, QRIS.">
+<title>Isi Token — TokenLine</title>
+<style>
+:root{--acc:#6366f1;--pro:#a855f7;--bg:#faf8f5;--fg:#1a1a1a;--muted:#6b6b6b;--card:#fff;--hair:#e5e7eb;--pro-bg:#faf5ff;--green:#10b981}
+@media(prefers-color-scheme:dark){:root{--bg:#0f0f0f;--fg:#f0f0f0;--muted:#999;--card:#1a1a1a;--hair:#2a2a2a;--pro-bg:#1a1025}}
+body{font:400 15px/1.6 system-ui,-apple-system,sans-serif;color:var(--fg);background:var(--bg);margin:0;padding:1rem;max-width:960px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;flex-wrap:wrap;gap:.5rem}
+header a{color:var(--acc);text-decoration:none;font-weight:600}
+h1{font-size:1.4rem;margin:0}h1 span{color:var(--acc)}
+h2{text-align:center;margin:2rem 0 .25rem;font-size:1.5rem}
+.tagline{text-align:center;color:var(--muted);font-size:.9rem;margin-bottom:1.5rem}
+.benefits{display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.benefit{text-align:center;font-size:.8rem;color:var(--muted)}
+.benefit strong{color:var(--green);display:block;font-size:.95rem}
+.section-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin:2.5rem 0 .75rem;text-align:center;font-weight:700}
+.balance{text-align:center;padding:1.5rem;background:var(--card);border:2px solid var(--hair);border-radius:16px;margin-bottom:1rem}
+.balance .amt{font-size:2.5rem;font-weight:800;color:var(--acc)}
+.balance .sub{font-size:.85rem;color:var(--muted);margin-top:.25rem}
+.pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem;margin-bottom:2rem}
+.plan{background:var(--card);border:2px solid var(--hair);border-radius:16px;padding:1.75rem 1.25rem;text-align:center;transition:all .2s;position:relative}
+.plan:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.06)}
+.plan.pop{border-color:var(--acc);box-shadow:0 4px 20px rgba(99,102,241,.1)}
+.plan.pop::before{content:'⭐ PALING DIMINATI';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:3px 14px;border-radius:20px;font-size:.65rem;font-weight:700;white-space:nowrap}
+.plan.pro{border-color:var(--pro);background:var(--pro-bg)}
+.plan.pro .price{color:var(--pro)}
+.plan.pro::before{content:'💎 PREMIUM';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--pro);color:#fff;padding:3px 14px;border-radius:20px;font-size:.65rem;font-weight:700;white-space:nowrap}
+.plan h3{font-size:1.05rem;margin:.25rem 0 .15rem}
+.plan .badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:.65rem;font-weight:700;margin-bottom:.5rem}
+.plan .badge.flash{background:#eef2ff;color:var(--acc)}
+.plan .badge.pro{background:#f3e8ff;color:var(--pro)}
+.plan .price{font-size:2rem;font-weight:800;margin:.5rem 0}
+.plan .tokens{font-size:.9rem;color:var(--muted);margin-bottom:.15rem;font-weight:600}
+.plan .equiv{font-size:.75rem;color:var(--muted);margin-bottom:.75rem}
+.plan .savings{font-size:.7rem;color:var(--green);font-weight:700;margin-bottom:.5rem}
+.plan ul{list-style:none;padding:0;margin:0 0 1rem;font-size:.82rem;color:var(--muted);text-align:left}
+.plan ul li{padding:.25rem 0}
+.plan ul li::before{content:'✓ ';color:var(--green);font-weight:700}
+.plan button{width:100%;padding:.7rem;border-radius:10px;border:2px solid var(--acc);background:var(--card);color:var(--acc);font-weight:700;cursor:pointer;font-size:.9rem;transition:all .15s}
+.plan button:hover{transform:scale(1.02)}
+.plan.pop button{background:var(--acc);color:#fff;border:none}
+.plan.pro button{background:var(--pro);color:#fff;border:none;font-size:.95rem}
+.plan button:disabled{opacity:.5;cursor:not-allowed}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:.85rem 2rem;border-radius:12px;font-size:.85rem;z-index:100;display:none;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+footer{text-align:center;padding:2rem 0;color:var(--muted);font-size:.75rem}
+</style>
+</head>
+<body>
+<header>
+<h1><span>TokenLine</span> — Isi Token</h1>
+<a href="/chat/">← Kembali ke Chat</a>
+</header>
+
+<div class="balance" id="bal">
+<p style="margin:0;color:var(--muted)">Saldo Token Kamu</p>
+<div class="amt" id="balance-display">—</div>
+<div class="progress-bar" style="margin:12px auto 0;max-width:300px;height:6px;background:var(--hair);border-radius:3px;overflow:hidden">
+  <div id="progress-fill" style="height:100%;background:linear-gradient(90deg,var(--acc),var(--green));border-radius:3px;width:0%;transition:width .6s ease"></div>
+</div>
+<p class="sub" id="bal-detail">Token tidak kedaluwarsa — pakai sampai habis, kapan saja</p>
+</div>
+
+<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem">
+  <span style="font-size:11px;padding:4px 10px;background:var(--card);border:1px solid var(--hair);border-radius:20px">🟢 GoPay</span>
+  <span style="font-size:11px;padding:4px 10px;background:var(--card);border:1px solid var(--hair);border-radius:20px">🟣 OVO</span>
+  <span style="font-size:11px;padding:4px 10px;background:var(--card);border:1px solid var(--hair);border-radius:20px">🔵 DANA</span>
+  <span style="font-size:11px;padding:4px 10px;background:var(--card);border:1px solid var(--hair);border-radius:20px">📱 QRIS</span>
+  <span style="font-size:11px;padding:4px 10px;background:var(--card);border:1px solid var(--hair);border-radius:20px">🏦 Transfer Bank</span>
+</div>
+
+<div class="benefits">
+  <div class="benefit"><strong>🔒 Tidak Kedaluwarsa</strong>Beli sekarang, pakai nanti. Saldo tetap utuh.</div>
+  <div class="benefit"><strong>💸 Bayar per Pakai</strong>Hanya potong token yang kamu pakai. Transparan.</div>
+  <div class="benefit"><strong>🚫 Tanpa Langganan</strong>Tidak ada tagihan bulanan. Beli sesuka hati.</div>
+</div>
+
+<h2>Pilih Paket Token</h2>
+<p class="tagline">Satu token ≈ satu kata output AI. Makin besar paket, makin hemat.</p>
+
+<div class="section-label">⚡ FLASH — Cepat, Cerdas, Terjangkau</div>
+<div class="pricing">
+<div class="plan">
+  <span class="badge flash">FLASH</span>
+  <h3>Flash 500K</h3>
+  <div class="price">Rp 19.900</div>
+  <div class="tokens">500.000 token</div>
+  <div class="equiv">≈ 250 percakapan AI</div>
+  <ul><li>DeepSeek V4 Flash</li><li>Cocok untuk tugas harian</li><li>Nulis email, translate, caption</li></ul>
+  <button onclick="buy('flash_500k')">Beli Flash 500K</button>
+</div>
+<div class="plan pop">
+  <span class="badge flash">FLASH</span>
+  <h3>Flash 1.5M</h3>
+  <div class="price">Rp 49.900</div>
+  <div class="tokens">1.500.000 token</div>
+  <div class="equiv">≈ 750 percakapan AI</div>
+  <div class="savings">💰 Hemat 33% vs Flash 500K</div>
+  <ul><li>DeepSeek V4 Flash</li><li>Untuk mahasiswa & UMKM</li><li>Paket paling diminati</li></ul>
+  <button onclick="buy('flash_1m5')">Beli Flash 1.5M ⭐</button>
+</div>
+<div class="plan">
+  <span class="badge flash">FLASH</span>
+  <h3>Flash 4M</h3>
+  <div class="price">Rp 99.900</div>
+  <div class="tokens">4.000.000 token</div>
+  <div class="equiv">≈ 2.000 percakapan AI</div>
+  <div class="savings">💰 Hemat 50% vs Flash 500K</div>
+  <ul><li>DeepSeek V4 Flash</li><li>Untuk pengguna berat</li><li>Konten kreator, freelancer</li></ul>
+  <button onclick="buy('flash_4m')">Beli Flash 4M</button>
+</div>
+</div>
+
+<div class="section-label">💎 PRO — Kualitas Tanpa Kompromi</div>
+<div class="pricing">
+<div class="plan pro">
+  <span class="badge pro">PRO</span>
+  <h3>Pro 500K</h3>
+  <div class="price">Rp 399.000</div>
+  <div class="tokens">500.000 token Pro</div>
+  <div class="equiv">≈ 250 percakapan kualitas premium</div>
+  <ul><li>DeepSeek V4 Pro · 1.6T param</li><li>Coding, riset, analisis bisnis</li><li>Kualitas output terbaik</li></ul>
+  <button onclick="buy('pro_500k')">Beli Pro 500K 💎</button>
+</div>
+<div class="plan pro">
+  <span class="badge pro">PRO</span>
+  <h3>Pro 2M</h3>
+  <div class="price">Rp 1.499.000</div>
+  <div class="tokens">2.000.000 token Pro</div>
+  <div class="equiv">≈ 1.000 percakapan premium</div>
+  <div class="savings">💰 Hemat 25% vs Pro 500K</div>
+  <ul><li>DeepSeek V4 Pro · 1.6T param</li><li>Untuk developer & researcher</li><li>Produktivitas maksimal</li></ul>
+  <button onclick="buy('pro_2m')">Beli Pro 2M 💎</button>
+</div>
+<div class="plan pro">
+  <span class="badge pro">PRO</span>
+  <h3>Pro 5M</h3>
+  <div class="price">Rp 3.499.000</div>
+  <div class="tokens">5.000.000 token Pro</div>
+  <div class="equiv">≈ 2.500 percakapan premium</div>
+  <div class="savings">💰 Hemat 30% vs Pro 500K · Nilai Terbaik</div>
+  <ul><li>DeepSeek V4 Pro · 1.6T param</li><li>Untuk tim & perusahaan</li><li>5 bulan produktivitas penuh</li></ul>
+  <button onclick="buy('pro_5m')">Beli Pro 5M 💎</button>
+</div>
+</div>
+
+<p style="text-align:center;color:var(--muted);font-size:.82rem;margin-bottom:1rem">
+  🔐 Pembayaran aman via <strong>Dodo Payments</strong> — GoPay, OVO, DANA, QRIS, transfer bank
+</p>
+
+<footer>&copy; 2026 TokenLine · Dibangun di Hong Kong · Didukung DeepSeek V4</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+var tok=localStorage.getItem('tl_tok');
+if(!tok)location.href='/login.html';
+
+async function load(){
+  try{
+    var r=await fetch('/api/me',{headers:{Authorization:'Bearer '+tok}});
+    var d=await r.json();
+    var bal=d.token_balance||0,depo=d.total_deposited||0,used=d.tokens_used||0;
+    document.getElementById('balance-display').textContent=bal>0?fmtNum(bal)+' token':'0 token';
+    document.getElementById('bal-detail').textContent=bal>0?'Bisa dipakai kapan saja — tidak kedaluwarsa 🎉':'Yuk isi token biar bisa chat sepuasnya!';
+    // Progress bar: token used vs total deposited (estimated)
+    var total=bal+used||1,pct=Math.min(100,Math.round(used/total*100));
+    document.getElementById('progress-fill').style.width=pct+'%';
+    if(bal===0&&depo>0)document.getElementById('bal-detail').textContent='Token habis! Isi ulang untuk lanjut chat ⚡';
+  }catch(e){}
+}
+function fmtNum(n){if(n>=1e6)return (n/1e6).toFixed(1)+'M';if(n>=1e3)return (n/1e3).toFixed(0)+'K';return String(n)}
+async function buy(plan){
+  var btn=event.target;btn.disabled=true;btn.textContent='Memproses...';
+  try{
+    var r=await fetch('/api/payment/create',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({plan:plan})});
+    var d=await r.json();
+    if(r.ok&&d.invoice_url){window.open(d.invoice_url,'_blank')}
+    var t=document.getElementById('toast');
+    t.textContent=d.message||(d.tokens?'Invoice '+fmtNum(d.tokens)+' token siap dibayar. Buka tab baru untuk bayar.':'Invoice dibuat.');
+    t.style.display='block';setTimeout(function(){t.style.display='none'},6000);
+  }catch(e){}
+  btn.disabled=false;btn.textContent='Beli';
+}
+load();
+</script>
+</body>
+</html>
