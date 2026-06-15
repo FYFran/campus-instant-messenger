@@ -114,12 +114,21 @@ Nginx: bot-block+AI爬虫拦截+honeypot+static限流
 
 | 改动 | 说明 |
 |------|------|
-| 清理 | firefox.exe(84MB)+bak文件删除 |
+| 清理 | firefox.exe(84MB)+bak文件+chat_server.go+main_server.go+anti-bot.conf |
 | export.go | `**bold**`→`<strong>`, `` `code` ``→`<code>`, `# heading`→`<h1>` |
 | main.go | +export/template handler, +pubLimiter, +admin路由, +cost/revenue追踪, +monitor |
 | 限流 | /templates+/packs+/feedback 10/s burst 20 |
-| nginx | bot-block.conf: 攻击工具403, AI爬虫403, 蜜罐444, 合法爬虫200, static限流30r/s |
+| nginx | bot-block.conf替代anti-bot.conf, 攻击工具403, AI爬虫403, 蜜罐444, 合法bot放行, static限流30r/s |
+| ka/权限 | chmod 755修复Permission denied |
 | 云片SMS | API提交模板 tpl_id=6416790, check_status=CHECKING |
+
+## 已知非bug
+
+| 问题 | 说明 |
+|------|------|
+| code=5 `未找到匹配的模板` | 云片模板CHECKING中，审核通过后自动消失 |
+| nginx SSL错误 (bad key share/bad record type) | 外网扫描器，正常现象 |
+| nginx conflicting server name | reload竞态，无害 |
 
 ## 待修
 
