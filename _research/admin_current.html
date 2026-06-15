@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TokenLine 控制面板</title>
+<link rel="icon" href="/favicon.svg">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#faf9f6;--card:#fff;--accent:#1a1c2c;--gold:#b8975a;--muted:rgba(26,28,44,.45);--hair:rgba(0,0,0,.06)}
+*{font-family:'Inter',system-ui,sans-serif;box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--accent);min-height:100vh;line-height:1.5}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(120,120,160,.03) 0%,transparent 100%);pointer-events:none;z-index:-1}
+
+nav{position:sticky;top:0;z-index:30;background:rgba(26,28,44,.95);backdrop-filter:blur(16px);color:#fff;padding:0 1.5rem;height:3.5rem;display:flex;align-items:center;justify-content:space-between}
+nav h1{font-size:1rem;font-weight:700;letter-spacing:-.01em}
+nav .info{font-size:.75rem;opacity:.5;display:flex;align-items:center;gap:1rem}
+.pulse-dot{width:.4rem;height:.4rem;border-radius:50%;background:#34d399;animation:pulse 2s infinite}@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+.container{max-width:1400px;margin:0 auto;padding:1.25rem 1.5rem 3rem}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
+@media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-2,.grid-3{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:1px solid var(--hair);border-radius:1rem;padding:1.25rem}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+.card-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.big-num{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin:.25rem 0}
+.sub-text{font-size:.7rem;color:var(--muted)}
+.gauge{height:4px;background:rgba(0,0,0,.05);border-radius:2px;margin-top:.5rem;overflow:hidden}
+.gauge-fill{height:100%;border-radius:2px;transition:width .6s}.g-fill-green{background:linear-gradient(90deg,#4caf50,#66bb6a)}.g-fill-yellow{background:linear-gradient(90deg,#ff9800,#ffb74d)}.g-fill-red{background:linear-gradient(90deg,#e94560,#ef5350)}.g-fill-blue{background:linear-gradient(90deg,#6366f1,#818cf8)}.g-fill-gold{background:linear-gradient(90deg,#b8975a,#d4b87a)}
+
+.alert-row{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;margin-bottom:.3rem;font-size:.75rem}
+.alert-crit{background:#fbe9e7;border-left:3px solid #e94560;color:#c62828}
+.alert-warn{background:#fff3e0;border-left:3px solid #ff9800;color:#e65100}
+.alert-info{background:#e3f2fd;border-left:3px solid #2196f3;color:#0d47a1}
+.alert-ok{background:#e8f5e9;border-left:3px solid #4caf50;color:#1b5e20}
+
+.chart-box{position:relative;height:200px}
+.metric-row{display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(0,0,0,.03);font-size:.75rem}.metric-row:last-child{border:none}
+.m-label{color:var(--muted)}.m-value{font-weight:600}
+.status-dot{width:.4rem;height:.4rem;border-radius:50%;display:inline-block}.s-green{background:#4caf50}.s-yellow{background:#ff9800}.s-red{background:#e94560}
+
+.timer-row{display:flex;align-items:center;gap:.5rem;padding:.35rem 0;font-size:.75rem}
+.timer-bar{flex:1;height:4px;background:rgba(0,0,0,.05);border-radius:2px;overflow:hidden}
+.timer-fill{height:100%;border-radius:2px;transition:width .6s}
+
+@media(max-width:768px){.container{padding:.75rem}.big-num{font-size:1.25rem}}
+</style>
+</head>
+<body>
+
+<nav>
+  <h1>TokenLine 控制面板</h1>
+  <div class="info">
+    <span><span class="pulse-dot"></span> 30秒刷新</span>
+    <span id="clock">--</span>
+    <span id="nav-status" style="color:#34d399">●</span>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ====== BALANCE CARDS ====== -->
+  <div class="grid-4" style="margin-bottom:1rem">
+    <div class="card">
+      <div class="card-header"><span class="card-title">📡 云片短信</span><span id="yp-dot" class="status-dot s-green"></span></div>
+      <div class="big-num" id="yp-val">--</div>
+      <div class="sub-text" id="yp-sub">--</div>
+      <div class="gauge"><div class="gauge-fill g-fill-blue" id="yp-bar" style="width:50%"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">🧠 DeepSeek API</span><span id="ds-dot" class="status-dot s-green"></span></div>
+      <div class="big-num" id="ds-val">--</div>
+      <div class="sub-text" id="ds-sub">--</div>
+      <div class="gauge"><div class="gauge-fill g-fill-green" id="ds-bar" style="width:50%"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">💰 本月收入</span></div>
+      <div class="big-num" id="rev-val">--</div>
+      <div class="sub-text" id="rev-sub">--</div>
+      <div class="gauge"><div class="gauge-fill g-fill-gold" id="rev-bar" style="width:0%"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">⏳ 运行预估</span></div>
+      <div class="big-num" id="run-val">--</div>
+      <div class="sub-text" id="run-sub">--</div>
+      <div class="gauge"><div class="gauge-fill g-fill-green" id="run-bar" style="width:80%"></div></div>
+    </div>
+  </div>
+
+  <!-- ====== ALERTS ====== -->
+  <div id="alerts" style="margin-bottom:1rem"></div>
+
+  <!-- ====== TIMERS — SSL + 服务器 ====== -->
+  <div class="grid-2" style="margin-bottom:1rem">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.75rem">🔒 到期倒计时</div>
+      <div class="timer-row"><span style="font-weight:600;width:80px">SSL证书</span><span id="ssl-days" style="font-weight:700">--</span><span style="font-size:.65rem;color:var(--muted)" id="ssl-date">--</span><div class="timer-bar"><div class="timer-fill g-fill-green" id="ssl-bar" style="width:80%"></div></div></div>
+      <div class="timer-row"><span style="font-weight:600;width:80px">服务器</span><span style="font-weight:700" id="srv-days">365天</span><span style="font-size:.65rem;color:var(--muted)">阿里云ECS</span><div class="timer-bar"><div class="timer-fill g-fill-blue" style="width:70%"></div></div></div>
+      <div class="timer-row"><span style="font-weight:600;width:80px">域名</span><span style="font-weight:700" id="dom-days">--</span><span style="font-size:.65rem;color:var(--muted)">tokenline.top</span><div class="timer-bar"><div class="timer-fill g-fill-yellow" style="width:50%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.75rem">📊 套餐销量 (v3.0)</div>
+      <div class="chart-box"><canvas id="salesChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ====== CHARTS ====== -->
+  <div class="grid-2" style="margin-bottom:1rem">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.5rem">云片余额趋势</div>
+      <div class="chart-box"><canvas id="ypChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.5rem">成本构成 (本月估算)</div>
+      <div class="chart-box"><canvas id="costChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ====== BOTTOM METRICS ====== -->
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.5rem">财务明细</div>
+      <div class="metric-row"><span class="m-label">累计收入</span><span class="m-value" id="m-total-rev">--</span></div>
+      <div class="metric-row"><span class="m-label">本月收入</span><span class="m-value" id="m-month-rev">--</span></div>
+      <div class="metric-row"><span class="m-label">待结算</span><span class="m-value" id="m-pending">--</span></div>
+      <div class="metric-row"><span class="m-label">月烧钱</span><span class="m-value" id="m-burn">--</span></div>
+      <div class="metric-row"><span class="m-label">⚡Flash售出</span><span class="m-value" style="color:#4caf50" id="m-flash">--</span></div>
+      <div class="metric-row"><span class="m-label">👑满血售出</span><span class="m-value" style="color:#b8975a" id="m-ultimate">--</span></div>
+      <div class="metric-row"><span class="m-label">💎Pro售出</span><span class="m-value" style="color:#6366f1" id="m-pro">--</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.5rem">系统健康</div>
+      <div class="metric-row"><span class="m-label">DB状态</span><span class="m-value" id="m-db">--</span></div>
+      <div class="metric-row"><span class="m-label">错误率</span><span class="m-value" id="m-err">--</span></div>
+      <div class="metric-row"><span class="m-label">活跃用户 1h</span><span class="m-value" id="m-users">--</span></div>
+      <div class="metric-row"><span class="m-label">总请求数</span><span class="m-value" id="m-req">--</span></div>
+      <div class="metric-row"><span class="m-label">运行时间</span><span class="m-value" id="m-uptime">--</span></div>
+      <div class="metric-row"><span class="m-label">内存</span><span class="m-value" id="m-mem">--</span></div>
+      <div class="metric-row"><span class="m-label">Goroutines</span><span class="m-value" id="m-goro">--</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:.5rem">短信 & 域名</div>
+      <div class="metric-row"><span class="m-label">云片余额</span><span class="m-value" id="m-yp">--</span></div>
+      <div class="metric-row"><span class="m-label">可发短信</span><span class="m-value" id="m-sms-avail">--</span></div>
+      <div class="metric-row"><span class="m-label">短信可用</span><span class="m-value" id="m-sms-days">--</span></div>
+      <div class="metric-row"><span class="m-label">DeepSeek余额</span><span class="m-value" id="m-ds">--</span></div>
+      <div class="metric-row"><span class="m-label">汇率</span><span class="m-value" id="m-rate">--</span></div>
+      <div class="metric-row"><span class="m-label">DeepSeek剩余</span><span class="m-value" id="m-ds-days">--</span></div>
+      <div class="metric-row"><span class="m-label">SSL到期</span><span class="m-value" id="m-ssl">--</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// URL hash key always overrides localStorage (so shared links work)
+if(location.hash){
+  var m=location.hash.match(/key=([^&]+)/);
+  if(m){localStorage.setItem('tl_admin_key',m[1]);history.replaceState(null,'',location.pathname)}
+}
+var KEY = localStorage.getItem('tl_admin_key') || '';
+if(!KEY){KEY=prompt('管理密码:');if(KEY)localStorage.setItem('tl_admin_key',KEY)}
+if(!KEY){document.body.innerHTML='<div style="text-align:center;padding:5rem;font-size:1.2rem">需要管理密码</div>';throw new Error('no key')}
+
+var B=location.origin, ypChart=null, costDoughnut=null, salesBar=null;
+
+function F(n,d){d=d||0;return Number(n||0).toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d})}
+function C(n){return n>=0?'¥'+F(n,1):'-'}
+function usd2cny(n){return n>=0?'¥'+F(n*7.25,2):'-'}
+function idr2cny(n,r){r=r||2260;return n>=0?'¥'+F(n/r,0):'-'}
+function dot(v,g,r){if(v>=g)return's-green';if(v<=r)return's-red';return's-yellow'}
+
+async function refresh(){
+  try{
+    var a=await fetch(B+'/api/admin/balances',{headers:{'X-Admin-Key':KEY}});
+    if(!a.ok){document.body.innerHTML='<div style="text-align:center;padding:5rem"><h2>认证失败</h2><a href="javascript:localStorage.removeItem(\"tl_admin_key\");location.reload()">重输密码</a></div>';return}
+    var d=await a.json(),b=d.balance,al=d.alerts||[],hist=d.history||[];
+    var h=await fetch(B+'/api/health'),hd=await h.json();
+
+    // 1. Balance cards
+    document.getElementById('yp-val').textContent=C(b.yunpian_balance_cny);
+    document.getElementById('yp-sub').textContent='告警线 '+C(b.yunpian_alarm_cny)+' | '+b.yunpian_nick+' | '+b.yunpian_last_check;
+    document.getElementById('yp-dot').className='status-dot '+dot(b.yunpian_balance_cny,50,20);
+    document.getElementById('yp-bar').style.width=Math.min(100,b.yunpian_balance_cny/200*100)+'%';
+    document.getElementById('yp-bar').className='gauge-fill '+(b.yunpian_balance_cny<20?'g-fill-red':b.yunpian_balance_cny<50?'g-fill-yellow':'g-fill-blue');
+
+    document.getElementById('ds-val').textContent=usd2cny(b.deepseek_balance_usd);
+    document.getElementById('ds-sub').textContent='检测: '+b.deepseek_last_check+' | $'+F(b.deepseek_balance_usd,2);
+    document.getElementById('ds-dot').className='status-dot '+dot(b.deepseek_balance_usd*7.25,10,1);
+    document.getElementById('ds-bar').style.width=Math.min(100,(b.deepseek_balance_usd*7.25)/100*100)+'%';
+    document.getElementById('ds-bar').className='gauge-fill '+(b.deepseek_balance_usd*7.25<36?'g-fill-red':b.deepseek_balance_usd*7.25<145?'g-fill-yellow':'g-fill-green');
+
+    document.getElementById('rev-val').textContent=idr2cny(b.this_month_idr,b.exchange_rate);
+    document.getElementById('rev-sub').textContent='累计 ¥'+F(b.total_revenue_idr/b.exchange_rate,0)+' | 待结算 ¥'+F(b.dodo_pending_idr/b.exchange_rate,0);
+    document.getElementById('rev-bar').style.width=Math.min(100,b.this_month_idr/b.exchange_rate/100*100)+'%';
+
+    document.getElementById('run-val').textContent=b.predicted_runway;
+    document.getElementById('run-sub').textContent='月烧 '+C(b.monthly_burn_cny)+' | 总余额 ¥'+F(b.yunpian_balance_cny+b.deepseek_balance_usd*7.25,2);
+
+    // 2. Alerts (enhanced)
+    var ac=document.getElementById('alerts');
+    var allAlerts=al.slice();
+    // Add SSL alert
+    if(hd.ssl_cert&&hd.ssl_cert.days_left<30){
+      allAlerts.push({level:hd.ssl_cert.days_left<7?'critical':'warning',service:'SSL证书',message:'SSL证书 '+hd.ssl_cert.days_left+' 天后到期 ('+hd.ssl_cert.expires_at+')'});
+    }
+    if(!allAlerts.length){ac.innerHTML='<div class="alert-row alert-ok">✅ 所有系统正常</div>'}
+    else{ac.innerHTML=allAlerts.map(function(a){
+      var cls=a.level==='critical'?'alert-crit':a.level==='warning'?'alert-warn':'alert-info';
+      var icon=a.level==='critical'?'🔴':a.level==='warning'?'🟡':'ℹ️';
+      return'<div class="alert-row '+cls+'"><span>'+icon+'</span><strong>'+a.service+'</strong>: '+a.message+'</div>';
+    }).join('')}
+
+    // 3. Timers
+    if(hd.ssl_cert){
+      var sl=hd.ssl_cert.days_left, slPct=Math.max(0,Math.min(100,(90-sl)/90*100));
+      document.getElementById('ssl-days').textContent=sl+'天';
+      document.getElementById('ssl-date').textContent='到期 '+hd.ssl_cert.expires_at;
+      document.getElementById('ssl-bar').style.width=(100-slPct)+'%';
+      document.getElementById('ssl-bar').className='timer-fill '+(sl<14?'g-fill-red':sl<30?'g-fill-yellow':'g-fill-green');
+      var srvLeft=Math.ceil((new Date('2026-07-14')-new Date())/(1000*86400));document.getElementById('srv-days').textContent=srvLeft+'天';document.getElementById('srv-days').style.color=srvLeft<14?'#e94560':srvLeft<30?'#ff9800':'#4caf50';var srvBar=document.querySelectorAll('.timer-fill')[1];if(srvBar){srvBar.style.width=Math.min(100,srvLeft/365*100)+'%';srvBar.className='timer-fill '+(srvLeft<14?'g-fill-red':srvLeft<30?'g-fill-yellow':'g-fill-blue');}
+    }
+
+    // 4. Charts
+    updateYP(hist); updateCost(hd); updateSales(b);
+
+    // 5. Financial
+    document.getElementById('m-total-rev').textContent=idr2cny(b.total_revenue_idr,b.exchange_rate);
+    document.getElementById('m-month-rev').textContent=idr2cny(b.this_month_idr,b.exchange_rate);
+    document.getElementById('m-pending').textContent=idr2cny(b.dodo_pending_idr,b.exchange_rate);
+    document.getElementById('m-burn').textContent=C(b.monthly_burn_cny);
+    document.getElementById('m-flash').textContent=F(b.sold_flash||0)+'笔';
+    document.getElementById('m-ultimate').textContent=F(b.sold_ultimate||0)+'笔';
+    document.getElementById('m-pro').textContent=F(b.sold_pro||0)+'笔';
+
+    // 6. System
+    document.getElementById('m-db').innerHTML='<span style="color:'+(hd.db?'#4caf50':'#e94560')+'">'+(hd.db?'正常':'异常')+'</span>';
+    document.getElementById('m-err').innerHTML='<span style="color:'+(hd.error_rate_pct>5?'#e94560':'#4caf50')+'">'+F(hd.error_rate_pct,1)+'%</span>';
+    document.getElementById('m-users').textContent=F(hd.active_users_1h)+'人';
+    document.getElementById('m-req').textContent=F(hd.total_requests||0);
+    document.getElementById('m-uptime').textContent=F(hd.uptime_hours||0,1)+'h';
+    document.getElementById('m-mem').textContent=F(hd.memory_mb||0)+'MB';
+    document.getElementById('m-goro').textContent=F(hd.goroutines||0);
+
+    // 7. SMS & Domain
+    document.getElementById('m-yp').textContent=C(b.yunpian_balance_cny);
+    document.getElementById('m-sms-avail').textContent=F(Math.floor(b.yunpian_balance_cny/0.50))+'条';
+    document.getElementById('m-sms-days').textContent=F(b.yunpian_balance_cny/52*30,0)+'天';
+    document.getElementById('m-ds').textContent=usd2cny(b.deepseek_balance_usd);
+    document.getElementById('m-rate').textContent='汇率: 1 USD ≈ ¥7.25 | 1 USD ≈ Rp'+F(b.exchange_rate,0);
+    document.getElementById('m-ds-days').textContent=(b.deepseek_balance_usd>0?(b.deepseek_balance_usd/(hd.cost?hd.cost.burn_daily_usd||0.01:0.01)).toFixed(0)+'天':'—');
+    document.getElementById('m-ssl').textContent=hd.ssl_cert?hd.ssl_cert.days_left+'天':'—';
+
+    document.getElementById('clock').textContent=new Date().toLocaleString('zh-CN');
+    document.getElementById('nav-status').style.color=hd.db?'#34d399':'#e94560';
+  }catch(e){document.getElementById("alerts").innerHTML="<div class=alert-row alert-crit>ERROR: "+e.message+"</div>";console.error(e)}
+}
+
+function updateYP(hist){
+  var ctx=document.getElementById('ypChart').getContext('2d');
+  if(ypChart)ypChart.destroy();
+  var d=hist.length>30?hist.slice(-30):hist;
+  ypChart=new Chart(ctx,{type:'line',data:{labels:d.map(function(_,i){return i+1}),datasets:[{data:d,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.06)',fill:true,tension:.3,borderWidth:2,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{display:false},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:function(v){return v+'元'}}}}}})
+}
+
+function updateCost(hd){
+  var ctx=document.getElementById('costChart').getContext('2d');
+  if(costDoughnut)costDoughnut.destroy();
+  costDoughnut=new Chart(ctx,{type:'doughnut',data:{labels:['服务器 ¥','AI调用 ¥','短信 ¥'],datasets:[{data:[300,(hd.cost?hd.cost.burn_daily_usd:0)*30*7.25,(hd.cost?hd.cost.predicted_monthly:0)*7.25],backgroundColor:['rgba(99,102,241,.6)','rgba(26,28,44,.5)','rgba(184,151,90,.6)'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:12,usePointStyle:true}}}}})
+}
+
+function updateSales(b){
+  var ctx=document.getElementById('salesChart').getContext('2d');
+  if(salesBar)salesBar.destroy();
+  salesBar=new Chart(ctx,{type:'bar',data:{labels:['⚡Flash','👑满血','💎Pro'],datasets:[{data:[b.sold_flash||0,b.sold_ultimate||0,b.sold_pro||0],backgroundColor:['rgba(76,175,80,.7)','rgba(184,151,90,.7)','rgba(99,102,241,.7)'],borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{stepSize:1}}}}})
+}
+
+refresh();setInterval(refresh,30000);
+</script>
+</body>
+</html>
