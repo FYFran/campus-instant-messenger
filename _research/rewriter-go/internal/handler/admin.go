@@ -1,17 +1,18 @@
 package handler
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
 // AdminAuth protects admin routes with a password from env ADMIN_PASSWORD.
-// Pass password as ?key=xxx query parameter.
+// Pass password via X-Admin-Key header only (query param disabled — leaks to access logs).
+// Always requires authentication — no localhost bypass (nginx also connects from localhost).
 func AdminAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Allow CORS preflight without password
@@ -19,22 +20,15 @@ func AdminAuth(next http.Handler) http.Handler {
 			w.WriteHeader(204)
 			return
 		}
-		// Allow localhost without password (SSH tunnel / direct server access)
-		ip := r.Header.Get("X-Real-IP")
-		if ip == "" { ip = r.RemoteAddr }
-		if strings.HasPrefix(ip, "127.0.0.1") || strings.HasPrefix(ip, "::1") || strings.HasPrefix(ip, "[::1]") {
-			next.ServeHTTP(w, r)
-			return
-		}
+
 		adminPass := os.Getenv("ADMIN_PASSWORD")
 		if adminPass == "" {
-			adminPass = "tokenline2026" // default password if not set
+			slog.Error("ADMIN_PASSWORD not set — rejecting admin request")
+			writeJSON(w, 401, "Admin access not configured. Set ADMIN_PASSWORD in environment.")
+			return
 		}
-		key := r.URL.Query().Get("key")
-		if key == "" {
-			key = r.Header.Get("X-Admin-Key")
-		}
-		if key != adminPass {
+		key := r.Header.Get("X-Admin-Key")
+		if subtle.ConstantTimeCompare([]byte(key), []byte(adminPass)) != 1 {
 			writeJSON(w, 401, "Password admin salah")
 			return
 		}
@@ -113,8 +107,8 @@ func AdminDashboard(w http.ResponseWriter, r *http.Request) {
 		"cost":   cost,
 		"revenue": revenue,
 		"users": map[string]interface{}{
-			"total":   userCount,
-			"paying":  payingCount,
+			"total":  userCount,
+			"paying": payingCount,
 		},
 		"dodo": map[string]interface{}{
 			"total_revenue_idr": totalRevenue,
@@ -151,7 +145,11 @@ func AdminCharts(w http.ResponseWriter, r *http.Request) {
 	ORDER BY dates.d ASC`)
 	if err == nil && rows != nil {
 		defer rows.Close()
-		for rows.Next() { var p dp; rows.Scan(&p.Date, &p.Users, &p.Revenue, &p.Payments); points = append(points, p) }
+		for rows.Next() {
+			var p dp
+			rows.Scan(&p.Date, &p.Users, &p.Revenue, &p.Payments)
+			points = append(points, p)
+		}
 	}
 	var sf, su, sp int64
 	db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'flash_%'").Scan(&sf)

@@ -18,6 +18,8 @@ import (
 	"tokenline/internal/config"
 	"tokenline/internal/db"
 	"tokenline/internal/deepseek"
+
+	"github.com/unrolled/secure"
 	"tokenline/internal/handler"
 	"tokenline/internal/middleware"
 )
@@ -222,7 +224,7 @@ func main() {
 	mux.HandleFunc("POST /api/auth/request-reset", chain(authH.RequestPasswordReset, middleware.RateLimit(authLimiter)))
 	mux.HandleFunc("POST /api/auth/reset-password", chain(authH.ResetPassword, middleware.RateLimit(authLimiter)))
 	mux.HandleFunc("GET /api/me/stats", chain(userH.Stats, middleware.Auth(cfg.JWTSecret)))
-	mux.HandleFunc("POST /api/feedback", chain(handler.FeedbackHandler, middleware.RateLimit(authLimiter)))
+	mux.HandleFunc("POST /api/feedback", chain(handler.FeedbackHandler, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(authLimiter)))
 
 	// Admin routes — password-protected, exposes financial/ops data
 	adminMux := http.NewServeMux()
@@ -232,13 +234,30 @@ func main() {
 	adminMux.HandleFunc("GET /api/admin/dashboard", handler.AdminDashboard)
 	adminMux.HandleFunc("GET /api/admin/balances", handler.AdminBalanceHandler)
 		adminMux.HandleFunc("GET /api/admin/charts", handler.AdminCharts)
-	mux.Handle("/api/admin/", handler.AdminAuth(adminMux))
+	mux.Handle("/api/admin/", handler.AdminAuth(middleware.RateLimit(authLimiter)(adminMux)))
 
 	// Monitoring wrapper
 	monitoredMux := monitorMiddleware(mux)
 
+	// Security headers — nginx terminates TLS, Go runs plain HTTP on localhost.
+	secureMiddleware := secure.New(secure.Options{
+		SSLRedirect:           false, // nginx handles HTTPS redirect
+		STSSeconds:             31536000,
+		STSIncludeSubdomains:   true,
+		STSPreload:             true,
+		FrameDeny:              true,
+		ContentTypeNosniff:     true,
+		BrowserXssFilter:       true,
+		ReferrerPolicy:         "strict-origin-when-cross-origin",
+		ContentSecurityPolicy:  "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+		PermissionsPolicy:      "camera=(), microphone=(), geolocation=()",
+		AllowedHosts:           []string{"tokenline.top", "www.tokenline.top", "127.0.0.1:9100", "localhost"},
+		IsDevelopment:          false,
+	})
+	secureHandler := secureMiddleware.Handler(monitoredMux)
+
 	// CORS
-	corsHandler := corsMiddleware(monitoredMux)
+	corsHandler := corsMiddleware(secureHandler)
 
 	// Hourly trend recording
 	go func() {

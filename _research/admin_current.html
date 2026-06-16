@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TokenLine 控制面板</title>
 <link rel="icon" href="/favicon.svg">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/assets/js/chart.umd.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'"></script>
 <style>
 :root{--bg:#faf9f6;--card:#fff;--accent:#1a1c2c;--gold:#b8975a;--muted:rgba(26,28,44,.45);--hair:rgba(0,0,0,.06)}
 *{font-family:'Inter',system-ui,sans-serif;box-sizing:border-box;margin:0;padding:0}
@@ -224,10 +224,7 @@ async function refresh(){
       var srvLeft=Math.ceil((new Date('2026-07-14')-new Date())/(1000*86400));document.getElementById('srv-days').textContent=srvLeft+'天';document.getElementById('srv-days').style.color=srvLeft<14?'#e94560':srvLeft<30?'#ff9800':'#4caf50';var srvBar=document.querySelectorAll('.timer-fill')[1];if(srvBar){srvBar.style.width=Math.min(100,srvLeft/365*100)+'%';srvBar.className='timer-fill '+(srvLeft<14?'g-fill-red':srvLeft<30?'g-fill-yellow':'g-fill-blue');}
     }
 
-    // 4. Charts
-    updateYP(hist); updateCost(hd); updateSales(b);
-
-    // 5. Financial
+    // 4. Financial
     document.getElementById('m-total-rev').textContent=idr2cny(b.total_revenue_idr,b.exchange_rate);
     document.getElementById('m-month-rev').textContent=idr2cny(b.this_month_idr,b.exchange_rate);
     document.getElementById('m-pending').textContent=idr2cny(b.dodo_pending_idr,b.exchange_rate);
@@ -236,7 +233,7 @@ async function refresh(){
     document.getElementById('m-ultimate').textContent=F(b.sold_ultimate||0)+'笔';
     document.getElementById('m-pro').textContent=F(b.sold_pro||0)+'笔';
 
-    // 6. System
+    // 5. System
     document.getElementById('m-db').innerHTML='<span style="color:'+(hd.db?'#4caf50':'#e94560')+'">'+(hd.db?'正常':'异常')+'</span>';
     document.getElementById('m-err').innerHTML='<span style="color:'+(hd.error_rate_pct>5?'#e94560':'#4caf50')+'">'+F(hd.error_rate_pct,1)+'%</span>';
     document.getElementById('m-users').textContent=F(hd.active_users_1h)+'人';
@@ -245,7 +242,7 @@ async function refresh(){
     document.getElementById('m-mem').textContent=F(hd.memory_mb||0)+'MB';
     document.getElementById('m-goro').textContent=F(hd.goroutines||0);
 
-    // 7. SMS & Domain
+    // 6. SMS & Domain
     document.getElementById('m-yp').textContent=C(b.yunpian_balance_cny);
     document.getElementById('m-sms-avail').textContent=F(Math.floor(b.yunpian_balance_cny/0.50))+'条';
     document.getElementById('m-sms-days').textContent=F(b.yunpian_balance_cny/52*30,0)+'天';
@@ -256,6 +253,11 @@ async function refresh(){
 
     document.getElementById('clock').textContent=new Date().toLocaleString('zh-CN');
     document.getElementById('nav-status').style.color=hd.db?'#34d399':'#e94560';
+
+    // 7. Charts (last — won't block data display if Chart.js fails)
+    try{updateYP(hist)}catch(e){console.warn('ypChart:',e)}
+    try{updateCost(hd)}catch(e){console.warn('costChart:',e)}
+    try{updateSales(b)}catch(e){console.warn('salesChart:',e)}
   }catch(e){document.getElementById("alerts").innerHTML="<div class=alert-row alert-crit>ERROR: "+e.message+"</div>";console.error(e)}
 }
 

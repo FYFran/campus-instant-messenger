@@ -355,7 +355,16 @@ func (h *PayHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	creditTokens(h.DB, userID, pk)
+	if err := creditTokens(h.DB, userID, pk); err != nil {
+		slog.Error("creditTokens failed — reverting payment status", "user", userID, "invoice_id", invoiceID, "error", err)
+		// Revert payment status so it can be retried
+		h.DB.ExecContext(r.Context(),
+			"UPDATE payments SET status='pending', paid_at=NULL WHERE xendit_invoice_id=? AND status='paid'",
+			invoiceID)
+		writeJSON(w, 500, "Gagal mengkredit token — pembayaran akan diproses ulang")
+		return
+	}
+
 	slog.Info("token pack activated via Dodo", "user", userID, "plan", plan, "pack_type", packType,
 		"flash", pk.FlashAmt, "pro", pk.ProAmt)
 	writeJSON(w, 200, map[string]interface{}{
@@ -367,12 +376,12 @@ func (h *PayHandler) Callback(w http.ResponseWriter, r *http.Request) {
 
 // creditTokens credits flash and/or pro tokens to the user's active subscription.
 // Wraps in a transaction to prevent double-credit from concurrent callbacks.
+// Returns error so callers can handle failures (e.g., revert payment status).
 // Shared by Dodo callback, Midtrans callback, and any future payment processor.
-func creditTokens(db *sql.DB, userID int64, pk tokenPack) {
+func creditTokens(db *sql.DB, userID int64, pk tokenPack) error {
 	tx, err := db.Begin()
 	if err != nil {
-		slog.Error("creditTokens begin tx", "user", userID, "error", err)
-		return
+		return fmt.Errorf("creditTokens begin tx: %w", err)
 	}
 	defer tx.Rollback() // no-op if Commit succeeds
 
@@ -383,21 +392,19 @@ func creditTokens(db *sql.DB, userID int64, pk tokenPack) {
 		"SELECT id, COALESCE(flash_balance,0), COALESCE(pro_balance,0) FROM subscriptions WHERE user_id=? AND status=1 ORDER BY id DESC LIMIT 1",
 		userID).Scan(&subID, &existingFlash, &existingPro)
 	if err != nil {
-		// No subscription yet — create one. pack_type defaults to 'flash' (DB default).
+		// No subscription yet — create one.
 		_, err = tx.Exec(
 			"INSERT INTO subscriptions(user_id, plan, started_at, expires_at, flash_balance, pro_balance, status) VALUES(?,?,?,?,?,?,1)",
 			userID, "v3", time.Now().UTC().Format(time.RFC3339), "2099-12-31T23:59:59Z", pk.FlashAmt, pk.ProAmt)
 		if err != nil {
-			slog.Error("creditTokens insert", "user", userID, "error", err)
-			return
+			return fmt.Errorf("creditTokens insert: %w", err)
 		}
 	} else {
-		// Existing subscription — add both Flash and Pro. pack_type upgraded separately below.
+		// Existing subscription — add both Flash and Pro.
 		_, err = tx.Exec("UPDATE subscriptions SET flash_balance=flash_balance+?, pro_balance=pro_balance+? WHERE id=?",
 			pk.FlashAmt, pk.ProAmt, subID)
 		if err != nil {
-			slog.Error("creditTokens update", "user", userID, "sub", subID, "error", err)
-			return
+			return fmt.Errorf("creditTokens update: %w", err)
 		}
 	}
 
@@ -411,6 +418,7 @@ func creditTokens(db *sql.DB, userID int64, pk tokenPack) {
 	}
 
 	if err := tx.Commit(); err != nil {
-		slog.Error("creditTokens commit", "user", userID, "error", err)
+		return fmt.Errorf("creditTokens commit: %w", err)
 	}
+	return nil
 }

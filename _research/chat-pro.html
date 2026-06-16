@@ -468,7 +468,7 @@ var ls = document.getElementById('landing-state');
 var activeMode = 'tulis';
 var activeTemplate = null;
 var currentModel = localStorage.getItem('tl_model') || 'deepseek-v4-flash';
-var conversations = JSON.parse(localStorage.getItem('tl_cv') || '{}');
+var conversations = (function(){try{return JSON.parse(localStorage.getItem("tl_cv")||"{}")}catch(e){console.warn("tl_cv corrupt, resetting");localStorage.removeItem("tl_cv");return {}}}());
 var activeConvId = null;
 var convTimestamps = {};
 var userData = null;
@@ -786,8 +786,18 @@ function inlineMd(s) {
   s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
   s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+  // Filter dangerous protocols in markdown links
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) {
+    var proto = url.toLowerCase().trim();
+    if (proto.indexOf('javascript:') === 0 || proto.indexOf('data:') === 0) return m;
+    return '<a href="' + url + '" target="_blank" rel="noopener">' + text + '</a>';
+  });
+  // Filter dangerous protocols in markdown images
+  s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(m, alt, url) {
+    var proto = url.toLowerCase().trim();
+    if (proto.indexOf('javascript:') === 0 || proto.indexOf('data:') === 0) return m;
+    return '<img src="' + url + '" alt="' + alt + '">';
+  });
   return s;
 }
 
@@ -955,7 +965,7 @@ function exportPdf() {
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>TokenLine Export</title><style>body{font-family:Inter,sans-serif;padding:40px;max-width:800px;margin:0 auto;line-height:1.7}.user{background:#f0f0f5;padding:16px 20px;border-radius:16px;margin:16px 0}.ai{padding:16px 20px;margin:16px 0}</style></head><body>';
   html += '<h1>' + (conversations[activeConvId] ? escHtml(conversations[activeConvId].title) : 'Percakapan') + '</h1>';
   msgs.forEach(function(m) {
-    html += '<div class="' + m.role + '">' + (m.role === 'user' ? '<strong>Anda:</strong><br>' : '<strong>TokenLine:</strong><br>') + m.content.replace(/\n/g, '<br>') + '</div>';
+    html += '<div class="' + m.role + '">' + (m.role === 'user' ? '<strong>Anda:</strong><br>' : '<strong>TokenLine:</strong><br>') + escHtml(m.content).replace(/\n/g, '<br>') + '</div>';
   });
   html += '</body></html>';
 
@@ -1028,8 +1038,9 @@ function updateModelSwitcher(packType) {
 
 // === LOGOUT ===
 function logout() {
-  localStorage.removeItem('tl_tok');
-  localStorage.removeItem('tl_cv');
+  Object.keys(localStorage).forEach(function(k) {
+    if (k.indexOf('tl_') === 0) localStorage.removeItem(k);
+  });
   location.href = '/login.html';
 }
 

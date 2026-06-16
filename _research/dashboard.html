@@ -106,6 +106,7 @@
       <a href="topup.html" class="accent-btn flex items-center justify-center gap-2 text-[12px] font-semibold text-white/95 px-4 py-2.5 rounded-2xl w-full">
         <span>↑</span> Upgrade Paket
       </a>
+      <button onclick="localStorage.clear();location.href='/login.html'" class="w-full text-[11px] text-black/20 hover:text-red-500 transition-colors py-1.5">Keluar</button>
     </div>
   </aside>
 
@@ -272,7 +273,7 @@
   // ============================================================
   // STATE
   // ============================================================
-  const API_BASE = 'https://tokenline.top';
+  const API_BASE = window.location.origin;
   let authToken = null;
   let userData = null;
   let balanceData = null;

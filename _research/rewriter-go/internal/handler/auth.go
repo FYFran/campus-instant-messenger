@@ -45,15 +45,20 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, "Format email tidak valid")
 		return
 	}
-	pwHash := hashPassword(req.Password)
+	pwHash, err := hashPassword(req.Password)
+	if err != nil {
+		slog.Error("bcrypt hash failed", "error", err)
+		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
+		return
+	}
 
 	var userID int64
-	err := h.DB.QueryRowContext(r.Context(),
+	err = h.DB.QueryRowContext(r.Context(),
 		"INSERT INTO users(email, password_hash) VALUES(?,?) RETURNING id",
 		req.Email, pwHash).Scan(&userID)
 	if err != nil {
 		if isUniqueErr(err) {
-			writeJSON(w, 409, "Email sudah terdaftar")
+			writeJSON(w, 200, map[string]string{"message": "Jika email belum terdaftar, silakan cek email Anda untuk verifikasi."})
 			return
 		}
 		slog.Error("register insert", "error", err)
@@ -101,6 +106,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req authReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, 400, "Format tidak valid")
+		return
+	}
+	if len(req.Email) > 100 || len(req.Password) > 100 {
+		writeJSON(w, 401, "Email atau password salah")
 		return
 	}
 	var userID int64
@@ -163,28 +172,41 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, "Password lama salah")
 		return
 	}
-	newHash := hashPassword(req.NewPassword)
-	h.DB.ExecContext(r.Context(), "UPDATE users SET password_hash=? WHERE id=?", newHash, userID)
+	newHash, err := hashPassword(req.NewPassword)
+	if err != nil {
+		slog.Error("bcrypt hash failed during password change", "error", err)
+		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
+		return
+	}
+	if _, err := h.DB.ExecContext(r.Context(), "UPDATE users SET password_hash=? WHERE id=?", newHash, userID); err != nil {
+		slog.Error("change password db update failed", "user", userID, "error", err)
+		writeJSON(w, 500, "Gagal mengubah password")
+		return
+	}
 	writeJSON(w, 200, map[string]string{"message": "Password berhasil diubah"})
 }
 
-func hashPassword(pw string) string {
+// hashPassword returns a bcrypt hash of pw. Returns error on failure instead
+// of silently falling back to a weaker algorithm.
+func hashPassword(pw string) (string, error) {
 	h, err := bcrypt.GenerateFromPassword([]byte(pw), 12)
 	if err != nil {
-		slog.Error("bcrypt hash failed", "error", err)
-		// Fallback to SHA256 — bcrypt should never fail on modern hardware.
-		// This avoids a server crash while keeping users able to register.
-		sum := sha256.Sum256([]byte(pw))
-		return hex.EncodeToString(sum[:])
+		return "", err
 	}
-	return string(h)
+	return string(h), nil
 }
 
 func verifyPassword(pw, stored string) (ok bool, rehash string) {
+	// Legacy SHA-256 hash detection — existing passwords stored before the fix.
+	// These users' passwords are verified and automatically upgraded to bcrypt on next login.
 	if len(stored) == 64 && !strings.Contains(stored, "$") {
 		sum := sha256.Sum256([]byte(pw))
 		if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(sum[:])), []byte(stored)) == 1 {
-			return true, hashPassword(pw)
+			newHash, err := hashPassword(pw)
+			if err != nil {
+				return true, "" // password correct but can't upgrade — let them in
+			}
+			return true, newHash
 		}
 		return false, ""
 	}
@@ -255,6 +277,9 @@ func (h *AuthHandler) SendOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Clear previous OTP failure counter when sending new OTP
+	clearOTPFailures(userID)
+
 	otp := generateOTP()
 	otpHash := hashOTP(otp)
 	expires := time.Now().UTC().Add(5 * time.Minute).Format(time.RFC3339)
@@ -297,6 +322,7 @@ func (h *AuthHandler) SendOTPVoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Regenerate OTP for voice clarity
+	clearOTPFailures(userID)
 	otp := generateOTP()
 	otpHash = hashOTP(otp)
 	expires = time.Now().UTC().Add(5 * time.Minute)
@@ -382,6 +408,7 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, 429, "Tunggu 60 detik sebelum mengirim ulang kode verifikasi")
 		return
 	}
+	clearOTPFailures(userID)
 	otp := generateOTP()
 	otpHash := hashOTP(otp)
 	expires := time.Now().UTC().Add(5 * time.Minute).Format(time.RFC3339)
@@ -425,7 +452,12 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, "Kode OTP salah")
 		return
 	}
-	newHash := hashPassword(req.NewPassword)
+	newHash, err := hashPassword(req.NewPassword)
+	if err != nil {
+		slog.Error("bcrypt hash failed during password reset", "error", err)
+		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
+		return
+	}
 	h.DB.ExecContext(r.Context(),
 		"UPDATE users SET password_hash=?, otp_hash='', otp_expires_at='' WHERE id=?", newHash, userID)
 	writeJSON(w, 200, map[string]string{"message": "Password berhasil direset. Silakan login."})
@@ -458,7 +490,7 @@ func isValidPhone(phone string) bool {
 	return true
 }
 
-// OTP brute-force protection: max 5 failed attempts per OTP session
+// OTP brute-force protection: max 5 failed attempts per OTP session.
 var (
 	otpFailures   = map[int64]int{}
 	otpFailuresMu sync.Mutex

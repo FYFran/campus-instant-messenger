@@ -31,7 +31,7 @@ func FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	path := "/app/static/feedback.txt"
+	path := "/app/data/feedback.txt"
 	// Rotate if file exceeds 1MB
 	if info, err := os.Stat(path); err == nil && info.Size() > maxFeedbackSize {
 		os.Rename(path, path+".old")
