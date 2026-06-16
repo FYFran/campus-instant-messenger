@@ -1,4 +1,4 @@
-package handler
+﻿package handler
 
 import (
 	"database/sql"
@@ -28,7 +28,7 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 	var usedTokens int64
 	h.DB.QueryRowContext(r.Context(),
-		`SELECT COALESCE(SUM(LENGTH(content)*2),0) FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id=?)`,
+		`SELECT COALESCE(SUM(LENGTH(content)*2),0) FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.user_id=?`,
 		userID).Scan(&usedTokens)
 	var totalDeposited int64
 	h.DB.QueryRowContext(r.Context(),
@@ -57,7 +57,7 @@ func (h *UserHandler) Stats(w http.ResponseWriter, r *http.Request) {
 	}
 	dailyStats := []map[string]interface{}{}
 	rows, err := h.DB.QueryContext(r.Context(),
-		`SELECT DATE(created_at) as day, COUNT(*) as cnt FROM messages WHERE conversation_id IN (SELECT id FROM conversations WHERE user_id=?) GROUP BY day ORDER BY day DESC LIMIT 7`,
+		`SELECT DATE(created_at) as day, COUNT(*) as cnt FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE c.user_id=? GROUP BY day ORDER BY day DESC LIMIT 7`,
 		userID)
 	if err == nil && rows != nil {
 		for rows.Next() {

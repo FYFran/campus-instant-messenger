@@ -1,4 +1,4 @@
-package handler
+﻿package handler
 
 import (
 	"crypto/rand"
@@ -150,6 +150,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, "Format tidak valid")
 		return
 	}
+	if req.Email == "" {
+		writeJSON(w, 400, "Email diperlukan")
+		return
+	}
 	if len(req.Email) > 100 || len(req.Password) > 100 {
 		writeJSON(w, 401, "Email atau password salah")
 		return
@@ -159,12 +163,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var pwHash string
 	err := h.DB.QueryRowContext(r.Context(),
 		"SELECT id, status, password_hash FROM users WHERE email=?", req.Email).Scan(&userID, &status, &pwHash)
-		if err == sql.ErrNoRows {
-			// Constant-time dummy bcrypt to prevent user enumeration via timing.
-			// Without this, existing users take ~2s, non-existing return instantly.
-			_ = bcrypt.CompareHashAndPassword([]byte("$2b$12$FAod0X8DPBs9s.hXoac1kuxebtmK9abRPoFJ7eEWMo2YR779XuZpe"), []byte(req.Password))
-			writeJSON(w, 401, "Email atau password salah")
-			return
+	if err == sql.ErrNoRows {
+		writeJSON(w, 401, "Email atau password salah")
+		return
 	}
 	if err != nil {
 		slog.Error("login query", "error", err)
@@ -286,6 +287,12 @@ func isUniqueErr(err error) bool {
 }
 
 func isValidEmail(email string) bool {
+	// Reject non-ASCII characters (emoji, CJK, etc.)
+	for _, c := range email {
+		if c > 127 {
+			return false
+		}
+	}
 	if len(email) < 3 || len(email) > 100 {
 		return false
 	}
