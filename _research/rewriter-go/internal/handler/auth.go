@@ -159,9 +159,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var pwHash string
 	err := h.DB.QueryRowContext(r.Context(),
 		"SELECT id, status, password_hash FROM users WHERE email=?", req.Email).Scan(&userID, &status, &pwHash)
-	if err == sql.ErrNoRows {
-		writeJSON(w, 401, "Email atau password salah")
-		return
+		if err == sql.ErrNoRows {
+			// Constant-time dummy bcrypt to prevent user enumeration via timing.
+			// Without this, existing users take ~2s, non-existing return instantly.
+			_ = bcrypt.CompareHashAndPassword([]byte("$2b$12$FAod0X8DPBs9s.hXoac1kuxebtmK9abRPoFJ7eEWMo2YR779XuZpe"), []byte(req.Password))
+			writeJSON(w, 401, "Email atau password salah")
+			return
 	}
 	if err != nil {
 		slog.Error("login query", "error", err)

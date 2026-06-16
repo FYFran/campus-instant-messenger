@@ -24,6 +24,10 @@ import (
 	"tokenline/internal/middleware"
 )
 
+var (
+	cachedCertExpiry *time.Time
+)
+
 func main() {
 	cfg := config.Load()
 
@@ -41,6 +45,15 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 	slog.Info("db ready")
+	// Cache SSL cert expiry at startup — avoids disk read on every health check.
+	if certData, err := os.ReadFile("/app/rewriter-go/cert.pem"); err == nil {
+		if block, _ := pem.Decode(certData); block != nil {
+			if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
+				exp := cert.NotAfter
+				cachedCertExpiry = &exp
+			}
+		}
+	}
 
 	// DeepSeek
 	ds := deepseek.New(cfg.DeepSeekKey, cfg.DeepSeekBaseURL)
@@ -94,30 +107,6 @@ func main() {
 		}
 	}()
 
-	// Periodic balance check from New API (every 30 min)
-	go func() {
-		for {
-			time.Sleep(30 * time.Minute)
-			req, err := http.NewRequest("GET", "http://127.0.0.1:3100/api/balance", nil)
-			if err != nil {
-				continue
-			}
-			req.Header.Set("Content-Type", "application/json")
-			client := &http.Client{Timeout: 10 * time.Second}
-			resp, err := client.Do(req)
-			if err != nil {
-				continue
-			}
-			var result struct {
-				Balance float64 `json:"balance"`
-			}
-			if json.NewDecoder(resp.Body).Decode(&result) == nil {
-				costTracker.SetBalance(result.Balance)
-				slog.Info("api balance updated", "balance_usd", result.Balance)
-			}
-			resp.Body.Close()
-		}
-	}()
 
 	// Router — public routes with rate limiting
 	pub := http.NewServeMux()
@@ -163,17 +152,12 @@ func main() {
 		if revenueTracker != nil {
 			resp = revenueTracker.EnrichHealth(resp)
 		}
-		// SSL cert expiry
-		if certData, err := os.ReadFile("/app/rewriter-go/cert.pem"); err == nil {
-			block, _ := pem.Decode(certData)
-			if block != nil {
-				if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
-					daysLeft := int(time.Until(cert.NotAfter).Hours() / 24)
-					resp["ssl_cert"] = map[string]interface{}{
-						"expires_at": cert.NotAfter.Format("2006-01-02"),
-						"days_left":  daysLeft,
-					}
-				}
+		// SSL cert expiry — cached at startup
+		if cachedCertExpiry != nil {
+			daysLeft := int(time.Until(*cachedCertExpiry).Hours() / 24)
+			resp["ssl_cert"] = map[string]interface{}{
+				"expires_at": cachedCertExpiry.Format("2006-01-02"),
+				"days_left":  daysLeft,
 			}
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -185,7 +169,7 @@ func main() {
 
 	// Protected routes with rate limiting
 	mux.HandleFunc("POST /api/chat", chain(chatH.Chat, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
-	mux.HandleFunc("GET /api/chat/history", chain(userH.History, middleware.Auth(cfg.JWTSecret)))
+	mux.HandleFunc("GET /api/chat/history", chain(userH.History, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
 	mux.HandleFunc("GET /api/packs", chain(payH.ListPacks, middleware.RateLimit(pubLimiter)))
 	mux.HandleFunc("GET /api/templates", chain(tmplH.List, middleware.RateLimit(pubLimiter)))
 	mux.HandleFunc("GET /api/citation/search", chain(handler.SearchCitations, middleware.RateLimit(pubLimiter)))
@@ -215,15 +199,15 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(methods)
 	})
-	mux.HandleFunc("GET /api/me", chain(userH.Me, middleware.Auth(cfg.JWTSecret)))
-	mux.HandleFunc("GET /api/me/balance", chain(chatH.GetBalance, middleware.Auth(cfg.JWTSecret)))
+	mux.HandleFunc("GET /api/me", chain(userH.Me, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
+	mux.HandleFunc("GET /api/me/balance", chain(chatH.GetBalance, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
 	mux.HandleFunc("POST /api/auth/send-otp", chain(authH.SendOTP, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("POST /api/auth/send-otp-voice", chain(authH.SendOTPVoice, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("POST /api/auth/verify-otp", chain(authH.VerifyOTP, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("POST /api/auth/change-password", chain(authH.ChangePassword, middleware.Auth(cfg.JWTSecret)))
 	mux.HandleFunc("POST /api/auth/request-reset", chain(authH.RequestPasswordReset, middleware.RateLimit(authLimiter)))
 	mux.HandleFunc("POST /api/auth/reset-password", chain(authH.ResetPassword, middleware.RateLimit(authLimiter)))
-	mux.HandleFunc("GET /api/me/stats", chain(userH.Stats, middleware.Auth(cfg.JWTSecret)))
+	mux.HandleFunc("GET /api/me/stats", chain(userH.Stats, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
 	mux.HandleFunc("POST /api/feedback", chain(handler.FeedbackHandler, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(authLimiter)))
 
 	// Admin routes — password-protected, exposes financial/ops data
