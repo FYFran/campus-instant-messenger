@@ -47,6 +47,10 @@ nav .info{font-size:.75rem;opacity:.5;display:flex;align-items:center;gap:1rem}
 .timer-fill{height:100%;border-radius:2px;transition:width .6s}
 
 @media(max-width:768px){.container{padding:.75rem}.big-num{font-size:1.25rem}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,rgba(0,0,0,.08) 50%,rgba(0,0,0,.04) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
+#retry-banner{display:none;text-align:center;padding:.75rem;background:#fbe9e7;border-left:3px solid #e94560;border-radius:.5rem;margin-bottom:1rem;font-size:.8rem}
+#retry-banner button{margin-left:.5rem;padding:.3rem .8rem;background:var(--accent);color:#fff;border:none;border-radius:.4rem;cursor:pointer;font-size:.75rem}
 </style>
 </head>
 <body>
@@ -92,6 +96,7 @@ nav .info{font-size:.75rem;opacity:.5;display:flex;align-items:center;gap:1rem}
 
   <!-- ====== ALERTS ====== -->
   <div id="alerts" style="margin-bottom:1rem"></div>
+  <div id="retry-banner"><span>⚠️ 网络连接失败</span><button onclick="refresh()">重试</button></div>
 
   <!-- ====== TIMERS — SSL + 服务器 ====== -->
   <div class="grid-2" style="margin-bottom:1rem">
@@ -175,6 +180,7 @@ function dot(v,g,r){if(v>=g)return's-green';if(v<=r)return's-red';return's-yello
 
 async function refresh(){
   try{
+    document.getElementById("retry-banner").style.display="none";
     var a=await fetch(B+'/api/admin/balances',{headers:{'X-Admin-Key':KEY}});
     if(!a.ok){document.body.innerHTML='<div style="text-align:center;padding:5rem"><h2>认证失败</h2><a href="javascript:localStorage.removeItem(\"tl_admin_key\");location.reload()">重输密码</a></div>';return}
     var d=await a.json(),b=d.balance,al=d.alerts||[],hist=d.history||[];
@@ -258,7 +264,7 @@ async function refresh(){
     try{updateYP(hist)}catch(e){console.warn('ypChart:',e)}
     try{updateCost(hd)}catch(e){console.warn('costChart:',e)}
     try{updateSales(b)}catch(e){console.warn('salesChart:',e)}
-  }catch(e){document.getElementById("alerts").innerHTML="<div class=alert-row alert-crit>ERROR: "+e.message+"</div>";console.error(e)}
+  }catch(e){console.error(e);var rb=document.getElementById("retry-banner");if(rb){rb.style.display="block";rb.getElementsByTagName("span")[0].textContent="⚠️ "+e.message}}
 }
 
 function updateYP(hist){
