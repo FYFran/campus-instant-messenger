@@ -53,8 +53,42 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// IP anti-abuse + user & subscription creation — single transaction.
+	// Prefer X-Real-IP set by nginx, fallback to RemoteAddr.
+	clientIP := r.Header.Get("X-Real-IP")
+	if clientIP == "" {
+		clientIP, _, _ = net.SplitHostPort(r.RemoteAddr)
+	}
+
+	tx, err := h.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		slog.Error("begin tx for register", "error", err)
+		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
+		return
+	}
+	defer tx.Rollback()
+
+	// Insert ip_log FIRST — acquires write lock, serializes concurrent requests.
+	// This prevents the TOCTOU race where concurrent requests all see count < 3.
+	if _, err := tx.ExecContext(r.Context(),
+		"INSERT INTO ip_log(ip, action) VALUES(?, 'register')", clientIP); err != nil {
+		slog.Error("ip_log insert", "error", err)
+		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
+		return
+	}
+
+	var regCount int
+	_ = tx.QueryRowContext(r.Context(),
+		"SELECT COUNT(*) FROM ip_log WHERE ip=? AND created_at > datetime('now','-24 hours')",
+		clientIP).Scan(&regCount)
+	if regCount > 3 {
+		writeJSON(w, 429, "Terlalu banyak pendaftaran dari jaringan Anda. Silakan coba lagi besok.")
+		return
+	}
+
+	// Insert user inside transaction — no orphaned rows if IP limit exceeded.
 	var userID int64
-	err = h.DB.QueryRowContext(r.Context(),
+	err = tx.QueryRowContext(r.Context(),
 		"INSERT INTO users(email, password_hash) VALUES(?,?) RETURNING id",
 		req.Email, pwHash).Scan(&userID)
 	if err != nil {
@@ -66,46 +100,36 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, "Terjadi kesalahan")
 		return
 	}
-	// Create free subscription with 0 token balance
-		// IP-based anti-abuse: max 3 registrations per IP per 24h.
-		// Prefer X-Real-IP set by nginx, fallback to RemoteAddr.
-		clientIP := r.Header.Get("X-Real-IP")
-		if clientIP == "" {
-			clientIP, _, _ = net.SplitHostPort(r.RemoteAddr)
-		}
-		var regCount int
-		_ = h.DB.QueryRowContext(r.Context(),
-			"SELECT COUNT(*) FROM ip_log WHERE ip=? AND created_at > datetime('now','-24 hours')",
-			clientIP).Scan(&regCount)
-		if regCount >= 3 {
-			writeJSON(w, 429, "Terlalu banyak pendaftaran dari jaringan Anda. Silakan coba lagi besok.")
-			return
-		}
 
-		// Log this registration
-		h.DB.ExecContext(r.Context(),
-			"INSERT INTO ip_log(ip, action) VALUES(?, 'register')", clientIP)
+	// Create subscription with 50K signup bonus.
+	now := time.Now().UTC().Format(time.RFC3339)
+	exp := time.Now().UTC().AddDate(100, 0, 0).Format(time.RFC3339)
+	if _, err := tx.ExecContext(r.Context(),
+		"INSERT INTO subscriptions(user_id, plan, started_at, expires_at, flash_balance, status) VALUES(?,?,?,?,50000,1)",
+		userID, "gratis", now, exp); err != nil {
+		slog.Error("create free sub with bonus", "error", err)
+		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
+		return
+	}
 
-		now := time.Now().UTC().Format(time.RFC3339)
-		exp := time.Now().UTC().AddDate(100, 0, 0).Format(time.RFC3339)
-		if _, err := h.DB.ExecContext(r.Context(),
-			"INSERT INTO subscriptions(user_id, plan, started_at, expires_at, flash_balance, status) VALUES(?,?,?,?,50000,1)",
-			userID, "gratis", now, exp); err != nil {
-			slog.Error("create free sub with bonus", "error", err)
+	// Referral bonus: referrer gets 50K.
+	if req.Ref != "" && req.Ref != req.Email {
+		var refID int64
+		err := tx.QueryRowContext(r.Context(),
+			"SELECT id FROM users WHERE email=? AND status=1", req.Ref).Scan(&refID)
+		if err == nil {
+			tx.ExecContext(r.Context(),
+				"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000 WHERE user_id=? AND status=1",
+				refID)
+			slog.Info("referral bonus applied", "referrer", refID, "new_user", userID)
 		}
+	}
 
-		// Referral bonus: referrer also gets 50K
-		if req.Ref != "" && req.Ref != req.Email {
-			var refID int64
-			err := h.DB.QueryRowContext(r.Context(),
-				"SELECT id FROM users WHERE email=? AND status=1", req.Ref).Scan(&refID)
-			if err == nil {
-				h.DB.ExecContext(r.Context(),
-					"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000 WHERE user_id=? AND status=1",
-					refID)
-				slog.Info("referral bonus applied", "referrer", refID, "new_user", userID)
-			}
-		}
+	if err := tx.Commit(); err != nil {
+		slog.Error("register commit", "error", err)
+		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
+		return
+	}
 
 
 	token, err := genJWT(userID, h.JWTSecret)

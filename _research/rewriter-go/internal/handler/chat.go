@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"database/sql"
 	"encoding/json"
 	"log/slog"
@@ -201,7 +202,7 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 	if err == nil && rows != nil {
 		for rows.Next() {
 			var role, content string
-			rows.Scan(&role, &content)
+			_ = rows.Scan(&role, &content)
 			history = append(history, deepseek.Message{Role: role, Content: content})
 		}
 		rows.Close()
@@ -344,7 +345,10 @@ func (h *ChatHandler) getBalance(ctx context.Context, userID int64) (packType st
 		"SELECT COALESCE(pack_type,'gratis'), COALESCE(flash_balance,0), COALESCE(pro_balance,0) FROM subscriptions WHERE user_id=? AND status=1 ORDER BY id DESC LIMIT 1",
 		userID).Scan(&packType, &flashBal, &proBal)
 	if err != nil {
-		return "gratis", 0, 0, nil
+		if errors.Is(err, sql.ErrNoRows) {
+			return "gratis", 0, 0, nil
+		}
+		return "", 0, 0, err
 	}
 	return
 }
