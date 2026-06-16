@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -66,29 +67,46 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Create free subscription with 0 token balance
-	now := time.Now().UTC().Format(time.RFC3339)
-	exp := time.Now().UTC().AddDate(100, 0, 0).Format(time.RFC3339)
-	if _, err := h.DB.ExecContext(r.Context(),
-		"INSERT INTO subscriptions(user_id, plan, started_at, expires_at, status) VALUES(?,?,?,?,1)",
-		userID, "gratis", now, exp); err != nil {
-		slog.Error("create free sub", "error", err)
-	}
-
-	// Referral bonus: both referrer and new user get 50K free tokens
-	if req.Ref != "" && req.Ref != req.Email {
-		var refID int64
-		err := h.DB.QueryRowContext(r.Context(),
-			"SELECT id FROM users WHERE email=? AND status=1", req.Ref).Scan(&refID)
-		if err == nil {
-			h.DB.ExecContext(r.Context(),
-				"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000 WHERE user_id=? AND status=1",
-				refID)
-			h.DB.ExecContext(r.Context(),
-				"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000 WHERE user_id=? AND status=1",
-				userID)
-			slog.Info("referral bonus applied", "referrer", refID, "new_user", userID)
+		// IP-based anti-abuse: max 3 registrations per IP per 24h.
+		// Prefer X-Real-IP set by nginx, fallback to RemoteAddr.
+		clientIP := r.Header.Get("X-Real-IP")
+		if clientIP == "" {
+			clientIP, _, _ = net.SplitHostPort(r.RemoteAddr)
 		}
-	}
+		var regCount int
+		_ = h.DB.QueryRowContext(r.Context(),
+			"SELECT COUNT(*) FROM ip_log WHERE ip=? AND created_at > datetime('now','-24 hours')",
+			clientIP).Scan(&regCount)
+		if regCount >= 3 {
+			writeJSON(w, 429, "Terlalu banyak pendaftaran dari jaringan Anda. Silakan coba lagi besok.")
+			return
+		}
+
+		// Log this registration
+		h.DB.ExecContext(r.Context(),
+			"INSERT INTO ip_log(ip, action) VALUES(?, 'register')", clientIP)
+
+		now := time.Now().UTC().Format(time.RFC3339)
+		exp := time.Now().UTC().AddDate(100, 0, 0).Format(time.RFC3339)
+		if _, err := h.DB.ExecContext(r.Context(),
+			"INSERT INTO subscriptions(user_id, plan, started_at, expires_at, flash_balance, status) VALUES(?,?,?,?,50000,1)",
+			userID, "gratis", now, exp); err != nil {
+			slog.Error("create free sub with bonus", "error", err)
+		}
+
+		// Referral bonus: referrer also gets 50K
+		if req.Ref != "" && req.Ref != req.Email {
+			var refID int64
+			err := h.DB.QueryRowContext(r.Context(),
+				"SELECT id FROM users WHERE email=? AND status=1", req.Ref).Scan(&refID)
+			if err == nil {
+				h.DB.ExecContext(r.Context(),
+					"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000 WHERE user_id=? AND status=1",
+					refID)
+				slog.Info("referral bonus applied", "referrer", refID, "new_user", userID)
+			}
+		}
+
 
 	token, err := genJWT(userID, h.JWTSecret)
 	if err != nil {
@@ -286,7 +304,7 @@ func (h *AuthHandler) SendOTP(w http.ResponseWriter, r *http.Request) {
 	h.DB.ExecContext(r.Context(),
 		"UPDATE users SET phone=?, otp_hash=?, otp_expires_at=? WHERE id=?",
 		req.Phone, otpHash, expires, userID)
-	go SendSMSOTP(req.Phone, otp)
+	go func() { if err := SendSMSOTP(req.Phone, otp); err != nil { slog.Error("sms otp failed", "phone", req.Phone, "error", err) } }()
 	setCooldown(req.Phone)
 	slog.Info("OTP sent via SMS", "user", userID, "phone", req.Phone)
 	writeJSON(w, 200, map[string]string{"message": "Kode verifikasi telah dikirim via SMS ke nomor Anda"})
@@ -332,7 +350,7 @@ func (h *AuthHandler) SendOTPVoice(w http.ResponseWriter, r *http.Request) {
 
 	setCooldown(phone + "_voice")
 
-	go SendVoiceOTP(phone, otp)
+	go func() { if err := SendVoiceOTP(phone, otp); err != nil { slog.Error("voice otp failed", "phone", phone, "error", err) } }()
 	slog.Info("OTP sent via voice call", "user", userID, "phone", phone)
 	writeJSON(w, 200, map[string]string{"message": "Kode verifikasi akan dikirim melalui panggilan suara ke nomor Anda"})
 }
@@ -415,7 +433,7 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 	h.DB.ExecContext(r.Context(),
 		"UPDATE users SET otp_hash=?, otp_expires_at=? WHERE id=?", otpHash, expires, userID)
 	setCooldown(req.Phone)
-	go SendSMSOTP(req.Phone, otp)
+	go func() { if err := SendSMSOTP(req.Phone, otp); err != nil { slog.Error("sms otp failed", "phone", req.Phone, "error", err) } }()
 	slog.Info("Password reset OTP via SMS", "user", userID, "phone", req.Phone)
 	writeJSON(w, 200, map[string]string{"message": "Kode reset password telah dikirim via SMS ke nomor Anda"})
 }
@@ -463,6 +481,9 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"message": "Password berhasil direset. Silakan login."})
 }
 
+// generateOTP returns a 6-digit OTP using crypto/rand.
+// Go 1.24+ guarantees rand.Int with rand.Reader never returns an error —
+// the runtime panics irrecoverably if the OS entropy source fails.
 func generateOTP() string {
 	n, _ := rand.Int(rand.Reader, big.NewInt(1000000))
 	return fmt.Sprintf("%06d", n.Int64())
