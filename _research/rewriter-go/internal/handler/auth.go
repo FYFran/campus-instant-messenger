@@ -1,6 +1,7 @@
-﻿package handler
+package handler
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -13,7 +14,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -29,21 +29,31 @@ type AuthHandler struct {
 type authReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Phone    string `json:"phone"`
 	Ref      string `json:"ref"`
+	Code     string `json:"code"`
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req authReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" || len(req.Password) < 6 {
-		writeJSON(w, 400, "Email dan password minimal 6 karakter diperlukan")
-		return
-	}
-	if len(req.Email) > 100 || len(req.Password) > 100 {
-		writeJSON(w, 400, "Email atau password terlalu panjang")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
+		writeJSON(w, 400, "Email diperlukan")
 		return
 	}
 	if !isValidEmail(req.Email) {
 		writeJSON(w, 400, "Format email tidak valid")
+		return
+	}
+	if ok, msg := isValidPassword(req.Password); !ok {
+		writeJSON(w, 400, msg)
+		return
+	}
+	if !isValidPhone(req.Phone) {
+		writeJSON(w, 400, "Nomor telepon diperlukan untuk reset password (628xxxxxxxxxx, +60xxxxxxxxx, +65xxxxxxxx)")
+		return
+	}
+	if len(req.Email) > 100 || len(req.Password) > 100 {
+		writeJSON(w, 400, "Email atau password terlalu panjang")
 		return
 	}
 	pwHash, err := hashPassword(req.Password)
@@ -58,6 +68,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	clientIP := r.Header.Get("X-Real-IP")
 	if clientIP == "" {
 		clientIP, _, _ = net.SplitHostPort(r.RemoteAddr)
+		if clientIP == "" {
+			clientIP = r.RemoteAddr
+		}
 	}
 
 	tx, err := h.DB.BeginTx(r.Context(), nil)
@@ -66,7 +79,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
 		return
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Insert ip_log FIRST — acquires write lock, serializes concurrent requests.
 	// This prevents the TOCTOU race where concurrent requests all see count < 3.
@@ -78,19 +91,22 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var regCount int
-	_ = tx.QueryRowContext(r.Context(),
+	if err := tx.QueryRowContext(r.Context(),
 		"SELECT COUNT(*) FROM ip_log WHERE ip=? AND created_at > datetime('now','-24 hours')",
-		clientIP).Scan(&regCount)
+		clientIP).Scan(&regCount); err != nil {
+		slog.Error("ip_log count query", "error", err)
+	}
 	if regCount > 3 {
 		writeJSON(w, 429, "Terlalu banyak pendaftaran dari jaringan Anda. Silakan coba lagi besok.")
 		return
 	}
 
 	// Insert user inside transaction — no orphaned rows if IP limit exceeded.
+	// Set token_version=1 so JWT matches; SQLite ALTER TABLE can't change column DEFAULT.
 	var userID int64
 	err = tx.QueryRowContext(r.Context(),
-		"INSERT INTO users(email, password_hash) VALUES(?,?) RETURNING id",
-		req.Email, pwHash).Scan(&userID)
+		"INSERT INTO users(email, password_hash, phone, token_version) VALUES(?,?,?,1) RETURNING id",
+		req.Email, pwHash, req.Phone).Scan(&userID)
 	if err != nil {
 		if isUniqueErr(err) {
 			writeJSON(w, 200, map[string]string{"message": "Jika email belum terdaftar, silakan cek email Anda untuk verifikasi."})
@@ -112,17 +128,52 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Referral bonus: referrer gets 50K.
+	// Referral bonus: referrer gets 50K. Cap at 500K total flash balance to prevent abuse.
 	if req.Ref != "" && req.Ref != req.Email {
 		var refID int64
 		err := tx.QueryRowContext(r.Context(),
-			"SELECT id FROM users WHERE email=? AND status=1", req.Ref).Scan(&refID)
+			"SELECT id FROM users WHERE (id=? OR email=?) AND status=1", req.Ref, req.Ref).Scan(&refID)
 		if err == nil {
-			tx.ExecContext(r.Context(),
-				"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000 WHERE user_id=? AND status=1",
-				refID)
-			slog.Info("referral bonus applied", "referrer", refID, "new_user", userID)
+			// Check referrer's current flash balance — cap bonus at 500K total.
+			var currentBalance int64
+			var refPackType string
+			_ = tx.QueryRowContext(r.Context(),
+				"SELECT COALESCE(flash_balance,0), COALESCE(pack_type,'flash') FROM subscriptions WHERE user_id=? AND status=1",
+				refID).Scan(&currentBalance, &refPackType)
+			// Creators get higher referral cap: 2,000,000 tokens
+			referralCap := int64(500000)
+			if refPackType == "ultimate" {
+				referralCap = 5000000
+			}
+			if currentBalance < referralCap {
+				if _, err := tx.ExecContext(r.Context(),
+					"UPDATE subscriptions SET flash_balance=COALESCE(flash_balance,0)+50000, referral_count=COALESCE(referral_count,0)+1 WHERE user_id=? AND status=1",
+					refID); err != nil {
+					slog.Error("referral bonus update failed", "referrer", refID, "error", err)
+				}
+				slog.Info("referral bonus applied", "referrer", refID, "new_user", userID)
+			} else {
+				slog.Info("referral cap reached (500K)", "referrer", refID, "balance", currentBalance)
+			}
 		}
+	}
+
+	// Redeem code at registration — one-time use, applies flash + pro tokens.
+	if req.Code != "" {
+		var flashAmt, proAmt int64
+		err := tx.QueryRowContext(r.Context(),
+			"UPDATE redeem_codes SET used_by=?, used_at=datetime('now') WHERE code=? AND used_by=0 RETURNING flash_amount, pro_amount",
+			userID, strings.ToUpper(strings.TrimSpace(req.Code))).Scan(&flashAmt, &proAmt)
+		if err == nil {
+			if _, err := tx.ExecContext(r.Context(),
+				"UPDATE subscriptions SET flash_balance=flash_balance+?, pro_balance=pro_balance+? WHERE user_id=? AND status=1",
+				flashAmt, proAmt, userID); err != nil {
+				slog.Error("redeem bonus update failed", "user", userID, "error", err)
+			} else {
+				slog.Info("redeem code applied at registration", "user", userID, "code", req.Code, "flash", flashAmt, "pro", proAmt)
+			}
+		}
+		// If code is invalid/used: silently ignore — don't block registration.
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -131,13 +182,22 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
-	token, err := genJWT(userID, h.JWTSecret)
+	token, err := genJWT(userID, 1, h.JWTSecret)
 	if err != nil {
 		slog.Error("jwt generate", "error", err)
 		writeJSON(w, 500, "Gagal membuat token. Silakan coba lagi.")
 		return
 	}
+	// Set httpOnly cookie — XSS-proof, auto-sent by browser.
+	http.SetCookie(w, &http.Cookie{
+		Name:     "tl_token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   7 * 24 * 3600,
+		Path:     "/",
+	})
 	writeJSON(w, 200, map[string]interface{}{
 		"token": token,
 		"user":  map[string]interface{}{"id": userID, "email": req.Email, "plan": "gratis"},
@@ -158,12 +218,23 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 401, "Email atau password salah")
 		return
 	}
+
+	clientIP := r.Header.Get("X-Real-IP")
+	if clientIP == "" {
+		clientIP, _, _ = net.SplitHostPort(r.RemoteAddr)
+	}
+
 	var userID int64
 	var status int
 	var pwHash string
+	var tokenVersion int64
 	err := h.DB.QueryRowContext(r.Context(),
-		"SELECT id, status, password_hash FROM users WHERE email=?", req.Email).Scan(&userID, &status, &pwHash)
+		"SELECT id, status, password_hash, COALESCE(token_version,0) FROM users WHERE email=?",
+		req.Email).Scan(&userID, &status, &pwHash, &tokenVersion)
 	if err == sql.ErrNoRows {
+		// Fake bcrypt to prevent timing leak — same cost as real verify.
+		fakeHash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 12)
+		_ = bcrypt.CompareHashAndPassword(fakeHash, []byte(req.Password))
 		writeJSON(w, 401, "Email atau password salah")
 		return
 	}
@@ -172,24 +243,50 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, "Terjadi kesalahan")
 		return
 	}
+
+	// Check account lockout — max 5 failed attempts in 15 minutes.
+	if isAccountLocked(h.DB, userID) {
+		writeJSON(w, 429, "Akun terkunci karena terlalu banyak percobaan login. Silakan coba lagi 15 menit.")
+		return
+	}
+
 	if status != 1 {
 		writeJSON(w, 403, "Akun dinonaktifkan")
 		return
 	}
+
 	ok, rehash := verifyPassword(req.Password, pwHash)
 	if !ok {
+		recordLoginAttempt(h.DB, userID, clientIP, false)
 		writeJSON(w, 401, "Email atau password salah")
 		return
 	}
+
+	// Successful login — clear attempts.
+	recordLoginAttempt(h.DB, userID, clientIP, true)
+
 	if rehash != "" {
-		h.DB.ExecContext(r.Context(), "UPDATE users SET password_hash=? WHERE id=?", rehash, userID)
+		if _, err := h.DB.ExecContext(r.Context(),
+			"UPDATE users SET password_hash=? WHERE id=?", rehash, userID); err != nil {
+			slog.Error("rehash update failed", "user", userID, "error", err)
+		}
 	}
-	token, err := genJWT(userID, h.JWTSecret)
+
+	token, err := genJWT(userID, tokenVersion, h.JWTSecret)
 	if err != nil {
 		slog.Error("jwt generate", "error", err)
 		writeJSON(w, 500, "Gagal membuat token. Silakan coba lagi.")
 		return
 	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "tl_token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   7 * 24 * 3600,
+		Path:     "/",
+	})
 	writeJSON(w, 200, map[string]interface{}{"token": token, "user": map[string]interface{}{"id": userID, "email": req.Email}})
 }
 
@@ -203,8 +300,12 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		OldPassword string `json:"old_password"`
 		NewPassword string `json:"new_password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.NewPassword) < 6 {
-		writeJSON(w, 400, "Password baru minimal 6 karakter")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, 400, "Format tidak valid")
+		return
+	}
+	if ok, msg := isValidPassword(req.NewPassword); !ok {
+		writeJSON(w, 400, msg)
 		return
 	}
 	var dbHash string
@@ -224,12 +325,16 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
 		return
 	}
-	if _, err := h.DB.ExecContext(r.Context(), "UPDATE users SET password_hash=? WHERE id=?", newHash, userID); err != nil {
+	// Increment token_version to invalidate all existing tokens.
+	if _, err := h.DB.ExecContext(r.Context(),
+		"UPDATE users SET password_hash=?, token_version=COALESCE(token_version,0)+1 WHERE id=?",
+		newHash, userID); err != nil {
 		slog.Error("change password db update failed", "user", userID, "error", err)
 		writeJSON(w, 500, "Gagal mengubah password")
 		return
 	}
-	writeJSON(w, 200, map[string]string{"message": "Password berhasil diubah"})
+	slog.Info("password changed, tokens revoked", "user", userID)
+	writeJSON(w, 200, map[string]string{"message": "Password berhasil diubah. Silakan login kembali."})
 }
 
 // hashPassword returns a bcrypt hash of pw. Returns error on failure instead
@@ -260,9 +365,67 @@ func verifyPassword(pw, stored string) (ok bool, rehash string) {
 	return err == nil, ""
 }
 
-func genJWT(userID int64, secret string) (string, error) {
+// isValidPassword enforces minimum password strength:
+// 8+ characters, at least 1 uppercase, 1 lowercase, 1 digit.
+func isValidPassword(pw string) (bool, string) {
+	if len(pw) < 8 {
+		return false, "Password minimal 8 karakter"
+	}
+	if len(pw) > 100 {
+		return false, "Password terlalu panjang"
+	}
+	hasUpper, hasLower, hasDigit := false, false, false
+	for _, c := range pw {
+		if c >= 'A' && c <= 'Z' {
+			hasUpper = true
+		}
+		if c >= 'a' && c <= 'z' {
+			hasLower = true
+		}
+		if c >= '0' && c <= '9' {
+			hasDigit = true
+		}
+	}
+	if !hasUpper {
+		return false, "Password harus mengandung minimal 1 huruf besar (A-Z)"
+	}
+	if !hasLower {
+		return false, "Password harus mengandung minimal 1 huruf kecil (a-z)"
+	}
+	if !hasDigit {
+		return false, "Password harus mengandung minimal 1 angka (0-9)"
+	}
+	return true, ""
+}
+
+// isAccountLocked checks if user has ≥5 failed login attempts in the last 15 minutes.
+func isAccountLocked(db *sql.DB, userID int64) bool {
+	var count int
+	err := db.QueryRowContext(context.Background(),
+		"SELECT COUNT(*) FROM login_attempts WHERE user_id=? AND success=0 AND created_at > datetime('now','-15 minutes')",
+		userID).Scan(&count)
+	if err != nil {
+		return false // DB error → don't lock out
+	}
+	return count >= 5
+}
+
+func recordLoginAttempt(db *sql.DB, userID int64, ip string, success bool) {
+	successInt := 0
+	if success {
+		successInt = 1
+	}
+	if _, err := db.ExecContext(context.Background(),
+		"INSERT INTO login_attempts(user_id, ip, success) VALUES(?,?,?)",
+		userID, ip, successInt); err != nil {
+		slog.Error("login_attempt insert failed", "user", userID, "error", err)
+	}
+}
+
+func genJWT(userID int64, tokenVersion int64, secret string) (string, error) {
 	claims := &middleware.Claims{
-		UserID: userID,
+		UserID:       userID,
+		TokenVersion: tokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -272,14 +435,18 @@ func genJWT(userID int64, secret string) (string, error) {
 }
 
 func userIDFrom(r *http.Request) (int64, bool) {
-	id, ok := r.Context().Value("user_id").(int64)
-	return id, ok
+	return middleware.UserIDFromContext(r.Context())
 }
 
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	// Normalize error messages: wrap plain strings in {"message": "..."} for consistent client parsing.
+	if s, ok := data.(string); ok {
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": s})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 func isUniqueErr(err error) bool {
@@ -330,15 +497,23 @@ func (h *AuthHandler) SendOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clear previous OTP failure counter when sending new OTP
-	clearOTPFailures(userID)
+	clearOTPFailures(r.Context(), h.DB, userID)
 
 	otp := generateOTP()
 	otpHash := hashOTP(otp)
 	expires := time.Now().UTC().Add(5 * time.Minute).Format(time.RFC3339)
-	h.DB.ExecContext(r.Context(),
+	if _, err := h.DB.ExecContext(r.Context(),
 		"UPDATE users SET phone=?, otp_hash=?, otp_expires_at=? WHERE id=?",
-		req.Phone, otpHash, expires, userID)
-	go func() { if err := SendSMSOTP(req.Phone, otp); err != nil { slog.Error("sms otp failed", "phone", req.Phone, "error", err) } }()
+		req.Phone, otpHash, expires, userID); err != nil {
+		slog.Error("send otp db update failed", "user", userID, "error", err)
+		writeJSON(w, 500, "Gagal menyimpan OTP. Silakan coba lagi.")
+		return
+	}
+	go func() {
+		if err := SendSMSOTP(req.Phone, otp); err != nil {
+			slog.Error("sms otp failed", "phone", req.Phone, "error", err)
+		}
+	}()
 	setCooldown(req.Phone)
 	slog.Info("OTP sent via SMS", "user", userID, "phone", req.Phone)
 	writeJSON(w, 200, map[string]string{"message": "Kode verifikasi telah dikirim via SMS ke nomor Anda"})
@@ -374,17 +549,25 @@ func (h *AuthHandler) SendOTPVoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Regenerate OTP for voice clarity
-	clearOTPFailures(userID)
+	clearOTPFailures(r.Context(), h.DB, userID)
 	otp := generateOTP()
 	otpHash = hashOTP(otp)
 	expires = time.Now().UTC().Add(5 * time.Minute)
-	h.DB.ExecContext(r.Context(),
+	if _, err := h.DB.ExecContext(r.Context(),
 		"UPDATE users SET otp_hash=?, otp_expires_at=? WHERE id=?",
-		otpHash, expires.Format(time.RFC3339), userID)
+		otpHash, expires.Format(time.RFC3339), userID); err != nil {
+		slog.Error("voice otp db update failed", "user", userID, "error", err)
+		writeJSON(w, 500, "Gagal menyimpan OTP. Silakan coba lagi.")
+		return
+	}
 
 	setCooldown(phone + "_voice")
 
-	go func() { if err := SendVoiceOTP(phone, otp); err != nil { slog.Error("voice otp failed", "phone", phone, "error", err) } }()
+	go func() {
+		if err := SendVoiceOTP(phone, otp); err != nil {
+			slog.Error("voice otp failed", "phone", phone, "error", err)
+		}
+	}()
 	slog.Info("OTP sent via voice call", "user", userID, "phone", phone)
 	writeJSON(w, 200, map[string]string{"message": "Kode verifikasi akan dikirim melalui panggilan suara ke nomor Anda"})
 }
@@ -403,11 +586,13 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Brute-force: max 5 failed OTP attempts, then OTP is invalidated
-	if otpAttemptsExceeded(userID) {
-		h.DB.ExecContext(r.Context(),
-			"UPDATE users SET otp_hash='', otp_expires_at='' WHERE id=?", userID)
-		clearOTPFailures(userID)
+	// Check OTP brute-force limit via DB (survives restart).
+	if ok := otpAttemptsExceeded(r.Context(), h.DB, userID); ok {
+		if _, err := h.DB.ExecContext(r.Context(),
+			"UPDATE users SET otp_hash='', otp_expires_at='' WHERE id=?", userID); err != nil {
+			slog.Error("clear otp on lockout failed", "user", userID, "error", err)
+		}
+		clearOTPFailures(r.Context(), h.DB, userID)
 		writeJSON(w, 429, "Terlalu banyak percobaan OTP. Kirim ulang kode verifikasi.")
 		return
 	}
@@ -426,13 +611,17 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !verifyOTP(req.OTP, otpHash) {
-		recordOTPFailure(userID)
+		recordOTPFailure(r.Context(), h.DB, userID)
 		writeJSON(w, 400, "Kode OTP salah")
 		return
 	}
-	clearOTPFailures(userID)
-	h.DB.ExecContext(r.Context(),
-		"UPDATE users SET phone_verified=1, otp_hash='', otp_expires_at='' WHERE id=?", userID)
+	clearOTPFailures(r.Context(), h.DB, userID)
+	if _, err := h.DB.ExecContext(r.Context(),
+		"UPDATE users SET phone_verified=1, otp_hash='', otp_expires_at='' WHERE id=?", userID); err != nil {
+		slog.Error("verify otp db update failed", "user", userID, "error", err)
+		writeJSON(w, 500, "Gagal verifikasi OTP. Silakan coba lagi.")
+		return
+	}
 	writeJSON(w, 200, map[string]string{"message": "Nomor telepon berhasil diverifikasi", "phone": phone})
 }
 
@@ -440,7 +629,12 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 	var req struct {
 		Phone string `json:"phone"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || !isValidPhone(req.Phone) {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Phone == "" {
+		writeJSON(w, 400, "Nomor telepon diperlukan")
+		return
+	}
+
+	if !isValidPhone(req.Phone) {
 		writeJSON(w, 400, "Nomor telepon tidak valid")
 		return
 	}
@@ -449,7 +643,7 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 	err := h.DB.QueryRowContext(r.Context(),
 		"SELECT id, phone_verified FROM users WHERE phone=? AND status=1", req.Phone).Scan(&userID, &phoneVerified)
 	if err != nil {
-		writeJSON(w, 404, "Nomor telepon tidak terdaftar")
+		writeJSON(w, 200, map[string]string{"message": "Jika nomor terdaftar dan diverifikasi, kode OTP akan dikirim via SMS."})
 		return
 	}
 	if phoneVerified == 0 {
@@ -460,14 +654,22 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, 429, "Tunggu 60 detik sebelum mengirim ulang kode verifikasi")
 		return
 	}
-	clearOTPFailures(userID)
+	clearOTPFailures(r.Context(), h.DB, userID)
 	otp := generateOTP()
 	otpHash := hashOTP(otp)
 	expires := time.Now().UTC().Add(5 * time.Minute).Format(time.RFC3339)
-	h.DB.ExecContext(r.Context(),
-		"UPDATE users SET otp_hash=?, otp_expires_at=? WHERE id=?", otpHash, expires, userID)
+	if _, err := h.DB.ExecContext(r.Context(),
+		"UPDATE users SET otp_hash=?, otp_expires_at=? WHERE id=?", otpHash, expires, userID); err != nil {
+		slog.Error("request reset otp db update failed", "user", userID, "error", err)
+		writeJSON(w, 500, "Gagal mengirim OTP. Silakan coba lagi.")
+		return
+	}
 	setCooldown(req.Phone)
-	go func() { if err := SendSMSOTP(req.Phone, otp); err != nil { slog.Error("sms otp failed", "phone", req.Phone, "error", err) } }()
+	go func() {
+		if err := SendSMSOTP(req.Phone, otp); err != nil {
+			slog.Error("sms otp failed", "phone", req.Phone, "error", err)
+		}
+	}()
 	slog.Info("Password reset OTP via SMS", "user", userID, "phone", req.Phone)
 	writeJSON(w, 200, map[string]string{"message": "Kode reset password telah dikirim via SMS ke nomor Anda"})
 }
@@ -478,15 +680,25 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		OTP         string `json:"otp"`
 		NewPassword string `json:"new_password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Phone == "" || req.OTP == "" || len(req.NewPassword) < 6 {
-		writeJSON(w, 400, "Semua field diperlukan. Password minimal 6 karakter.")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.NewPassword == "" {
+		writeJSON(w, 400, "Password baru diperlukan")
+		return
+	}
+	if ok, msg := isValidPassword(req.NewPassword); !ok {
+		writeJSON(w, 400, msg)
+		return
+	}
+
+	if req.Phone == "" || req.OTP == "" {
+		writeJSON(w, 400, "Nomor telepon dan kode OTP diperlukan")
 		return
 	}
 	var userID int64
 	var otpHash, expiresStr string
 	var phoneVerified int
 	err := h.DB.QueryRowContext(r.Context(),
-		"SELECT id, otp_hash, COALESCE(otp_expires_at,''), phone_verified FROM users WHERE phone=? AND status=1", req.Phone).Scan(&userID, &otpHash, &expiresStr, &phoneVerified)
+		"SELECT id, otp_hash, COALESCE(otp_expires_at,''), phone_verified FROM users WHERE phone=? AND status=1",
+		req.Phone).Scan(&userID, &otpHash, &expiresStr, &phoneVerified)
 	if err != nil {
 		writeJSON(w, 404, "Nomor telepon tidak terdaftar")
 		return
@@ -495,24 +707,45 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, "Nomor telepon belum diverifikasi. Tidak bisa reset password.")
 		return
 	}
+
+	// OTP brute-force protection — same check as VerifyOTP, DB-persisted.
+	if ok := otpAttemptsExceeded(r.Context(), h.DB, userID); ok {
+		if _, err := h.DB.ExecContext(r.Context(),
+			"UPDATE users SET otp_hash='', otp_expires_at='' WHERE id=?", userID); err != nil {
+			slog.Error("clear otp on lockout failed", "user", userID, "error", err)
+		}
+		clearOTPFailures(r.Context(), h.DB, userID)
+		writeJSON(w, 429, "Terlalu banyak percobaan OTP. Kirim ulang kode verifikasi.")
+		return
+	}
+
 	expires, _ := time.Parse(time.RFC3339, expiresStr)
 	if time.Now().UTC().After(expires) {
 		writeJSON(w, 400, "Kode OTP kadaluarsa")
 		return
 	}
 	if !verifyOTP(req.OTP, otpHash) {
+		recordOTPFailure(r.Context(), h.DB, userID)
 		writeJSON(w, 400, "Kode OTP salah")
 		return
 	}
+	clearOTPFailures(r.Context(), h.DB, userID)
 	newHash, err := hashPassword(req.NewPassword)
 	if err != nil {
 		slog.Error("bcrypt hash failed during password reset", "error", err)
 		writeJSON(w, 500, "Terjadi kesalahan. Silakan coba lagi.")
 		return
 	}
-	h.DB.ExecContext(r.Context(),
-		"UPDATE users SET password_hash=?, otp_hash='', otp_expires_at='' WHERE id=?", newHash, userID)
-	writeJSON(w, 200, map[string]string{"message": "Password berhasil direset. Silakan login."})
+	// Increment token_version to invalidate all existing sessions.
+	if _, err := h.DB.ExecContext(r.Context(),
+		"UPDATE users SET password_hash=?, otp_hash='', otp_expires_at='', token_version=COALESCE(token_version,0)+1 WHERE id=?",
+		newHash, userID); err != nil {
+		slog.Error("reset password db update failed", "user", userID, "error", err)
+		writeJSON(w, 500, "Gagal mereset password")
+		return
+	}
+	slog.Info("password reset, tokens revoked", "user", userID)
+	writeJSON(w, 200, map[string]string{"message": "Password berhasil direset. Silakan login kembali."})
 }
 
 // generateOTP returns a 6-digit OTP using crypto/rand.
@@ -534,7 +767,11 @@ func verifyOTP(otp, hash string) bool {
 
 func isValidPhone(phone string) bool {
 	phone = strings.TrimPrefix(phone, "+")
-	if !strings.HasPrefix(phone, "62") || len(phone) < 10 || len(phone) > 15 {
+	// Accept ID (+62), MY (+60), SG (+65)
+	if !(strings.HasPrefix(phone, "62") || strings.HasPrefix(phone, "60") || strings.HasPrefix(phone, "65")) {
+		return false
+	}
+	if len(phone) < 8 || len(phone) > 15 {
 		return false
 	}
 	for _, c := range phone {
@@ -546,25 +783,29 @@ func isValidPhone(phone string) bool {
 }
 
 // OTP brute-force protection: max 5 failed attempts per OTP session.
-var (
-	otpFailures   = map[int64]int{}
-	otpFailuresMu sync.Mutex
-)
+// Persisted in SQLite so it survives server restart and multi-instance deployments.
 
-func otpAttemptsExceeded(userID int64) bool {
-	otpFailuresMu.Lock()
-	defer otpFailuresMu.Unlock()
-	return otpFailures[userID] >= 5
+func otpAttemptsExceeded(ctx context.Context, db *sql.DB, userID int64) bool {
+	var count int
+	err := db.QueryRowContext(ctx,
+		"SELECT COALESCE(otp_fail_count,0) FROM users WHERE id=?", userID).Scan(&count)
+	if err != nil {
+		return false // DB error → don't lock out
+	}
+	return count >= 5
 }
 
-func recordOTPFailure(userID int64) {
-	otpFailuresMu.Lock()
-	otpFailures[userID]++
-	otpFailuresMu.Unlock()
+func recordOTPFailure(ctx context.Context, db *sql.DB, userID int64) {
+	if _, err := db.ExecContext(ctx,
+		"UPDATE users SET otp_fail_count=COALESCE(otp_fail_count,0)+1 WHERE id=?",
+		userID); err != nil {
+		slog.Error("record otp failure failed", "user", userID, "error", err)
+	}
 }
 
-func clearOTPFailures(userID int64) {
-	otpFailuresMu.Lock()
-	delete(otpFailures, userID)
-	otpFailuresMu.Unlock()
+func clearOTPFailures(ctx context.Context, db *sql.DB, userID int64) {
+	if _, err := db.ExecContext(ctx,
+		"UPDATE users SET otp_fail_count=0 WHERE id=?", userID); err != nil {
+		slog.Error("clear otp failures failed", "user", userID, "error", err)
+	}
 }

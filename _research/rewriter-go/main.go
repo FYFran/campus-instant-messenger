@@ -18,6 +18,7 @@ import (
 	"tokenline/internal/config"
 	"tokenline/internal/db"
 	"tokenline/internal/deepseek"
+	"tokenline/internal/platform"
 
 	"github.com/unrolled/secure"
 	"tokenline/internal/handler"
@@ -31,12 +32,14 @@ var (
 func main() {
 	cfg := config.Load()
 
+	platform.RestrictUmask() // restrict DB/SHM file permissions to owner-only — must be before db.Open
+
 	// DB
 	database, err := db.Open(cfg.DBPath)
 	if err != nil {
 		log.Fatalf("db: %v", err)
 	}
-	syscall.Umask(0077) // restrict WAL/SHM file permissions to owner-only
+	platform.RestrictUmask()
 	schemaPath := filepath.Join(filepath.Dir(cfg.DBPath), "..", "sql", "schema.sql")
 	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
 		schemaPath = "/app/rewriter-go/sql/schema.sql" // production fallback
@@ -70,6 +73,8 @@ func main() {
 	userH := &handler.UserHandler{DB: database}
 	exportH := &handler.ExportHandler{DB: database}
 	tmplH := &handler.TemplateHandler{DB: database}
+	redeemH := &handler.RedeemHandler{DB: database}
+	toolsH := &handler.ToolsHandler{DeepSeek: ds}
 	handler.InitDodo()
 	handler.InitOTP()
 	handler.InitMidtrans()
@@ -107,14 +112,13 @@ func main() {
 		}
 	}()
 
-
 	// Router — public routes with rate limiting
 	pub := http.NewServeMux()
 	pub.HandleFunc("POST /api/auth/register", authH.Register)
 	pub.HandleFunc("POST /api/auth/login", authH.Login)
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/auth/", middleware.RateLimit(authLimiter)(pub))
+	mux.Handle("/api/auth/", bodyLimit(8<<10)(middleware.RateLimit(authLimiter)(pub)))
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		snap := middleware.HealthSnapshotNow()
 		var m runtime.MemStats
@@ -130,27 +134,21 @@ func main() {
 		}
 		pred := middleware.PredictTrend()
 		resp := map[string]interface{}{
-			"prediction":        pred,
-			"status":            status,
-			"db":                dbOK,
-			"uptime_hours":      snap.UptimeSeconds / 3600,
-			"error_rate_pct":    snap.ErrorRate,
-			"error_count_4xx":   snap.ErrorCount4xx,
-			"error_count_5xx":   snap.ErrorCount5xx,
-			"total_requests":    snap.TotalRequests,
-			"chat_errors":       snap.ChatErrors,
-			"rate_limited":      snap.RateLimited,
-			"active_users_5m":   snap.ActiveUsers5Min,
-			"active_users_1h":   snap.ActiveUsers1H,
-			"memory_mb":         m.Alloc / 1024 / 1024,
-			"goroutines":        runtime.NumGoroutine(),
-			"alerts":            alerts,
-		}
-		if costTracker != nil {
-			resp = costTracker.EnrichHealth(resp)
-		}
-		if revenueTracker != nil {
-			resp = revenueTracker.EnrichHealth(resp)
+			"prediction":      pred,
+			"status":          status,
+			"db":              dbOK,
+			"uptime_hours":    snap.UptimeSeconds / 3600,
+			"error_rate_pct":  snap.ErrorRate,
+			"error_count_4xx": snap.ErrorCount4xx,
+			"error_count_5xx": snap.ErrorCount5xx,
+			"total_requests":  snap.TotalRequests,
+			"chat_errors":     snap.ChatErrors,
+			"rate_limited":    snap.RateLimited,
+			"active_users_5m": snap.ActiveUsers5Min,
+			"active_users_1h": snap.ActiveUsers1H,
+			"memory_kb":       m.Alloc / 1024,
+			"goroutines":      runtime.NumGoroutine(),
+			"alerts":          alerts,
 		}
 		// SSL cert expiry — cached at startup
 		if cachedCertExpiry != nil {
@@ -168,16 +166,18 @@ func main() {
 	})
 
 	// Protected routes with rate limiting
-	mux.HandleFunc("POST /api/chat", chain(chatH.Chat, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
-	mux.HandleFunc("GET /api/chat/history", chain(userH.History, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
+	mux.HandleFunc("POST /api/chat", chain(chatH.Chat, bodyLimit(64<<10), middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(chatLimiter)))
+	mux.HandleFunc("GET /api/chat/history", chain(userH.History, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(chatLimiter)))
 	mux.HandleFunc("GET /api/packs", chain(payH.ListPacks, middleware.RateLimit(pubLimiter)))
+	mux.HandleFunc("POST /api/tools/thesis-outline", chain(toolsH.ThesisOutline, bodyLimit(4<<10), middleware.RateLimit(pubLimiter)))
 	mux.HandleFunc("GET /api/templates", chain(tmplH.List, middleware.RateLimit(pubLimiter)))
 	mux.HandleFunc("GET /api/citation/search", chain(handler.SearchCitations, middleware.RateLimit(pubLimiter)))
-	mux.HandleFunc("POST /api/export", chain(exportH.Export, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
-	mux.HandleFunc("POST /api/upload", chain(handler.UploadHandler, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(authLimiter)))
-	mux.HandleFunc("POST /api/payment/create", chain(payH.Create, middleware.Auth(cfg.JWTSecret)))
-	mux.HandleFunc("POST /api/payment/callback", payH.Callback)
-	mux.HandleFunc("POST /api/payment/midtrans-callback", payH.MidtransCallback)
+	mux.HandleFunc("POST /api/export", chain(exportH.Export, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(chatLimiter)))
+	mux.HandleFunc("POST /api/upload", chain(handler.UploadHandler, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(authLimiter)))
+	mux.HandleFunc("POST /api/payment/create", chain(payH.Create, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(authLimiter)))
+	mux.HandleFunc("POST /api/sms-callback", chain(handler.SMSCallback, bodyLimit(32<<10), middleware.RateLimit(pubLimiter)))
+	mux.HandleFunc("POST /api/payment/callback", chain(payH.Callback, bodyLimit(32<<10), middleware.RateLimit(pubLimiter)))
+	mux.HandleFunc("POST /api/payment/midtrans-callback", chain(payH.MidtransCallback, bodyLimit(32<<10), middleware.RateLimit(pubLimiter)))
 	mux.HandleFunc("GET /api/payment/methods", func(w http.ResponseWriter, r *http.Request) {
 		methods := []map[string]interface{}{}
 		if handler.MidtransAvailable() {
@@ -199,16 +199,17 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(methods)
 	})
-	mux.HandleFunc("GET /api/me", chain(userH.Me, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
-	mux.HandleFunc("GET /api/me/balance", chain(chatH.GetBalance, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
-	mux.HandleFunc("POST /api/auth/send-otp", chain(authH.SendOTP, middleware.Auth(cfg.JWTSecret)))
-	mux.HandleFunc("POST /api/auth/send-otp-voice", chain(authH.SendOTPVoice, middleware.Auth(cfg.JWTSecret)))
-	mux.HandleFunc("POST /api/auth/verify-otp", chain(authH.VerifyOTP, middleware.Auth(cfg.JWTSecret)))
-	mux.HandleFunc("POST /api/auth/change-password", chain(authH.ChangePassword, middleware.Auth(cfg.JWTSecret)))
+	mux.HandleFunc("GET /api/me", chain(userH.Me, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(chatLimiter)))
+	mux.HandleFunc("GET /api/me/balance", chain(chatH.GetBalance, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(chatLimiter)))
+	mux.HandleFunc("POST /api/auth/send-otp", chain(authH.SendOTP, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(authLimiter)))
+	mux.HandleFunc("POST /api/auth/send-otp-voice", chain(authH.SendOTPVoice, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(authLimiter)))
+	mux.HandleFunc("POST /api/auth/verify-otp", chain(authH.VerifyOTP, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(authLimiter)))
+	mux.HandleFunc("POST /api/auth/change-password", chain(authH.ChangePassword, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(authLimiter)))
 	mux.HandleFunc("POST /api/auth/request-reset", chain(authH.RequestPasswordReset, middleware.RateLimit(authLimiter)))
 	mux.HandleFunc("POST /api/auth/reset-password", chain(authH.ResetPassword, middleware.RateLimit(authLimiter)))
-	mux.HandleFunc("GET /api/me/stats", chain(userH.Stats, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(chatLimiter)))
-	mux.HandleFunc("POST /api/feedback", chain(handler.FeedbackHandler, middleware.Auth(cfg.JWTSecret), middleware.RateLimit(authLimiter)))
+	mux.HandleFunc("GET /api/me/stats", chain(userH.Stats, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(chatLimiter)))
+	mux.HandleFunc("POST /api/feedback", chain(handler.FeedbackHandler, middleware.RateLimit(authLimiter)))
+	mux.HandleFunc("POST /api/redeem", chain(redeemH.Redeem, middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(authLimiter)))
 
 	// Admin routes — password-protected, exposes financial/ops data
 	adminMux := http.NewServeMux()
@@ -217,8 +218,9 @@ func main() {
 	adminMux.HandleFunc("GET /api/admin/revenue", revenueTracker.StatusHandler)
 	adminMux.HandleFunc("GET /api/admin/dashboard", handler.AdminDashboard)
 	adminMux.HandleFunc("GET /api/admin/balances", handler.AdminBalanceHandler)
-		adminMux.HandleFunc("GET /api/admin/charts", handler.AdminCharts)
-	mux.Handle("/api/admin/", handler.AdminAuth(middleware.RateLimit(authLimiter)(adminMux)))
+	adminMux.HandleFunc("GET /api/admin/charts", handler.AdminCharts)
+		adminMux.HandleFunc("POST /api/admin/gen-codes", redeemH.AdminGenCodes)
+	mux.Handle("/api/admin/", middleware.LocalhostOnly(middleware.RateLimit(authLimiter)(handler.AdminAuth(adminMux))))
 
 	// Monitoring wrapper
 	monitoredMux := monitorMiddleware(mux)
@@ -226,17 +228,17 @@ func main() {
 	// Security headers — nginx terminates TLS, Go runs plain HTTP on localhost.
 	secureMiddleware := secure.New(secure.Options{
 		SSLRedirect:           false, // nginx handles HTTPS redirect
-		STSSeconds:             31536000,
-		STSIncludeSubdomains:   true,
-		STSPreload:             true,
-		FrameDeny:              true,
-		ContentTypeNosniff:     true,
-		BrowserXssFilter:       true,
-		ReferrerPolicy:         "strict-origin-when-cross-origin",
-		ContentSecurityPolicy:  "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-		PermissionsPolicy:      "camera=(), microphone=(), geolocation=()",
-		AllowedHosts:           []string{"tokenline.top", "www.tokenline.top", "127.0.0.1:9100", "localhost"},
-		IsDevelopment:          false,
+		STSSeconds:            31536000,
+		STSIncludeSubdomains:  true,
+		STSPreload:            true,
+		FrameDeny:             true,
+		ContentTypeNosniff:    true,
+		BrowserXssFilter:      true,
+		ReferrerPolicy:        "strict-origin-when-cross-origin",
+		ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+		PermissionsPolicy:     "camera=(), microphone=(), geolocation=()",
+		AllowedHosts:          []string{"tokenline.top", "www.tokenline.top", "127.0.0.1:9100", "localhost"},
+		IsDevelopment:         false,
 	})
 	secureHandler := secureMiddleware.Handler(monitoredMux)
 
@@ -274,8 +276,23 @@ func main() {
 	slog.Info("shutting down...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	server.Shutdown(ctx)
-	database.Close()
+	if err := server.Shutdown(ctx); err != nil {
+		slog.Error("server shutdown error", "error", err)
+	}
+	if err := database.Close(); err != nil {
+		slog.Error("database close error", "error", err)
+	}
+}
+
+func bodyLimit(maxBytes int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil {
+				r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func chain(h http.HandlerFunc, mws ...func(http.Handler) http.Handler) http.HandlerFunc {

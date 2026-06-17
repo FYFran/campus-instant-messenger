@@ -74,7 +74,7 @@ func (c *Client) ChatStream(ctx context.Context, messages []Message, model strin
 		done(err) // mark as failure — trip the circuit
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 500 {
 		body, _ := io.ReadAll(resp.Body)
@@ -89,4 +89,67 @@ func (c *Client) ChatStream(ctx context.Context, messages []Message, model strin
 	}
 	_, err = io.Copy(w, resp.Body)
 	return err
+}
+
+// Chat sends a non-streaming request and returns the assistant's response content.
+func (c *Client) Chat(ctx context.Context, messages []Message, model string, maxTokens int) (string, error) {
+	type nonStreamResp struct {
+		Choices []struct {
+			Message struct {
+				Content          string `json:"content"`
+				ReasoningContent string `json:"reasoning_content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	reqBody, _ := json.Marshal(chatReq{Model: model, Messages: messages, Stream: false, MaxTokens: maxTokens})
+	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewReader(reqBody))
+	if err != nil {
+		return "", fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	done, cbErr := c.cb.Allow()
+	if cbErr != nil {
+		return "", fmt.Errorf("circuit open: %w", cbErr)
+	}
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		done(err)
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 500 {
+		body, _ := io.ReadAll(resp.Body)
+		done(fmt.Errorf("deepseek server error %d", resp.StatusCode))
+		return "", fmt.Errorf("deepseek error %d: %s", resp.StatusCode, string(body))
+	}
+	done(nil)
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("deepseek error %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read response: %w", err)
+	}
+
+	var result nonStreamResp
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("parse response: %w", err)
+	}
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("no response from model")
+	}
+
+	content := result.Choices[0].Message.Content
+	if content == "" {
+		// DeepSeek may return reasoning_content in non-streaming mode
+		content = result.Choices[0].Message.ReasoningContent
+	}
+	return content, nil
 }
