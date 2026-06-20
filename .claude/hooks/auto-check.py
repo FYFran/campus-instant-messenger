@@ -1,5 +1,6 @@
 """PostToolUse Hook: Auto-run checks after code changes + quality reminders."""
-import sys, os, subprocess
+import sys, os, io, subprocess
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 tool_name = os.environ.get("CLAUDE_TOOL_NAME", "")
 file_path = os.environ.get("CLAUDE_TOOL_FILE_PATH", "")
@@ -19,18 +20,18 @@ if should_check():
     if file_path.endswith((".py", ".dart", ".go")):
         result = subprocess.run(
             ["python", "f:/ClaudeFiles/campus_check.py"],
-            capture_output=True, text=True, timeout=60
+            capture_output=True, text=True, timeout=60, encoding='utf-8', errors='replace'
         )
         if result.returncode != 0:
-            checks.append(f"❌ campus_check 失败:\n{result.stdout[-300:]}")
+            checks.append(f"FAIL campus_check:\n{result.stdout[-300:]}")
         else:
-            checks.append("✅ campus_check 通过")
+            checks.append("OK campus_check")
 
     # Run flutter analyze for Dart files
     if file_path.endswith(".dart"):
         result = subprocess.run(
             ["flutter", "analyze"],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, text=True, timeout=60, encoding='utf-8', errors='replace',
             cwd="f:/ClaudeFiles"
         )
         if result.returncode != 0:

@@ -1,5 +1,6 @@
 """PreToolUse Hook: Guard Edit/Write — Red lane file warnings + spec reminder."""
-import os, sys
+import os, sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 tool_name = os.environ.get("CLAUDE_TOOL_NAME", "")
 file_path = os.environ.get("CLAUDE_TOOL_FILE_PATH", "")

@@ -1,7 +1,8 @@
 """PostToolUse Hook: Check for new dependencies in known manifest files.
 Warns about potential slopsquatting — verify packages exist on official registry.
 """
-import os, sys, subprocess, json
+import os, sys, io, subprocess, json
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 tool_name = os.environ.get("CLAUDE_TOOL_NAME", "")
 file_path = os.environ.get("CLAUDE_TOOL_FILE_PATH", "")
@@ -26,7 +27,7 @@ def check_go_mod(path):
     try:
         result = subprocess.run(
             ["git", "diff", "--", path],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True, text=True, timeout=10, encoding='utf-8', errors='replace',
             cwd=os.path.dirname(path) if os.path.dirname(path) else "."
         )
         diff = result.stdout

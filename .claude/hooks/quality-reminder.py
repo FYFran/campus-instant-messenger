@@ -1,5 +1,6 @@
 """UserPromptSubmit Hook: Lightweight code quality reminder for code tasks."""
-import os, sys
+import os, sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 prompt = os.environ.get("CLAUDE_USER_PROMPT", "").lower()
 
