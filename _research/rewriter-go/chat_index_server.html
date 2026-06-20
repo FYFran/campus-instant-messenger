@@ -519,7 +519,6 @@ var isStreaming = false;
 var uploadedText = '';
 var uploadedFilename = '';
 
-function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 async function handleFileUpload(e) {
   var file = e.target.files[0];
@@ -1018,6 +1017,7 @@ async function send() {
     chatInner.appendChild(botWrap);
     var bubbleBody = botWrap.querySelector('.msg-body');
 
+        var firstContent = false;
     while (true) {
       var v = await rd.read();
       if (v.done) break;
