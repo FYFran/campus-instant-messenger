@@ -37,6 +37,16 @@ just deploy    just test-all    just fix    just build
 just status    just redteam     just bump
 ```
 
+## AI代码质量（IVR法则）
+
+非trivial代码执行 IVR 循环（Intent-Validation-Refinement）：
+- **Intent:** 写spec.md → 人类写测试意图 → 选模型
+- **Validate:** 小块迭代 → 上下文喂饱 → commit像存盘点
+- **Refinement:** AI输出=Draft Zero → 过10点清单 → 红绿灯分级
+
+详见 [CODE_REVIEW_CHECKLIST.md](CODE_REVIEW_CHECKLIST.md)
+禁止合并 AI 代码不看 diff。
+
 ## 项目骨架
 
 ```
