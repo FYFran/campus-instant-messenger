@@ -594,7 +594,9 @@ func extractContent(sse string) string {
 			}
 			if json.Unmarshal([]byte(line[6:]), &chunk) == nil && len(chunk.Choices) > 0 {
 				c := chunk.Choices[0].Delta.Content
+				r := chunk.Choices[0].Delta.ReasoningContent
 				full.WriteString(c)
+				full.WriteString(r)
 			}
 		}
 	}
