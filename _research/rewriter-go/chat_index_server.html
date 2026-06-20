@@ -994,7 +994,8 @@ async function send() {
     var r = await fetch(BASE + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: finalMessage, model: currentModel, conversation_id: activeConvId })
+      credentials: 'include',
+      body: JSON.stringify({ message: finalMessage, model: currentModel, conversation_id: activeConvId, lang: currentLang })
     });
     typingWrap.remove();
 
@@ -1030,6 +1031,7 @@ async function send() {
             if (delta) {
               if (delta.reasoning_content) {
                 if (!firstContent) { firstContent = true; typingWrap.remove(); }
+                full += delta.reasoning_content; // count reasoning as content too
                 bubbleBody.innerHTML = '<div style="opacity:0.45;font-style:italic;font-size:13px;border-left:3px solid #ddd;padding-left:12px;margin-bottom:12px">' + mdToHtml(delta.reasoning_content) + '</div><div>' + mdToHtml(full) + '</div>';
               }
               if (delta.content) {
@@ -1060,8 +1062,8 @@ async function send() {
         }
         bubbleBody.appendChild(costTag);
       }
-      // Fallback: if AI returned empty, show something visible
-      if (!full || !full.trim()) {
+      // Fallback: if AI returned empty (no content AND no reasoning), show something visible
+      if ((!full || !full.trim()) && bubbleBody.textContent.trim().length < 10) {
         bubbleBody.innerHTML = '<span style="color:rgba(0,0,0,.25);font-style:italic">AI tidak menghasilkan respons. Coba kirim ulang pesan Anda.</span>' + bubbleBody.innerHTML;
       }
       conversations[activeConvId].msgs.push({ role: 'assistant', content: full || '(tidak ada respons)' });
