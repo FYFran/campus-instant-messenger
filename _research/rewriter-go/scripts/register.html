@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-i18n="Daftar">Daftar — TokenLine</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--bg:#faf9f6;--card:#fff;--accent:#1a1c2c;--gold:#b8975a;--muted:rgba(26,28,44,.45);--hair:rgba(0,0,0,.06)}
+*{font-family:'Inter',system-ui,-apple-system,sans-serif;box-sizing:border-box}
+body{background:var(--bg);color:var(--accent);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;margin:0;line-height:1.5}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(120,120,160,.03) 0%,transparent 100%),radial-gradient(ellipse 40% 50% at 80% 80%,rgba(180,160,120,.02) 0%,transparent 100%);pointer-events:none;z-index:-1}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:1.5rem;padding:2.5rem;max-width:420px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.03),0 8px 28px rgba(0,0,0,.05)}
+.logo{width:3rem;height:3rem;border-radius:.75rem;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;margin:0 auto 1.25rem}
+h1{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;text-align:center;margin:0}
+h1 span{color:var(--gold)}
+p.desc{color:var(--muted);font-size:.85rem;text-align:center;margin:.25rem 0 1.75rem}
+label{display:block;font-size:.75rem;font-weight:600;color:rgba(26,28,44,.45);margin-bottom:.3rem}
+input:not([type=checkbox]){width:100%;padding:.8rem .9rem;border:1px solid var(--hair);border-radius:.75rem;font-size:.9rem;background:var(--bg);color:var(--accent);font-family:inherit;margin-bottom:1rem;transition:all .2s;outline:none}
+input:focus{border-color:rgba(26,28,44,.25);box-shadow:0 0 0 3px rgba(26,28,44,.04)}
+input[type=checkbox]{width:auto;margin-top:.2rem;flex-shrink:0}
+.btn{width:100%;padding:.8rem;border-radius:999px;font-weight:600;font-size:.9rem;cursor:pointer;border:none;transition:all .2s}
+.btn-dark{background:var(--accent);color:#fff}.btn-dark:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(26,28,44,.18)}
+.btn:disabled{opacity:.5;transform:none;box-shadow:none}
+.btn-ghost{background:transparent;color:var(--muted);margin-top:.5rem;font-weight:400;font-size:.8rem}
+.msg{font-size:.8rem;padding:.7rem;border-radius:.75rem;margin-bottom:1rem;display:none}
+.msg.err{display:block;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.msg.ok{display:block;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+.link{text-align:center;margin-top:1rem;font-size:.8rem;color:var(--muted)}
+.link a{color:var(--accent);text-decoration:none;font-weight:600}.link a:hover{color:var(--gold)}
+.hint{font-size:.7rem;color:var(--muted);margin:-.5rem 0 .5rem}
+.check-row{display:flex;align-items:flex-start;gap:.5rem;font-size:.78rem;line-height:1.5;margin-bottom:1rem;cursor:pointer}
+.check-row a{color:var(--gold);text-decoration:none}
+.lang-bar{display:flex;justify-content:center;gap:8px;margin-bottom:1.25rem}
+.lang-bar button{background:none;border:1px solid var(--hair);border-radius:999px;padding:4px 14px;font-size:.75rem;font-weight:500;cursor:pointer;color:var(--muted);font-family:inherit;transition:all .2s}
+.lang-bar button:hover{border-color:rgba(26,28,44,.2);color:var(--accent)}
+.lang-bar button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ref-banner{display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:.75rem;padding:.7rem;margin-bottom:1rem;text-align:center;font-size:.82rem;color:#16a34a;font-weight:500}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">T</div>
+  <h1 data-i18n="daftar_title">Daftar <span>TokenLine</span></h1>
+  <p class="desc" data-i18n="daftar_desc">Asisten menulis AI untuk Indonesia</p>
+
+  <div class="lang-bar">
+    <button class="active" data-lang="id" onclick="setLang('id')">ID</button>
+    <button data-lang="en" onclick="setLang('en')">EN</button>
+    <button data-lang="ms" onclick="setLang('ms')">MY</button>
+  </div>
+
+  <div class="ref-banner" id="ref-banner">
+    <span id="ref-message">Kamu diundang oleh teman!</span>
+  </div>
+
+  <div id="step-register">
+    <div class="msg err" id="err"></div>
+    <form onsubmit="register(event)">
+      <label data-i18n="email_label">Email</label>
+      <input type="email" id="email" placeholder="kamu@email.com" required autofocus>
+      <label data-i18n="pw_label">Password (minimal 8 karakter, 1 huruf besar, 1 angka)</label>
+      <input type="password" id="pw" placeholder="••••••" minlength="8" required>
+      <label data-i18n="phone_label">Nomor Telepon</label>
+      <input type="tel" id="phone" placeholder="628xxxxxxxxxx" required>
+      <p class="hint" data-i18n="phone_hint">Diperlukan untuk reset password via SMS</p>
+      <label data-i18n="code_label">Kode Voucher (Opsional)</label>
+      <input type="text" id="code" placeholder="XXXX-XXXX" style="text-transform:uppercase">
+      <div class="check-row"><input type="checkbox" id="agree" required><span><span data-i18n="setuju">Saya setuju dengan</span> <a href="/tos.html" data-i18n="syarat">Syarat & Ketentuan</a>, <a href="/privacy.html" data-i18n="privasi">Privasi</a>, <a href="/refund.html" data-i18n="refund">Refund</a></span></div>
+      <button class="btn btn-dark" id="btn" type="submit" data-i18n="daftar_btn">Daftar Gratis</button>
+    </form>
+    <div class="link"><span data-i18n="punya_akun">Sudah punya akun?</span> <a href="/login.html" data-i18n="masuk">Masuk</a></div>
+  </div>
+
+  <div id="step-otp" style="display:none">
+    <div class="msg err" id="otp-err"></div>
+    <p class="desc" id="otp-desc" data-i18n="otp_desc">Kode verifikasi dikirim ke nomor Anda</p>
+    <input type="text" id="otp-code" placeholder="123456" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+    <button class="btn btn-dark" id="otp-btn" onclick="verifyOTP()" data-i18n="otp_btn">Verifikasi</button>
+    <button class="btn btn-ghost" onclick="skipOTP()" data-i18n="otp_skip">Nanti saja → Langsung ke chat</button>
+  </div>
+</div>
+
+<script>
+var T={
+  id:{
+    'Daftar':'Daftar — TokenLine','daftar_title':'Daftar','daftar_desc':'Asisten menulis AI untuk Indonesia',
+    'email_label':'Email','pw_label':'Password (min 8 karakter, 1 huruf besar, 1 angka)',
+    'phone_label':'Nomor Telepon','phone_hint':'Diperlukan untuk reset password via SMS',
+    'code_label':'Kode Voucher (Opsional)',
+    'setuju':'Saya setuju dengan','syarat':'Syarat & Ketentuan','privasi':'Privasi','refund':'Refund',
+    'daftar_btn':'Daftar Gratis','otp_desc':'Kode verifikasi dikirim ke nomor Anda',
+    'otp_label':'Kode Verifikasi (6 digit)','otp_btn':'Verifikasi','otp_skip':'Nanti saja → Langsung ke chat',
+    'punya_akun':'Sudah punya akun?','masuk':'Masuk','ref_msg':'Kamu diundang oleh teman!',
+    'pw_min':'Password minimal 8 karakter','setuju_req':'Anda harus menyetujui Syarat & Ketentuan',
+    'phone_format':'Format: 628xxxxxxxxxx, +60xxxxxxxxx, +65xxxxxxxx','mendaftar':'Mendaftar...','gagal_daftar':'Gagal mendaftar',
+    'gagal_token':'Gagal mendapatkan token','otp_kirim':'Kode verifikasi dikirim ke ',
+    'gagal_kirim':'Gagal mengirim kode. Coba nanti.','koneksi_gagal':'Koneksi gagal. Coba lagi.',
+    'kode_6digit':'Kode harus 6 digit','memverifikasi':'Memverifikasi...','kode_salah':'Kode salah',
+    'koneksi_gagal2':'Koneksi gagal'
+  },
+  en:{
+    'Daftar':'Register — TokenLine','daftar_title':'Register','daftar_desc':'AI writing assistant for Indonesia',
+    'email_label':'Email','pw_label':'Password (min 8 characters, 1 uppercase, 1 number)',
+    'phone_label':'Phone Number','phone_hint':'Required for password reset via SMS',
+    'setuju':'I agree to the','syarat':'Terms & Conditions','privasi':'Privacy Policy','refund':'Refund Policy',
+    'daftar_btn':'Register Free','otp_desc':'Verification code sent to your number',
+    'otp_label':'Verification Code (6 digits)','otp_btn':'Verify','otp_skip':'Later → Go to chat',
+    'punya_akun':'Already have an account?','masuk':'Login','ref_msg':'You\'ve been invited by a friend!',
+    'pw_min':'Password min 8 characters','setuju_req':'You must agree to the Terms & Conditions',
+    'phone_format':'Format: 628xxxxxxxxxx, +60xxxxxxxxx, +65xxxxxxxx','mendaftar':'Registering...','gagal_daftar':'Registration failed',
+    'gagal_token':'Failed to get token','otp_kirim':'Verification code sent to ',
+    'gagal_kirim':'Failed to send code. Try again.','koneksi_gagal':'Connection failed. Try again.',
+    'kode_6digit':'Code must be 6 digits','memverifikasi':'Verifying...','kode_salah':'Wrong code',
+    'koneksi_gagal2':'Connection failed'
+  },
+  ms:{
+    'Daftar':'Daftar — TokenLine','daftar_title':'Daftar','daftar_desc':'Pembantu penulisan AI untuk Indonesia',
+    'email_label':'E-mel','pw_label':'Kata Laluan (min 8 aksara, 1 huruf besar, 1 nombor)',
+    'phone_label':'Nombor Telefon','phone_hint':'Diperlukan untuk set semula kata laluan via SMS',
+    'setuju':'Saya bersetuju dengan','syarat':'Syarat & Ketentuan','privasi':'Dasar Privasi','refund':'Dasar Bayaran Balik',
+    'daftar_btn':'Daftar Percuma','otp_desc':'Kod pengesahan dihantar ke nombor anda',
+    'otp_label':'Kod Pengesahan (6 digit)','otp_btn':'Sahkan','otp_skip':'Nanti → Terus ke chat',
+    'punya_akun':'Sudah ada akaun?','masuk':'Log Masuk','ref_msg':'Anda telah dijemput oleh rakan!',
+    'pw_min':'Kata laluan min 8 aksara','setuju_req':'Anda mesti bersetuju dengan Syarat & Ketentuan',
+    'phone_format':'Format: 628xxxxxxxxxx, +60xxxxxxxxx, +65xxxxxxxx','mendaftar':'Mendaftar...','gagal_daftar':'Pendaftaran gagal',
+    'gagal_token':'Gagal mendapat token','otp_kirim':'Kod pengesahan dihantar ke ',
+    'gagal_kirim':'Gagal menghantar kod. Cuba lagi.','koneksi_gagal':'Sambungan gagal. Cuba lagi.',
+    'kode_6digit':'Kod mesti 6 digit','memverifikasi':'Mengesahkan...','kode_salah':'Kod salah',
+    'koneksi_gagal2':'Sambungan gagal'
+  }
+};
+var _=function(k){var l=localStorage.getItem('tl_lang')||'id';return(T[l]&&T[l][k]!==undefined)?T[l][k]:(T['id'][k]||k)};
+function setLang(l){localStorage.setItem('tl_lang',l);applyI18n();document.querySelectorAll('.lang-bar button').forEach(function(b){b.classList.toggle('active',b.dataset.lang===l)});document.documentElement.lang=l}
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){el.textContent=_(el.dataset.i18n)});
+  document.title=_((document.querySelector('title')||{}).dataset?document.querySelector('title').dataset.i18n||'Daftar':'Daftar');
+}
+applyI18n();
+
+function S(el,msg){el.textContent=msg;el.style.display='block'}
+function H(el){el.style.display='none'}
+
+var ref=new URLSearchParams(location.search).get('ref')||'';
+if(ref){document.getElementById('ref-banner').style.display='block'}
+document.getElementById('ref-message').textContent=_('ref_msg');
+
+async function register(e){
+  e.preventDefault();
+  var em=document.getElementById('email').value.trim(),pw=document.getElementById('pw').value;
+  var phone=document.getElementById('phone').value.trim(),vcode=document.getElementById('code').value.trim();
+  var err=document.getElementById('err'),btn=document.getElementById('btn');
+  if(pw.length<8){S(err,_('pw_min'));return}
+  if(!document.getElementById('agree').checked){S(err,_('setuju_req'));return}
+  if(!phone){S(err,_('phone_hint'));return}
+  phone=phone.replace(/^\+/,'');
+  if(!phone.match(/^(62|60|65)\d{7,13}$/)){S(err,_('phone_format'));return}
+  H(err);btn.disabled=true;btn.textContent=_('mendaftar');
+  var ref2=new URLSearchParams(location.search).get('ref')||'';
+  try{
+    var body={email:em,password:pw,phone:'+'+phone,ref:ref2};
+    if(vcode)body.code=vcode;
+    var r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await r.json();
+    if(!r.ok){S(err,d.message||_('gagal_daftar'));btn.disabled=false;btn.textContent=_('daftar_btn');return}
+    document.getElementById('step-register').style.display='none';
+    document.getElementById('step-otp').style.display='block';
+    document.getElementById('otp-desc').textContent=_('otp_kirim')+phone;
+    var sr=await fetch('/api/auth/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({phone:'+'+phone})});
+    var sd=await sr.json();
+    if(!sr.ok)S(document.getElementById('otp-err'),sd.message||_('gagal_kirim'));
+  }catch(ex){S(err,_('koneksi_gagal'));btn.disabled=false;btn.textContent=_('daftar_btn')}
+}
+
+async function verifyOTP(){
+  var code=document.getElementById('otp-code').value.trim(),oerr=document.getElementById('otp-err'),obtn=document.getElementById('otp-btn');
+  if(code.length!==6){S(oerr,_('kode_6digit'));return}
+  H(oerr);obtn.disabled=true;obtn.textContent=_('memverifikasi');
+  try{
+    var r=await fetch('/api/auth/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({otp:code})});
+    var d=await r.json();
+    if(r.ok)location.href='/chat/';
+    else{S(oerr,d.message||_('kode_salah'));obtn.disabled=false;obtn.textContent=_('otp_btn')}
+  }catch(ex){S(oerr,_('koneksi_gagal2'));obtn.disabled=false;obtn.textContent=_('otp_btn')}
+}
+
+function skipOTP(){location.href='/chat/'}
+</script>
+</body>
+</html>

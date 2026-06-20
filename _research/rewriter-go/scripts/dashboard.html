@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — TokenLine</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#faf9f6;color:#1a1c2c;-webkit-font-smoothing:antialiased;line-height:1.6}
+nav{position:sticky;top:0;background:rgba(250,249,246,.75);backdrop-filter:blur(16px);border-bottom:1px solid rgba(0,0,0,.04);height:4rem;z-index:50}
+nav .inner{max-width:900px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:100%}
+.logo{font-weight:800;font-size:1.125rem;letter-spacing:-.01em;color:#1a1c2c;text-decoration:none}.logo span{color:#b8975a}
+.btn{display:inline-flex;align-items:center;padding:.625rem 1.25rem;border-radius:999px;font-weight:600;font-size:.8125rem;text-decoration:none;transition:all .2s;cursor:pointer;border:none}
+.btn-dark{background:#1a1c2c;color:#fff}.btn-dark:hover{background:#2a2c3c;transform:translateY(-1px)}
+.btn-gold{background:linear-gradient(135deg,#b8975a,#c4a56a);color:#fff}.btn-gold:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(184,151,90,.25)}
+.btn-ghost{border:1px solid rgba(0,0,0,.12);background:transparent;color:#1a1c2c}.btn-ghost:hover{background:rgba(0,0,0,.03)}
+.container{max-width:640px;margin:0 auto;padding:2rem 1.5rem}
+.card{background:#fff;border:1px solid rgba(0,0,0,.05);border-radius:1.25rem;padding:1.75rem;margin-bottom:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,.03),0 8px 28px rgba(0,0,0,.05)}
+h1{font-size:1.75rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.25rem}
+h2{font-size:1rem;font-weight:600;margin-bottom:1rem;color:rgba(26,28,44,.5);letter-spacing:.02em;text-transform:uppercase;font-size:.6875rem}
+.balance-row{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.balance-row:last-child{border-bottom:none}
+.balance-label{color:rgba(26,28,44,.45);font-size:.875rem}
+.balance-value{font-size:1.125rem;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .75rem;border-radius:999px;font-size:.6875rem;font-weight:700}
+.badge-creator{background:rgba(184,151,90,.12);color:#b8975a}
+.redeem-box{margin-top:1rem;display:flex;gap:.5rem}
+.redeem-box input{flex:1;padding:.75rem 1rem;border:1px solid rgba(0,0,0,.1);border-radius:.75rem;font-family:'Inter',sans-serif;font-size:.9375rem;outline:none;text-transform:uppercase}
+.redeem-box input:focus{border-color:#b8975a;box-shadow:0 0 0 3px rgba(184,151,90,.1)}
+.msg{font-size:.8125rem;margin-top:.75rem;text-align:center}
+.msg-ok{color:#10b981}.msg-err{color:#ef4444}
+.loading{text-align:center;color:rgba(26,28,44,.3);padding:3rem}
+footer{text-align:center;padding:2rem;color:rgba(26,28,44,.2);font-size:.75rem;border-top:1px solid rgba(0,0,0,.04);margin-top:2rem}
+</style>
+</head>
+<body>
+<nav><div class="inner">
+<a href="/" class="logo">Token<span>Line</span></a>
+<div style="display:flex;align-items:center;gap:1rem">
+<a href="/chat/" class="btn btn-ghost">Chat</a>
+<a href="#" onclick="logout()" class="btn btn-ghost">Keluar</a>
+</div>
+</div></nav>
+
+<div class="container" id="loading"><div class="loading">Memuat...</div></div>
+<div class="container" id="main" style="display:none">
+<h1 id="greeting">Dashboard</h1>
+<div style="color:rgba(26,28,44,.35);font-size:.875rem;margin-bottom:1.5rem" id="email-display"></div>
+
+<div class="card">
+<h2>Saldo Token</h2>
+<div class="balance-row"><span class="balance-label">Flash Token</span><span class="balance-value" id="flash-bal">-</span></div>
+<div class="balance-row"><span class="balance-label">Pro Token</span><span class="balance-value" id="pro-bal">-</span></div>
+<div class="balance-row" id="free-tier-row" style="display:none"><span class="balance-label">Gratis Hari Ini</span><span class="balance-value" id="free-used" style="font-size:.9375rem;font-weight:500">-</span></div>
+</div>
+
+<div class="card">
+<h2>Program Kreator <span class="badge badge-creator" id="creator-badge" style="display:none">Creator</span></h2>
+<div class="balance-row"><span class="balance-label">Link Referral</span><span style="font-size:.8125rem;font-weight:500" id="ref-link">-</span></div>
+<div class="balance-row"><span class="balance-label">Referral Tersisa</span><span class="balance-value" id="ref-remaining" style="font-size:.9375rem;font-weight:500">-</span></div>
+</div>
+
+<div class="card">
+<h2>Tukar Kode</h2>
+<p style="font-size:.8125rem;color:rgba(26,28,44,.45);margin-bottom:1rem">Punya kode spesial? Masukkan di sini untuk dapat token gratis.</p>
+<div class="redeem-box">
+<input type="text" id="redeem-code" placeholder="Masukkan kode..." maxlength="30" autocomplete="off">
+<button class="btn btn-gold" onclick="redeem()">Tukar</button>
+</div>
+<div class="msg" id="redeem-msg"></div>
+</div>
+</div>
+
+<footer>&copy; 2026 TokenLine</footer>
+
+<script>
+async function init(){
+  try{
+    var r=await fetch("/api/me/balance"); // httpOnly cookie sent automatically
+    if(r.status===401){location.href="/login.html";return}
+    var b=await r.json();
+    document.getElementById("loading").style.display="none";
+    document.getElementById("main").style.display="block";
+    document.getElementById("flash-bal").textContent=b.flash_balance.toLocaleString();
+    document.getElementById("pro-bal").textContent=b.pro_balance.toLocaleString();
+    document.getElementById("free-used").textContent=b.free_used+"/"+b.free_limit;
+    // Only show free tier for users with zero balance
+    if(b.flash_balance===0 && b.pro_balance===0){document.getElementById("free-tier-row").style.display="flex"}
+    document.getElementById("ref-remaining").textContent=Math.max(0,b.referral_cap-(b.flash_balance>50000?b.flash_balance-50000:0)).toLocaleString()+" token";
+
+    if(b.is_creator){document.getElementById("creator-badge").style.display="inline-flex"}
+
+    // Get user info for email + ID
+    var r2=await fetch("/api/me",{credentials:"include"});
+    var u=await r2.json();
+    document.getElementById("greeting").textContent="Halo, "+((u.email||"").split("@")[0]);
+    document.getElementById("email-display").textContent=u.email;
+    document.getElementById("ref-link").textContent="tokenline.top/register.html?ref="+u.id;
+  }catch(e){
+    document.getElementById("loading").innerHTML='<div class="loading" style="color:#ef4444">Gagal terhubung. <a href="javascript:init()">Coba lagi</a></div>';
+  }
+}
+
+async function redeem(){
+  var code=document.getElementById("redeem-code").value.trim().toUpperCase();
+  var msg=document.getElementById("redeem-msg");
+  if(!code){msg.innerHTML='<span class="msg-err">Masukkan kode</span>';return}
+  msg.innerHTML="";
+  try{
+    var r=await fetch("/api/redeem",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({code:code})});
+    var d=await r.json();
+    if(r.ok){msg.innerHTML='<span class="msg-ok">'+d.message+" +"+d.flash_added.toLocaleString()+" Flash";init()}else{msg.innerHTML='<span class="msg-err">'+d.message}
+  }catch(e){msg.innerHTML='<span class="msg-err">Gagal terhubung'}
+}
+
+function logout(){fetch('/api/auth/logout',{method:'POST',credentials:'include'}).then(function(){location.href='/login.html'}).catch(function(){location.href='/login.html'})}
+init();
+</script>
+</body>
+</html>

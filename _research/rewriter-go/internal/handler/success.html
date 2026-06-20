@@ -113,7 +113,6 @@ h1 { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; lett
 
 <script>
 (function() {
-  var TOKEN = localStorage.getItem('tl_tok');
   var COUNTDOWN = 5;
   var interval;
 
@@ -144,17 +143,19 @@ h1 { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; lett
   }
 
   function loadData() {
-    if (!TOKEN) {
-      document.getElementById('pack-name').textContent = 'Silakan login terlebih dahulu.';
-      document.getElementById('cta-btn').href = '/login.html';
-      document.getElementById('cta-btn').textContent = 'Login →';
-      return;
-    }
-    spawnConfetti();
-
-    fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
-      .then(function(r) { return r.json(); })
+    fetch('/api/me', { credentials: 'include' })
+      .then(function(r) {
+        if (r.status === 401) {
+          document.getElementById('pack-name').textContent = 'Silakan login terlebih dahulu.';
+          document.getElementById('cta-btn').href = '/login.html';
+          document.getElementById('cta-btn').textContent = 'Login →';
+          return null;
+        }
+        spawnConfetti();
+        return r.json();
+      })
       .then(function(d) {
+        if (!d) return;
         var plan = d.plan || 'flash';
         var u = unlocks[plan] || unlocks.flash;
         var fb = d.flash_balance || 0;
