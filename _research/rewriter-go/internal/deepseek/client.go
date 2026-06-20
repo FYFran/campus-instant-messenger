@@ -65,7 +65,7 @@ type thinkCfg struct {
 
 func (c *Client) ChatStream(ctx context.Context, messages []Message, model string, maxTokens int, w io.Writer) error {
 	// 满血: Pro model with reasoning enabled
-	useThinking := &thinkCfg{Type: "disabled"}
+	var useThinking *thinkCfg
 	apiModel := model
 	if model == "deepseek-v4-ultimate" {
 		apiModel = "deepseek-v4-pro"
