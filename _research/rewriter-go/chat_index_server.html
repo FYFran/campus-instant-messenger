@@ -995,7 +995,7 @@ async function send() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ message: finalMessage, model: currentModel, conversation_id: activeConvId, lang: currentLang })
+      body: JSON.stringify({ message: finalMessage, model: currentModel, conversation_id: activeConvId || '', lang: getUserLang() })
     });
     typingWrap.remove();
 
@@ -1068,10 +1068,11 @@ async function send() {
       }
       conversations[activeConvId].msgs.push({ role: 'assistant', content: full || '(tidak ada respons)' });
   } catch (e) {
+    console.error('send() error:', e.message || e, e.stack);
     typingWrap.remove();
     isStreaming = false;
     bt.disabled = false;
-    appendMsg('bot', 'Koneksi gagal. Periksa koneksi internet Anda dan coba lagi.', true);
+    appendMsg('bot', 'Koneksi gagal: ' + (e.message || 'unknown') + ' — coba lagi.', true);
   }
 
   isStreaming = false;
