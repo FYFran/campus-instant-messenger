@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/guard-edit.py"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -7,6 +18,15 @@
           {
             "type": "command",
             "command": "python f:/ClaudeFiles/.claude/hooks/auto-check.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/audit-deps.py"
           }
         ]
       }
