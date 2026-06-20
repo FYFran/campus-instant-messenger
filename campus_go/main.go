@@ -12,6 +12,11 @@ import (
 )
 
 func main() {
+	// Validate config before connecting to DB
+	if err := middleware.ValidateConfig(); err != nil {
+		log.Fatal(err)
+	}
+
 	db := database.Connect()
 	defer db.Close()
 

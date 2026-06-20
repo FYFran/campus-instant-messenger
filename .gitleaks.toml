@@ -227,6 +227,10 @@ id = "password-in-url"
 description = "Password in URL"
 regex = '''(?:https?|ftp|postgres(?:ql)?|mysql|redis|mongodb(?:[\+srv])?):\/\/[^:\s]+:[^@\s]+@'''
 tags = ["url", "password"]
+[[rules.allowlists]]
+paths = [
+  '''_research[/\\]tokenline-v12\.html''',
+]
 
 # JWT signing key hardcoded
 [[rules]]

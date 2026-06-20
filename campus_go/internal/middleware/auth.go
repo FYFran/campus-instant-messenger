@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -13,13 +12,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var jwtSecret = func() []byte {
-	s := os.Getenv("JWT_SECRET")
-	if s == "" {
-		log.Fatal("JWT_SECRET env var is required — set it before starting the server")
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+
+// ValidateConfig checks required environment variables.
+// Call once at server startup — not at package init time.
+func ValidateConfig() error {
+	if len(jwtSecret) == 0 {
+		return fmt.Errorf("JWT_SECRET env var is required — set it before starting the server")
 	}
-	return []byte(s)
-}()
+	return nil
+}
 
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
