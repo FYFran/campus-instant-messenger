@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -10,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"math/big"
 	"net"
 	"net/http"
@@ -38,6 +40,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req authReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Email == "" {
 		writeJSON(w, 400, "Email diperlukan")
+		req.Email = strings.TrimSpace(req.Email)
+		req.Password = strings.TrimSpace(req.Password)
 		return
 	}
 	if !isValidEmail(req.Email) {
@@ -128,11 +132,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Referral bonus: referrer gets 50K. Cap at 500K total flash balance to prevent abuse.
-	if req.Ref != "" && req.Ref != req.Email {
+	// Referral bonus: referrer gets 100K. Cap at 2M total flash balance to prevent abuse.
+	// Ref must be an email address (not a numeric user ID) to prevent enumeration.
+	if req.Ref != "" && req.Ref != req.Email && strings.Contains(req.Ref, "@") {
 		var refID int64
 		err := tx.QueryRowContext(r.Context(),
-			"SELECT id FROM users WHERE (id=? OR email=?) AND status=1", req.Ref, req.Ref).Scan(&refID)
+			"SELECT id FROM users WHERE email=? AND status=1", req.Ref).Scan(&refID)
 		if err == nil {
 			// Check referrer's current flash balance — cap bonus at 500K total.
 			var currentBalance int64
@@ -208,10 +213,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req authReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, 400, "Format tidak valid")
+		req.Email = strings.TrimSpace(req.Email)
+		req.Password = strings.TrimSpace(req.Password)
 		return
 	}
 	if req.Email == "" {
 		writeJSON(w, 400, "Email diperlukan")
+		req.Email = strings.TrimSpace(req.Email)
+		req.Password = strings.TrimSpace(req.Password)
 		return
 	}
 	if len(req.Email) > 100 || len(req.Password) > 100 {
@@ -222,6 +231,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	clientIP := r.Header.Get("X-Real-IP")
 	if clientIP == "" {
 		clientIP, _, _ = net.SplitHostPort(r.RemoteAddr)
+		if clientIP == "" {
+			clientIP = r.RemoteAddr
+		}
 	}
 
 	var userID int64
@@ -245,8 +257,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check account lockout — max 5 failed attempts in 15 minutes.
-	if isAccountLocked(h.DB, userID) {
-		writeJSON(w, 429, "Akun terkunci karena terlalu banyak percobaan login. Silakan coba lagi 15 menit.")
+	// Stale check (read-only): blocks obvious locked accounts early.
+	// Real enforcement happens atomically in checkAndRecordFailedLogin below.
+	if locked, remain := isAccountLocked(h.DB, userID); locked {
+		w.Header().Set("Retry-After", fmt.Sprintf("%d", remain*60))
+		writeJSON(w, 429, fmt.Sprintf("Akun terkunci. Silakan coba lagi %d menit.", remain))
 		return
 	}
 
@@ -257,13 +272,26 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	ok, rehash := verifyPassword(req.Password, pwHash)
 	if !ok {
-		recordLoginAttempt(h.DB, userID, clientIP, false)
+		// Atomic insert+check — prevents concurrent bypass of the rate limit
+		if locked, remain := checkAndRecordFailedLogin(h.DB, userID, clientIP); locked {
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", remain*60))
+			writeJSON(w, 429, fmt.Sprintf("Akun terkunci. Silakan coba lagi %d menit.", remain))
+			return
+		}
 		writeJSON(w, 401, "Email atau password salah")
 		return
 	}
 
-	// Successful login — clear attempts.
+	// Successful login — record + bump token_version to kick old sessions.
 	recordLoginAttempt(h.DB, userID, clientIP, true)
+
+	// Invalidate all previous sessions: new login kicks old devices.
+	// Old device gets 401 on next API call, redirected to /login.html
+	tokenVersion++
+	if _, err := h.DB.ExecContext(r.Context(),
+		"UPDATE users SET token_version=? WHERE id=?", tokenVersion, userID); err != nil {
+		slog.Error("token_version bump failed", "user", userID, "error", err)
+	}
 
 	if rehash != "" {
 		if _, err := h.DB.ExecContext(r.Context(),
@@ -302,6 +330,8 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, 400, "Format tidak valid")
+		req.OldPassword = strings.TrimSpace(req.OldPassword)
+		req.NewPassword = strings.TrimSpace(req.NewPassword)
 		return
 	}
 	if ok, msg := isValidPassword(req.NewPassword); !ok {
@@ -398,16 +428,77 @@ func isValidPassword(pw string) (bool, string) {
 	return true, ""
 }
 
-// isAccountLocked checks if user has ≥5 failed login attempts in the last 15 minutes.
-func isAccountLocked(db *sql.DB, userID int64) bool {
-	var count int
-	err := db.QueryRowContext(context.Background(),
-		"SELECT COUNT(*) FROM login_attempts WHERE user_id=? AND success=0 AND created_at > datetime('now','-15 minutes')",
-		userID).Scan(&count)
+// checkAndRecordFailedLogin atomically records a failed login attempt and checks if
+// the account is now locked (≥5 failures in 15 min). Uses a write transaction to
+// prevent concurrent bypass — two parallel attempts cannot both slip under the limit.
+
+// checkAndRecordFailedLogin atomically records a failed login attempt and checks if
+// the account is now locked (≥5 failures in 15 min). Uses a write transaction to
+// prevent concurrent bypass — two parallel attempts cannot both slip under the limit.
+// Returns remaining minutes until the oldest failure expires.
+func checkAndRecordFailedLogin(db *sql.DB, userID int64, ip string) (locked bool, remainingMin int) {
+	tx, err := db.Begin()
 	if err != nil {
-		return false // DB error → don't lock out
+		// DB error — record attempt best-effort, then allow the attempt
+		db.Exec("INSERT INTO login_attempts(user_id, ip, success) VALUES(?,?,0)", userID, ip)
+		return false, 0
 	}
-	return count >= 5
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		"INSERT INTO login_attempts(user_id, ip, success) VALUES(?,?,0)",
+		userID, ip); err != nil {
+		return false, 0
+	}
+
+	var count int
+	var oldest string
+	if err := tx.QueryRow(
+		"SELECT COUNT(*), COALESCE(MIN(created_at),'') FROM login_attempts WHERE user_id=? AND success=0 AND created_at > datetime('now','-15 minutes')",
+		userID).Scan(&count, &oldest); err != nil {
+		return false, 0
+	}
+
+	if err := tx.Commit(); err != nil {
+		return false, 0
+	}
+
+	if count <= 5 {
+		return false, 0
+	}
+
+	t, err := time.Parse("2006-01-02 15:04:05", oldest)
+	if err != nil {
+		return true, 15
+	}
+	remain := 15*time.Minute - time.Since(t)
+	if remain <= 0 {
+		return false, 0
+	}
+	return true, int(math.Ceil(remain.Minutes()))
+}
+
+// isAccountLocked checks if user has ≥5 failed login attempts in the last 15 minutes.
+// Returns remaining minutes until the oldest failure expires (0 if not locked).
+// Prefer checkAndRecordFailedLogin for the atomic insert+check in the login path.
+func isAccountLocked(db *sql.DB, userID int64) (locked bool, remainingMin int) {
+	var count int
+	var oldest string
+	err := db.QueryRowContext(context.Background(),
+		"SELECT COUNT(*), COALESCE(MIN(created_at),'') FROM login_attempts WHERE user_id=? AND success=0 AND created_at > datetime('now','-15 minutes')",
+		userID).Scan(&count, &oldest)
+	if err != nil || count < 5 {
+		return false, 0
+	}
+	t, err := time.Parse("2006-01-02 15:04:05", oldest)
+	if err != nil {
+		return true, 15 // fallback: full lock duration
+	}
+	remain := 15*time.Minute - time.Since(t)
+	if remain <= 0 {
+		return false, 0
+	}
+	return true, int(math.Ceil(remain.Minutes()))
 }
 
 func recordLoginAttempt(db *sql.DB, userID int64, ip string, success bool) {
@@ -432,6 +523,20 @@ func genJWT(userID int64, tokenVersion int64, secret string) (string, error) {
 		},
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	// Clear the httpOnly cookie — browser stops sending it.
+	http.SetCookie(w, &http.Cookie{
+		Name:     "tl_token",
+		Value:    "",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+		Path:     "/",
+	})
+	writeJSON(w, 200, map[string]string{"message": "Logged out"})
 }
 
 func userIDFrom(r *http.Request) (int64, bool) {
@@ -500,7 +605,7 @@ func (h *AuthHandler) SendOTP(w http.ResponseWriter, r *http.Request) {
 	clearOTPFailures(r.Context(), h.DB, userID)
 
 	otp := generateOTP()
-	otpHash := hashOTP(otp)
+	otpHash := hashOTP(otp, h.JWTSecret)
 	expires := time.Now().UTC().Add(5 * time.Minute).Format(time.RFC3339)
 	if _, err := h.DB.ExecContext(r.Context(),
 		"UPDATE users SET phone=?, otp_hash=?, otp_expires_at=? WHERE id=?",
@@ -551,7 +656,7 @@ func (h *AuthHandler) SendOTPVoice(w http.ResponseWriter, r *http.Request) {
 	// Regenerate OTP for voice clarity
 	clearOTPFailures(r.Context(), h.DB, userID)
 	otp := generateOTP()
-	otpHash = hashOTP(otp)
+	otpHash = hashOTP(otp, h.JWTSecret)
 	expires = time.Now().UTC().Add(5 * time.Minute)
 	if _, err := h.DB.ExecContext(r.Context(),
 		"UPDATE users SET otp_hash=?, otp_expires_at=? WHERE id=?",
@@ -610,7 +715,7 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, "Kode OTP sudah kadaluarsa. Kirim ulang.")
 		return
 	}
-	if !verifyOTP(req.OTP, otpHash) {
+	if !verifyOTP(req.OTP, otpHash, h.JWTSecret) {
 		recordOTPFailure(r.Context(), h.DB, userID)
 		writeJSON(w, 400, "Kode OTP salah")
 		return
@@ -656,7 +761,7 @@ func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Reques
 	}
 	clearOTPFailures(r.Context(), h.DB, userID)
 	otp := generateOTP()
-	otpHash := hashOTP(otp)
+	otpHash := hashOTP(otp, h.JWTSecret)
 	expires := time.Now().UTC().Add(5 * time.Minute).Format(time.RFC3339)
 	if _, err := h.DB.ExecContext(r.Context(),
 		"UPDATE users SET otp_hash=?, otp_expires_at=? WHERE id=?", otpHash, expires, userID); err != nil {
@@ -724,7 +829,7 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, "Kode OTP kadaluarsa")
 		return
 	}
-	if !verifyOTP(req.OTP, otpHash) {
+	if !verifyOTP(req.OTP, otpHash, h.JWTSecret) {
 		recordOTPFailure(r.Context(), h.DB, userID)
 		writeJSON(w, 400, "Kode OTP salah")
 		return
@@ -756,13 +861,16 @@ func generateOTP() string {
 	return fmt.Sprintf("%06d", n.Int64())
 }
 
-func hashOTP(otp string) string {
-	h := sha256.Sum256([]byte(otp))
-	return hex.EncodeToString(h[:])
+// hashOTP computes HMAC-SHA256(otp, pepper). The pepper prevents GPU brute-force
+// attacks on leaked DB hashes — an attacker needs the server secret to crack OTPs.
+func hashOTP(otp, pepper string) string {
+	mac := hmac.New(sha256.New, []byte(pepper))
+	mac.Write([]byte(otp))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
-func verifyOTP(otp, hash string) bool {
-	return subtle.ConstantTimeCompare([]byte(hashOTP(otp)), []byte(hash)) == 1
+func verifyOTP(otp, hash, pepper string) bool {
+	return subtle.ConstantTimeCompare([]byte(hashOTP(otp, pepper)), []byte(hash)) == 1
 }
 
 func isValidPhone(phone string) bool {

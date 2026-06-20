@@ -6,9 +6,36 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"tokenline/internal/deepseek"
 )
+
+// thesisOutlineDaily tracks per-IP daily usage of the free thesis outline tool.
+// Limits to 10/day/IP to prevent API cost abuse.
+var (
+	thesisOutlineDaily   = sync.Map{} // map[string]int
+	thesisOutlineLastDay = time.Now().UTC().Day()
+	thesisOutlineMu      sync.Mutex
+)
+
+func checkThesisOutlineLimit(ip string) bool {
+	thesisOutlineMu.Lock()
+	defer thesisOutlineMu.Unlock()
+	today := time.Now().UTC().Day()
+	if today != thesisOutlineLastDay {
+		thesisOutlineDaily = sync.Map{}
+		thesisOutlineLastDay = today
+	}
+	val, _ := thesisOutlineDaily.LoadOrStore(ip, 0)
+	count := val.(int)
+	if count >= 10 {
+		return false
+	}
+	thesisOutlineDaily.Store(ip, count+1)
+	return true
+}
 
 // ToolsHandler handles public tool API endpoints (no auth required).
 type ToolsHandler struct {
@@ -29,11 +56,25 @@ func (h *ToolsHandler) ThesisOutline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Topic = strings.TrimSpace(req.Topic)
+
+	// Daily per-IP limit: 10/day to prevent API abuse
+	clientIP := r.Header.Get("X-Real-IP")
+	if clientIP == "" {
+		clientIP = r.RemoteAddr
+	}
+	if !checkThesisOutlineLimit(clientIP) {
+		writeJSON(w, 429, "Batas harian 10 outline tercapai. Silakan coba lagi besok atau gunakan akun terdaftar.")
+		return
+	}
+	if safe, reason := FilterContent(req.Topic); !safe {
+		writeJSON(w, 400, reason)
+		return
+	}
 	if len(req.Topic) < 10 {
 		writeJSON(w, 400, "Topik terlalu pendek. Jelaskan lebih detail (min 10 karakter).")
 		return
 	}
-	if len(req.Topic) > 300 {
+	if len(req.Topic) > 500 {
 		writeJSON(w, 400, "Topik terlalu panjang. Maksimal 300 karakter.")
 		return
 	}
@@ -47,10 +88,12 @@ func (h *ToolsHandler) ThesisOutline(w http.ResponseWriter, r *http.Request) {
 		req.Lang = "id"
 	}
 
+	safetyPrompt := SanitizePrompt(req.Lang)
 	systemPrompt := buildThesisPrompt(req.Lang)
 	userPrompt := fmt.Sprintf("Topik: %s\nBidang: %s\nJenjang: %s", req.Topic, req.Field, req.Level)
 
 	messages := []deepseek.Message{
+		{Role: "system", Content: safetyPrompt},
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}

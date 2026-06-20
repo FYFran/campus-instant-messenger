@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,8 +21,9 @@ import (
 // Voice: POST https://voice.yunpian.com/v2/voice/send.json
 
 var (
-	ypAPIKey string
-	ypHTTP   = &http.Client{Timeout: 15 * time.Second}
+	ypAPIKey         string
+	ypCallbackSecret string // HMAC token for SMS callback verification
+	ypHTTP           = &http.Client{Timeout: 15 * time.Second}
 
 	// Simple in-memory rate limiter: phone -> last send time
 	phoneCooldown   = map[string]time.Time{}
@@ -32,6 +36,10 @@ func InitOTP() {
 	if ypAPIKey == "" {
 		slog.Warn("YUNPIAN_API_KEY not set — SMS/voice OTP disabled")
 	} else {
+		// Derive callback verification secret from API key
+		mac := hmac.New(sha256.New, []byte(ypAPIKey))
+		mac.Write([]byte("sms-callback"))
+		ypCallbackSecret = hex.EncodeToString(mac.Sum(nil))[:16]
 		slog.Info("OTP enabled via YunPian (SMS + Voice, ID/MY/SG)")
 	}
 
@@ -114,7 +122,7 @@ func SendSMSOTP(to, otp string) error {
 	form.Set("apikey", ypAPIKey)
 	form.Set("mobile", phone)
 	form.Set("text", message)
-	form.Set("callback_url", "https://tokenline.top/api/sms-callback")
+	form.Set("callback_url", "https://tokenline.top/api/sms-callback?tok="+ypCallbackSecret)
 
 	resp, err := ypHTTP.PostForm("https://sms.yunpian.com/v2/sms/single_send.json", form)
 	if err != nil {
@@ -146,7 +154,9 @@ func SendSMSOTP(to, otp string) error {
 // smsMessage returns the localized OTP message for a given country.
 func smsMessage(country, otp string) string {
 	switch country {
-	case "MY", "SG":
+	case "MY":
+		return fmt.Sprintf("[TokenLine] Kod pengesahan anda: %s. Jangan kongsi kod ini dengan sesiapa.", otp)
+	case "SG":
 		return fmt.Sprintf("[TokenLine] Your verification code: %s. Do not share this code with anyone.", otp)
 	default:
 		return fmt.Sprintf("[TokenLine] Kode verifikasi Anda: %s. Jangan berikan kode ini kepada siapapun.", otp)
@@ -195,6 +205,13 @@ func SendVoiceOTP(to, code string) error {
 // SMSCallback handles YunPian delivery status push notifications.
 // YunPian POSTs a JSON array of status objects to this endpoint.
 func SMSCallback(w http.ResponseWriter, r *http.Request) {
+	// Verify callback token to prevent forged delivery status
+	if r.URL.Query().Get("tok") != ypCallbackSecret {
+		slog.Warn("sms callback rejected: invalid token", "remote", r.RemoteAddr)
+		http.Error(w, "forbidden", 403)
+		return
+	}
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Warn("sms callback read failed", "error", err)
@@ -218,13 +235,23 @@ func SMSCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, rpt := range reports {
+		masked := maskPhone(rpt.Mobile)
 		if rpt.ReportStatus == "SUCCESS" {
-			slog.Info("SMS delivered", "sid", rpt.Sid, "mobile", rpt.Mobile, "time", rpt.UserReceiveTime)
+			slog.Info("SMS delivered", "sid", rpt.Sid, "mobile", masked, "time", rpt.UserReceiveTime)
 		} else {
-			slog.Warn("SMS failed", "sid", rpt.Sid, "mobile", rpt.Mobile, "error", rpt.ErrorMsg, "detail", rpt.ErrorDetail)
+			slog.Warn("SMS failed", "sid", rpt.Sid, "mobile", masked, "error", rpt.ErrorMsg, "detail", rpt.ErrorDetail)
 		}
 	}
 
 	w.WriteHeader(200)
 	w.Write([]byte(`{"code":0}`))
+}
+
+// maskPhone returns "628****1234" for "+6285776699952" to prevent PII in logs.
+func maskPhone(phone string) string {
+	p := strings.NewReplacer("+", "", "-", "", " ", "").Replace(phone)
+	if len(p) < 6 {
+		return "***"
+	}
+	return p[:3] + "****" + p[len(p)-4:]
 }

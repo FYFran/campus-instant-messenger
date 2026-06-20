@@ -20,15 +20,15 @@ import (
 type CostTracker struct {
 	DB *sql.DB
 
-	mu              sync.RWMutex
-	totalCostMicro  atomic.Int64
-	totalRequests   atomic.Int64
-	totalTokens     atomic.Int64
-	hourlyCosts     [24]int64
-	hourlyIdx       int
-	lastHour        int
-	lastBalanceUSD  float64
-	lastBalanceAt   time.Time
+	mu             sync.RWMutex
+	totalCostMicro atomic.Int64
+	totalRequests  atomic.Int64
+	totalTokens    atomic.Int64
+	hourlyCosts    [24]int64
+	hourlyIdx      int
+	lastHour       int
+	lastBalanceUSD float64
+	lastBalanceAt  time.Time
 }
 
 var GlobalCostTracker *CostTracker
@@ -70,8 +70,10 @@ func (ct *CostTracker) RecordRequest(model string, inputTokens, outputTokens int
 	ct.mu.Unlock()
 
 	if ct.DB != nil {
-		ct.DB.Exec(`INSERT INTO cost_log(model, input_tokens, output_tokens, cost_micro_usd, requests, tokens)
-			VALUES(?,?,?,?,1,?)`, model, inputTokens, outputTokens, costMicro, inputTokens+outputTokens)
+		if _, err := ct.DB.Exec(`INSERT INTO cost_log(model, input_tokens, output_tokens, cost_micro_usd, requests, tokens)
+			VALUES(?,?,?,?,1,?)`, model, inputTokens, outputTokens, costMicro, inputTokens+outputTokens); err != nil {
+			slog.Warn("cost log insert failed", "error", err)
+		}
 	}
 }
 
@@ -123,16 +125,16 @@ func (ct *CostTracker) Status() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_cost_usd_24h":      roundUSD(float64(totalCost) / 1_000_000),
-		"total_requests_24h":      totalReq,
-		"total_tokens_24h":        totalTok,
+		"total_cost_usd_24h":       roundUSD(float64(totalCost) / 1_000_000),
+		"total_requests_24h":       totalReq,
+		"total_tokens_24h":         totalTok,
 		"avg_cost_per_request_usd": roundUSD(avgPerReq),
-		"burn_rate_hourly_usd":    roundUSD(float64(avgHourly) / 1_000_000),
-		"burn_rate_daily_usd":     roundUSD(float64(avgHourly) / 1_000_000 * 24),
-		"predicted_monthly_usd":   roundUSD(float64(avgHourly) / 1_000_000 * 24 * 30),
-		"api_balance_usd":         roundUSD(ct.lastBalanceUSD),
-		"days_remaining":          daysRemaining,
-		"alerts":                  alerts,
+		"burn_rate_hourly_usd":     roundUSD(float64(avgHourly) / 1_000_000),
+		"burn_rate_daily_usd":      roundUSD(float64(avgHourly) / 1_000_000 * 24),
+		"predicted_monthly_usd":    roundUSD(float64(avgHourly) / 1_000_000 * 24 * 30),
+		"api_balance_usd":          roundUSD(ct.lastBalanceUSD),
+		"days_remaining":           daysRemaining,
+		"alerts":                   alerts,
 	}
 }
 
@@ -178,7 +180,7 @@ func (ct *CostTracker) AdminCheckBalance(w http.ResponseWriter, r *http.Request)
 		slog.Warn("new-api balance parse failed", "error", err)
 		s := ct.Status()
 		writeJSON(w, 200, map[string]interface{}{
-			"balance_source": "estimated",
+			"balance_source":  "estimated",
 			"api_balance_usd": s["api_balance_usd"],
 			"burn_daily_usd":  s["burn_rate_daily_usd"],
 			"days_remaining":  s["days_remaining"],

@@ -37,7 +37,7 @@ func New(apiKey, baseURL string) *Client {
 	return &Client{
 		apiKey:  apiKey,
 		baseURL: baseURL,
-		http:    &http.Client{Timeout: 120 * time.Second},
+		http:    &http.Client{Timeout: 600 * time.Second},
 		cb:      cb,
 	}
 }
@@ -48,14 +48,33 @@ type Message struct {
 }
 
 type chatReq struct {
-	Model     string    `json:"model"`
-	Messages  []Message `json:"messages"`
-	Stream    bool      `json:"stream"`
-	MaxTokens int       `json:"max_tokens,omitempty"`
+	Model            string    `json:"model"`
+	Messages         []Message `json:"messages"`
+	Stream           bool      `json:"stream"`
+	MaxTokens        int       `json:"max_tokens,omitempty"`
+	Thinking         *thinkCfg `json:"thinking,omitempty"`
+	Temperature      float64   `json:"temperature,omitempty"`
+	TopP             float64   `json:"top_p,omitempty"`
+	FrequencyPenalty float64   `json:"frequency_penalty,omitempty"`
+	PresencePenalty  float64   `json:"presence_penalty,omitempty"`
+}
+
+type thinkCfg struct {
+	Type string `json:"type"`
 }
 
 func (c *Client) ChatStream(ctx context.Context, messages []Message, model string, maxTokens int, w io.Writer) error {
-	reqBody, _ := json.Marshal(chatReq{Model: model, Messages: messages, Stream: true, MaxTokens: maxTokens})
+	// 满血: Pro model with reasoning enabled
+	useThinking := &thinkCfg{Type: "disabled"}
+	apiModel := model
+	if model == "deepseek-v4-ultimate" {
+		apiModel = "deepseek-v4-pro"
+		useThinking = &thinkCfg{Type: "enabled"} // enable reasoning for 满血
+	}
+	reqBody, err := json.Marshal(chatReq{Model: apiModel, Messages: messages, Stream: true, MaxTokens: maxTokens, Thinking: useThinking, Temperature: 0.7, TopP: 0.9, FrequencyPenalty: 0.3, PresencePenalty: 0.2})
+	if err != nil {
+		return fmt.Errorf("marshal chat request: %w", err)
+	}
 	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
@@ -101,7 +120,16 @@ func (c *Client) Chat(ctx context.Context, messages []Message, model string, max
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	reqBody, _ := json.Marshal(chatReq{Model: model, Messages: messages, Stream: false, MaxTokens: maxTokens})
+	useT := &thinkCfg{Type: "disabled"}
+	apiM := model
+	if model == "deepseek-v4-ultimate" {
+		apiM = "deepseek-v4-pro"
+		useT = &thinkCfg{Type: "enabled"}
+	}
+	reqBody, err := json.Marshal(chatReq{Model: apiM, Messages: messages, Stream: false, MaxTokens: maxTokens, Thinking: useT, Temperature: 0.7, TopP: 0.9, FrequencyPenalty: 0.3, PresencePenalty: 0.2})
+	if err != nil {
+		return "", fmt.Errorf("marshal chat request: %w", err)
+	}
 	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)

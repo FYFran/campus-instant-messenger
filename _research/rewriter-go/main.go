@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"tokenline/internal/deepseek"
 	"tokenline/internal/platform"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/unrolled/secure"
 	"tokenline/internal/handler"
 	"tokenline/internal/middleware"
@@ -31,6 +33,20 @@ var (
 
 func main() {
 	cfg := config.Load()
+
+	// Sentry error tracking → self-hosted GlitchTip on same server
+	// DSN from SENTRY_DSN env var; falls back to default localhost GlitchTip.
+	sentryDSN := os.Getenv("SENTRY_DSN")
+	if sentryDSN == "" {
+		sentryDSN = "http://73a7c8371fe24918ac2f3917fa2b92bc@127.0.0.1:8000/1"
+	}
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:         sentryDSN,
+		Debug:       false,
+		Environment: "production",
+	}); err != nil {
+		slog.Warn("sentry init failed", "error", err)
+	}
 
 	platform.RestrictUmask() // restrict DB/SHM file permissions to owner-only — must be before db.Open
 
@@ -116,10 +132,11 @@ func main() {
 	pub := http.NewServeMux()
 	pub.HandleFunc("POST /api/auth/register", authH.Register)
 	pub.HandleFunc("POST /api/auth/login", authH.Login)
+	pub.HandleFunc("POST /api/auth/logout", authH.Logout)
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/auth/", bodyLimit(8<<10)(middleware.RateLimit(authLimiter)(pub)))
-	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/health", middleware.RateLimit(pubLimiter)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		snap := middleware.HealthSnapshotNow()
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
@@ -163,7 +180,7 @@ func main() {
 			w.WriteHeader(503)
 		}
 		json.NewEncoder(w).Encode(resp)
-	})
+	})))
 
 	// Protected routes with rate limiting
 	mux.HandleFunc("POST /api/chat", chain(chatH.Chat, bodyLimit(64<<10), middleware.Auth(cfg.JWTSecret, database), middleware.RateLimit(chatLimiter)))
@@ -219,7 +236,7 @@ func main() {
 	adminMux.HandleFunc("GET /api/admin/dashboard", handler.AdminDashboard)
 	adminMux.HandleFunc("GET /api/admin/balances", handler.AdminBalanceHandler)
 	adminMux.HandleFunc("GET /api/admin/charts", handler.AdminCharts)
-		adminMux.HandleFunc("POST /api/admin/gen-codes", redeemH.AdminGenCodes)
+	adminMux.HandleFunc("POST /api/admin/gen-codes", redeemH.AdminGenCodes)
 	mux.Handle("/api/admin/", middleware.LocalhostOnly(middleware.RateLimit(authLimiter)(handler.AdminAuth(adminMux))))
 
 	// Monitoring wrapper
@@ -236,11 +253,11 @@ func main() {
 		BrowserXssFilter:      true,
 		ReferrerPolicy:        "strict-origin-when-cross-origin",
 		ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-		PermissionsPolicy:     "camera=(), microphone=(), geolocation=()",
+		PermissionsPolicy:     "camera=(), microphone=self, geolocation=()",
 		AllowedHosts:          []string{"tokenline.top", "www.tokenline.top", "127.0.0.1:9100", "localhost"},
 		IsDevelopment:         false,
 	})
-	secureHandler := secureMiddleware.Handler(monitoredMux)
+	secureHandler := requireJSON(secureMiddleware.Handler(monitoredMux))
 
 	// CORS
 	corsHandler := corsMiddleware(secureHandler)
@@ -261,7 +278,7 @@ func main() {
 		Addr:         "127.0.0.1:" + cfg.Port,
 		Handler:      corsHandler,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 180 * time.Second,
+		WriteTimeout: 600 * time.Second, // match ChatStream max duration
 	}
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -274,6 +291,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	slog.Info("shutting down...")
+	sentry.Flush(2 * time.Second)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
@@ -282,6 +300,22 @@ func main() {
 	if err := database.Close(); err != nil {
 		slog.Error("database close error", "error", err)
 	}
+}
+
+// requireJSON rejects requests with non-JSON Content-Type on POST/PUT/PATCH.
+func requireJSON(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" || r.Method == "PUT" || r.Method == "PATCH" {
+			ct := r.Header.Get("Content-Type")
+			if ct != "" && !strings.HasPrefix(ct, "application/json") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(415)
+				_, _ = w.Write([]byte(`{"message":"Content-Type harus application/json"}`))
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func bodyLimit(maxBytes int64) func(http.Handler) http.Handler {
@@ -304,9 +338,25 @@ func chain(h http.HandlerFunc, mws ...func(http.Handler) http.Handler) http.Hand
 
 func monitorMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				sentry.CurrentHub().Recover(rec)
+				sentry.Flush(2 * time.Second)
+				http.Error(w, `{"error":"internal server error"}`, 500)
+				slog.Error("panic recovered", "path", r.URL.Path, "panic", rec)
+			}
+		}()
+
 		sw := &statusWriter{ResponseWriter: w, status: 200}
 		next.ServeHTTP(sw, r)
 		middleware.TrackRequest(sw.status)
+
+		// Report 5xx server errors to Sentry
+		if sw.status >= 500 {
+			hub := sentry.CurrentHub().Clone()
+			hub.Scope().SetRequest(r)
+			hub.CaptureMessage("5xx server error")
+		}
 	})
 }
 

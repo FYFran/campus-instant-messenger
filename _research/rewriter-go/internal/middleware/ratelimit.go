@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -65,14 +66,20 @@ func (rl *RateLimiter) Allow(key string) bool {
 func RateLimit(rl *RateLimiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// X-Real-IP is set by nginx from $remote_addr — not spoofable by client
-			ip := r.Header.Get("X-Real-IP")
-			if ip == "" {
-				// Fallback for direct access (localhost health checks)
-				ip = r.RemoteAddr
+			// Only trust X-Real-IP from localhost (nginx reverse proxy).
+			// Direct external clients cannot set it to bypass rate limits.
+			ip := r.RemoteAddr
+			if strings.HasPrefix(r.RemoteAddr, "127.0.0.1:") || strings.HasPrefix(r.RemoteAddr, "[::1]:") {
+				if xip := r.Header.Get("X-Real-IP"); xip != "" {
+					ip = xip
+				}
+			}
+			// Strip port from RemoteAddr for consistent bucket keys
+			if idx := strings.LastIndexByte(ip, ':'); idx > 0 && !strings.HasPrefix(ip, "[") {
+				ip = ip[:idx]
 			}
 			if !rl.Allow(ip) {
-				http.Error(w, `{"message":"Terlalu banyak permintaan. Coba lagi nanti.","retry_after":"30"}`, 429)
+				http.Error(w, `{"message":"Terlalu banyak permintaan. Coba lagi nanti.","retry_after":"30"}`, http.StatusTooManyRequests)
 				return
 			}
 			next.ServeHTTP(w, r)

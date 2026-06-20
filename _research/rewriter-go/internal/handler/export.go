@@ -66,12 +66,15 @@ func (h *ExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, "Gagal mengambil pesan")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var messages []msg
 	for rows.Next() {
 		var m msg
-		rows.Scan(&m.Role, &m.Content, &m.Model, &m.CreatedAt)
+		if err := rows.Scan(&m.Role, &m.Content, &m.Model, &m.CreatedAt); err != nil {
+			slog.Warn("export row scan failed", "error", err)
+			continue
+		}
 		// HTML-escape user content first (XSS protection), then convert markdown
 		m.Content = template.HTMLEscapeString(m.Content)
 		m.Content = simpleMarkdownToHTML(m.Content)
@@ -94,7 +97,9 @@ func (h *ExportHandler) Export(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
-	w.Write(pdfBytes)
+	if _, err := w.Write(pdfBytes); err != nil {
+		slog.Warn("pdf write failed (client disconnected)", "error", err)
+	}
 }
 
 func convertToPDF(html string) ([]byte, error) {
@@ -106,17 +111,17 @@ func convertToPDF(html string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create form file: %w", err)
 	}
-	part.Write([]byte(html))
+	_, _ = part.Write([]byte(html))
 
 	// Add options
-	writer.WriteField("marginTop", "0.5")
-	writer.WriteField("marginBottom", "0.5")
-	writer.WriteField("marginLeft", "0.5")
-	writer.WriteField("marginRight", "0.5")
-	writer.WriteField("paperWidth", "8.27")  // A4
-	writer.WriteField("paperHeight", "11.69") // A4
-	writer.WriteField("printBackground", "true")
-	writer.Close()
+	_ = writer.WriteField("marginTop", "0.5")
+	_ = writer.WriteField("marginBottom", "0.5")
+	_ = writer.WriteField("marginLeft", "0.5")
+	_ = writer.WriteField("marginRight", "0.5")
+	_ = writer.WriteField("paperWidth", "8.27")
+	_ = writer.WriteField("paperHeight", "11.69")
+	_ = writer.WriteField("printBackground", "true")
+	_ = writer.Close()
 
 	req, err := http.NewRequest("POST", "http://127.0.0.1:3200/forms/chromium/convert/html", &buf)
 	if err != nil {

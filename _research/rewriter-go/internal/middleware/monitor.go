@@ -10,12 +10,12 @@ import (
 // Zero external dependencies — pure in-memory counters.
 
 var (
-	apiErrors4xx atomic.Int64  // 4xx client errors (expected, not server fault)
-	apiErrors5xx atomic.Int64  // 5xx server errors (real problems)
-	apiRequests  atomic.Int64  // total requests tracked
-	chatErrors   atomic.Int64  // DeepSeek API failures
-	rateLimited  atomic.Int64  // 429 responses served
-	activeUsers  sync.Map      // userID → lastSeen (for active user count)
+	apiErrors4xx atomic.Int64 // 4xx client errors (expected, not server fault)
+	apiErrors5xx atomic.Int64 // 5xx server errors (real problems)
+	apiRequests  atomic.Int64 // total requests tracked
+	chatErrors   atomic.Int64 // DeepSeek API failures
+	rateLimited  atomic.Int64 // 429 responses served
+	activeUsers  sync.Map     // userID → lastSeen (for active user count)
 	startTime    = time.Now()
 )
 
@@ -49,7 +49,7 @@ type HealthSnapshot struct {
 	ErrorCount4xx   int64   `json:"error_count_4xx"`
 	ErrorCount5xx   int64   `json:"error_count_5xx"`
 	ErrorCount      int64   `json:"error_count"`
-	ErrorRate       float64 `json:"error_rate_pct"`    // 5xx only — real server errors
+	ErrorRate       float64 `json:"error_rate_pct"` // 5xx only — real server errors
 	ChatErrors      int64   `json:"chat_errors"`
 	RateLimited     int64   `json:"rate_limited"`
 	ActiveUsers5Min int     `json:"active_users_5min"`
@@ -124,13 +124,13 @@ func RecordTrend(users int, reqs, errs int64, memMB uint64) {
 
 // TrendPrediction forecasts capacity usage based on linear regression.
 type TrendPrediction struct {
-	WeeklyGrowthPct    float64 `json:"weekly_growth_pct"`    // user growth rate per week
-	UsersIn4Weeks      int     `json:"users_in_4_weeks"`     // projected active users
-	UsersIn12Weeks     int     `json:"users_in_12_weeks"`    // projected active users
-	MemoryIn4WeeksMB   uint64  `json:"memory_in_4_weeks_mb"` // projected memory usage
-	WeeksUntil1GB      float64 `json:"weeks_until_1gb"`      // weeks until 1GB memory usage
-	DBGrowthMBPerWeek  float64 `json:"db_growth_mb_per_week"`// database growth rate
-	CapacityStatus     string  `json:"capacity_status"`      // "healthy"|"monitor"|"plan"
+	WeeklyGrowthPct   float64 `json:"weekly_growth_pct"`     // user growth rate per week
+	UsersIn4Weeks     int     `json:"users_in_4_weeks"`      // projected active users
+	UsersIn12Weeks    int     `json:"users_in_12_weeks"`     // projected active users
+	MemoryIn4WeeksMB  uint64  `json:"memory_in_4_weeks_mb"`  // projected memory usage
+	WeeksUntil1GB     float64 `json:"weeks_until_1gb"`       // weeks until 1GB memory usage
+	DBGrowthMBPerWeek float64 `json:"db_growth_mb_per_week"` // database growth rate
+	CapacityStatus    string  `json:"capacity_status"`       // "healthy"|"monitor"|"plan"
 }
 
 func PredictTrend() TrendPrediction {
@@ -211,7 +211,7 @@ func Alerts(snap HealthSnapshot) []string {
 	if snap.RateLimited > 100 {
 		alerts = append(alerts, "UNUSUAL_TRAFFIC")
 	}
-	if snap.ErrorCount4xx > snap.TotalRequests/2 && snap.TotalRequests > 50 {
+	if snap.ErrorCount4xx > snap.TotalRequests*3/4 && snap.TotalRequests > 200 {
 		alerts = append(alerts, "SCANNER_NOISE") // mostly 4xx = likely scanner/bot traffic
 	}
 

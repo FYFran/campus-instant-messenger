@@ -15,7 +15,7 @@ import (
 type RevenueTracker struct {
 	DB *sql.DB
 
-	mu       sync.RWMutex
+	mu           sync.RWMutex
 	exchangeRate float64 // USD to IDR
 
 	newAPIUp        atomic.Int64

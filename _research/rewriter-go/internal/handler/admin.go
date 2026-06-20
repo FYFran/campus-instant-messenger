@@ -41,14 +41,18 @@ func AdminDashboard(w http.ResponseWriter, r *http.Request) {
 	// DeepSeek balance (call directly, bypassing New API)
 	deepseekCNY := 0.0
 	deepseekUSD := 0.0
-	apiKey := os.Getenv("DEEPSEEK_REAL_KEY")
+	// Use dedicated admin key if set, otherwise fall back to main key.
+	apiKey := os.Getenv("DEEPSEEK_ADMIN_KEY")
+	if apiKey == "" {
+		apiKey = os.Getenv("DEEPSEEK_REAL_KEY")
+	}
 	if apiKey != "" {
 		req, _ := http.NewRequest("GET", "https://api.deepseek.com/user/balance", nil)
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 		client := &http.Client{Timeout: 10 * time.Second}
 		resp, err := client.Do(req)
 		if err == nil {
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			var result struct {
 				IsAvailable  bool `json:"is_available"`
 				BalanceInfos []struct {
@@ -89,9 +93,9 @@ func AdminDashboard(w http.ResponseWriter, r *http.Request) {
 	var userCount, payingCount int64
 	var totalRevenue int64
 	if GlobalCostTracker != nil && GlobalCostTracker.DB != nil {
-		GlobalCostTracker.DB.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
-		GlobalCostTracker.DB.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND (flash_balance>0 OR pro_balance>0)").Scan(&payingCount)
-		GlobalCostTracker.DB.QueryRow("SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='paid'").Scan(&totalRevenue)
+		_ = GlobalCostTracker.DB.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
+		_ = GlobalCostTracker.DB.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND (flash_balance>0 OR pro_balance>0)").Scan(&payingCount)
+		_ = GlobalCostTracker.DB.QueryRow("SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='paid'").Scan(&totalRevenue)
 	}
 
 	resp := map[string]interface{}{
@@ -104,7 +108,7 @@ func AdminDashboard(w http.ResponseWriter, r *http.Request) {
 			"balance_idr": int64(deepseekUSD * 16300),
 			"checked_at":  time.Now().UTC().Format(time.RFC3339),
 		},
-		"cost":   cost,
+		"cost":    cost,
 		"revenue": revenue,
 		"users": map[string]interface{}{
 			"total":  userCount,
@@ -117,7 +121,7 @@ func AdminDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // AdminCharts returns daily stats for charts: user signups, revenue, pack sales.
@@ -144,24 +148,27 @@ func AdminCharts(w http.ResponseWriter, r *http.Request) {
 	LEFT JOIN (SELECT date(created_at) AS day, COALESCE(SUM(amount),0) AS rev, COUNT(*) AS pay FROM payments WHERE status='paid' GROUP BY day) pr ON dates.d=pr.day
 	ORDER BY dates.d ASC`)
 	if err == nil && rows != nil {
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			var p dp
-			rows.Scan(&p.Date, &p.Users, &p.Revenue, &p.Payments)
+			if err := rows.Scan(&p.Date, &p.Users, &p.Revenue, &p.Payments); err != nil {
+				slog.Warn("admin charts row scan failed", "error", err)
+				continue
+			}
 			points = append(points, p)
 		}
 	}
 	var sf, su, sp int64
-	db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'flash_%'").Scan(&sf)
-	db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'ultimate_%'").Scan(&su)
-	db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'pro_%'").Scan(&sp)
+	_ = db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'flash_%'").Scan(&sf)
+	_ = db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'ultimate_%'").Scan(&su)
+	_ = db.QueryRow("SELECT COUNT(*) FROM payments WHERE status='paid' AND plan LIKE 'pro_%'").Scan(&sp)
 	var uf, ufl, up, uu int64
-	db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='gratis'").Scan(&uf)
-	db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='flash'").Scan(&ufl)
-	db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='pro'").Scan(&up)
-	db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='ultimate'").Scan(&uu)
+	_ = db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='gratis'").Scan(&uf)
+	_ = db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='flash'").Scan(&ufl)
+	_ = db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='pro'").Scan(&up)
+	_ = db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE status=1 AND pack_type='ultimate'").Scan(&uu)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"daily": points, "sold_flash": sf, "sold_ultimate": su, "sold_pro": sp,
 		"users_free": uf, "users_flash": ufl, "users_pro": up, "users_ultimate": uu,
 	})
@@ -182,7 +189,7 @@ func AdminDeepSeekBalance(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 502, "DeepSeek API tidak terjangkau")
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var result struct {
 		IsAvailable  bool `json:"is_available"`
 		BalanceInfos []struct {

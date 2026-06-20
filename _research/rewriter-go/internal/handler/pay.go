@@ -48,8 +48,9 @@ var proPacks = map[string]tokenPack{
 }
 
 var modelWeight = map[string]int64{
-	"deepseek-v4-flash": 1,
-	"deepseek-v4-pro":   5,
+	"deepseek-v4-flash":    1,
+	"deepseek-v4-pro":      5,
+	"deepseek-v4-ultimate": 5, // 满血: same API model as Pro, reasoning enabled
 }
 
 var dodoAPIKey string
@@ -72,7 +73,8 @@ func InitDodo() {
 		slog.Warn("DODO_API_KEY not set - payments in mock mode")
 	}
 	if dodoWebhookSecret == "" && dodoAPIKey != "" {
-		panic("DODO_WEBHOOK_SECRET required when DODO_API_KEY is set")
+		slog.Error("DODO_WEBHOOK_SECRET not set — payments disabled. Set DODO_WEBHOOK_SECRET to enable.")
+		dodoAPIKey = "" // fall back to mock mode
 	}
 }
 
@@ -270,21 +272,24 @@ func (h *PayHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if dodoWebhookSecret != "" {
-		sig := r.Header.Get("Dodo-Signature")
-		if sig == "" {
-			slog.Warn("webhook rejected: missing signature")
-			writeJSON(w, 401, "Missing signature")
-			return
-		}
-		mac := hmac.New(sha256.New, []byte(dodoWebhookSecret))
-		mac.Write(body)
-		expected := hex.EncodeToString(mac.Sum(nil))
-		if !hmac.Equal([]byte(sig), []byte(expected)) {
-			slog.Warn("webhook rejected: invalid signature")
-			writeJSON(w, 401, "Invalid signature")
-			return
-		}
+	if dodoWebhookSecret == "" {
+		slog.Error("Dodo webhook called but DODO_WEBHOOK_SECRET not set")
+		writeJSON(w, 503, "Payment service unavailable")
+		return
+	}
+	sig := r.Header.Get("Dodo-Signature")
+	if sig == "" {
+		slog.Warn("webhook rejected: missing signature")
+		writeJSON(w, 401, "Missing signature")
+		return
+	}
+	mac := hmac.New(sha256.New, []byte(dodoWebhookSecret))
+	mac.Write(body)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(sig), []byte(expected)) {
+		slog.Warn("webhook rejected: invalid signature")
+		writeJSON(w, 401, "Invalid signature")
+		return
 	}
 
 	var cb struct {
@@ -383,7 +388,7 @@ func creditTokens(db *sql.DB, userID int64, pk tokenPack) error {
 	if err != nil {
 		return fmt.Errorf("creditTokens begin tx: %w", err)
 	}
-	defer tx.Rollback() // no-op if Commit succeeds
+	defer func() { _ = tx.Rollback() }() // no-op if Commit succeeds
 
 	// Atomic SELECT-then-INSERT-or-UPDATE within transaction
 	var subID int64
@@ -409,12 +414,12 @@ func creditTokens(db *sql.DB, userID int64, pk tokenPack) error {
 	}
 
 	// Upgrade pack_type — never downgrade. ultimate > pro > flash.
-	if pk.PackType == "ultimate" {
-		tx.Exec("UPDATE subscriptions SET pack_type='ultimate' WHERE user_id=? AND status=1 AND pack_type!='ultimate'",
-			userID)
-	} else if pk.PackType == "pro" {
-		tx.Exec("UPDATE subscriptions SET pack_type='pro' WHERE user_id=? AND status=1 AND pack_type NOT IN ('pro','ultimate')",
-			userID)
+	// Merge into the existing UPDATE above for atomicity; this is a best-effort follow-up.
+	if pk.PackType == "ultimate" || pk.PackType == "pro" {
+		if _, err := tx.Exec("UPDATE subscriptions SET pack_type=? WHERE user_id=? AND status=1 AND (pack_type IS NULL OR pack_type=? OR (pack_type='flash' AND ? IN ('ultimate','pro')) OR (pack_type='pro' AND ?='ultimate'))",
+			pk.PackType, userID, pk.PackType, pk.PackType, pk.PackType); err != nil {
+			slog.Error("pack_type upgrade failed — user paid but plan not upgraded", "user", userID, "target", pk.PackType, "error", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

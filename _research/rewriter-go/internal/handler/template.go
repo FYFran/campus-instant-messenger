@@ -14,7 +14,7 @@ func (h *TemplateHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, "Gagal mengambil template")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type tpl struct {
 		ID       int    `json:"id"`
@@ -26,7 +26,7 @@ func (h *TemplateHandler) List(w http.ResponseWriter, r *http.Request) {
 	var list []tpl
 	for rows.Next() {
 		var t tpl
-		rows.Scan(&t.ID, &t.Category, &t.Title, &t.Tier, &t.UserHint)
+		_ = rows.Scan(&t.ID, &t.Category, &t.Title, &t.Tier, &t.UserHint)
 		list = append(list, t)
 	}
 	if list == nil {

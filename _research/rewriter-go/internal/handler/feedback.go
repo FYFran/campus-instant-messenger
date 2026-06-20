@@ -21,26 +21,34 @@ func FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
-		w.Write([]byte(`{"message":"Format tidak valid"}`))
+		_, _ = w.Write([]byte(`{"message":"Format tidak valid"}`))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if d.Pesan == "" {
 		w.WriteHeader(400)
-		w.Write([]byte(`{"message":"Pesan tidak boleh kosong"}`))
+		_, _ = w.Write([]byte(`{"message":"Pesan tidak boleh kosong"}`))
 		return
 	}
 
 	path := "/app/data/feedback.txt"
 	// Rotate if file exceeds 1MB
 	if info, err := os.Stat(path); err == nil && info.Size() > maxFeedbackSize {
-		os.Rename(path, path+".old")
+		if err := os.Rename(path, path+".old"); err != nil {
+			slog.Warn("feedback rotation failed", "error", err)
+		}
 	}
 
 	// Validate field lengths to prevent log injection and disk abuse
-	if len(d.Kategori) > 50 { d.Kategori = d.Kategori[:50] }
-	if len(d.Email) > 100 { d.Email = d.Email[:100] }
-	if len(d.Pesan) > 5000 { d.Pesan = d.Pesan[:5000] }
+	if len(d.Kategori) > 50 {
+		d.Kategori = d.Kategori[:50]
+	}
+	if len(d.Email) > 100 {
+		d.Email = d.Email[:100]
+	}
+	if len(d.Pesan) > 5000 {
+		d.Pesan = d.Pesan[:5000]
+	}
 	// Sanitize newlines to prevent log injection
 	d.Kategori = strings.ReplaceAll(d.Kategori, "\n", " ")
 	d.Email = strings.ReplaceAll(d.Email, "\n", " ")
@@ -50,15 +58,15 @@ func FeedbackHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("feedback write", "error", err)
 		w.WriteHeader(500)
-		w.Write([]byte(`{"ok":false,"message":"Gagal menyimpan feedback"}`))
+		_, _ = w.Write([]byte(`{"ok":false,"message":"Gagal menyimpan feedback"}`))
 		return
 	}
 	line := fmt.Sprintf("%s | %s | %s | %s\n",
 		time.Now().Format("2006-01-02 15:04:05"),
 		d.Kategori, d.Email, d.Pesan)
-	f.WriteString(line)
-	f.Close()
+	_, _ = f.WriteString(line)
+	_ = f.Close()
 
 	slog.Info("feedback", "kategori", d.Kategori, "email", d.Email)
-	w.Write([]byte(`{"ok":true}`))
+	_, _ = w.Write([]byte(`{"ok":true}`))
 }

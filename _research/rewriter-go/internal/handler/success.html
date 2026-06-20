@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pembayaran Berhasil — TokenLine</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(160deg, #f9f8f6 0%, #f3f2ef 40%, #faf9f7 100%);
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+/* Confetti */
+@keyframes confetti-fall {
+  0% { transform: translateY(-120vh) rotate(0deg); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.confetti {
+  position: fixed; top: -20px; z-index: 0; pointer-events: none;
+  animation: confetti-fall linear forwards;
+}
+.confetti:nth-child(odd) { animation-duration: 3.5s; }
+.confetti:nth-child(even) { animation-duration: 4.2s; }
+.confetti:nth-child(3n) { animation-duration: 5s; }
+.confetti:nth-child(5n+2) { animation-duration: 4.8s; animation-delay: 0.4s; }
+.confetti:nth-child(7n+3) { animation-duration: 3.8s; animation-delay: 0.8s; }
+
+.card {
+  position: relative; z-index: 1;
+  background: rgba(255,255,255,0.88); backdrop-filter: blur(20px);
+  border-radius: 28px; padding: 48px 40px; max-width: 440px; width: 90%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 16px 48px rgba(0,0,0,0.08);
+  text-align: center;
+}
+.emoji { font-size: 4rem; line-height: 1; margin-bottom: 16px; animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+h1 { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; letter-spacing: -0.01em; }
+.subtitle { font-size: 14px; color: rgba(26,26,46,0.5); margin-bottom: 28px; }
+
+.balance-card {
+  background: linear-gradient(135deg, #1a1a28 0%, #2a2a42 60%, #1e1e30 100%);
+  border-radius: 20px; padding: 24px; margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(26,26,40,0.2);
+}
+.balance-card .row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+.balance-card .label { color: rgba(255,255,255,0.55); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; }
+.balance-card .value { color: #fff; font-size: 16px; font-weight: 700; }
+.balance-card .divider { height: 1px; background: rgba(255,255,255,0.08); margin: 4px 0; }
+
+.btn {
+  display: inline-block; width: 100%; padding: 16px 24px;
+  background: linear-gradient(145deg, #1a1a28 0%, #2a2a42 60%, #1e1e30 100%);
+  color: #fff; border: none; border-radius: 16px; font-size: 15px; font-weight: 600;
+  cursor: pointer; text-decoration: none;
+  box-shadow: 0 2px 8px rgba(26,26,40,0.15), 0 8px 20px rgba(26,26,40,0.08);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin-bottom: 12px;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(26,26,40,0.2), 0 12px 30px rgba(26,26,40,0.12); }
+
+.unlocks { text-align: left; margin-bottom: 20px; }
+.unlock-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  font-size: 13px; color: rgba(26,26,46,0.65);
+  animation: fadeSlideIn 0.5s ease forwards; opacity: 0;
+}
+.unlock-item:nth-child(1) { animation-delay: 0.3s; }
+.unlock-item:nth-child(2) { animation-delay: 0.45s; }
+.unlock-item:nth-child(3) { animation-delay: 0.6s; }
+.unlock-item:nth-child(4) { animation-delay: 0.75s; }
+.unlock-item:nth-child(5) { animation-delay: 0.9s; }
+.unlock-item:nth-child(6) { animation-delay: 1.05s; }
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+.check { color: #22c55e; font-weight: 700; font-size: 16px; }
+
+.countdown { font-size: 12px; color: rgba(26,26,46,0.3); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div id="confetti-container"></div>
+
+<div class="card">
+  <div class="emoji" id="pack-emoji">🎉</div>
+  <h1>Pembayaran Berhasil!</h1>
+  <p class="subtitle" id="pack-name">Memproses...</p>
+
+  <div class="balance-card" id="balance-card" style="display:none">
+    <div class="row" id="flash-row" style="display:none">
+      <span class="label">⚡ Flash</span>
+      <span class="value" id="flash-bal">0</span>
+    </div>
+    <div class="divider" id="bal-divider" style="display:none"></div>
+    <div class="row" id="pro-row" style="display:none">
+      <span class="label">👑 Pro</span>
+      <span class="value" id="pro-bal">0</span>
+    </div>
+  </div>
+
+  <div class="unlocks" id="unlocks"></div>
+
+  <a href="/chat/" class="btn" id="cta-btn">Mulai Menulis →</a>
+  <p class="countdown" id="countdown-text">Otomatis ke chat dalam 5 detik...</p>
+</div>
+
+<script>
+(function() {
+  var TOKEN = localStorage.getItem('tl_tok');
+  var COUNTDOWN = 5;
+  var interval;
+
+  var unlocks = {
+    flash:    { features: ['6 Mode Menulis','12 Template','32K Konteks','Export PDF'], color: '#4caf50', emoji: '⚡', title: 'Flash' },
+    ultimate: { features: ['Model Flash + Pro','128K Konteks','Export PDF','Template Kustom','File Upload'], color: '#b8975a', emoji: '👑', title: '满血' },
+    pro:      { features: ['Model Pro','256K Konteks','Export PDF Akademik','CrossRef Otomatis','Batch Processing','Prioritas Support'], color: '#6366f1', emoji: '💎', title: 'Pro' }
+  };
+
+  function fmt(n) { return (n || 0).toLocaleString('id-ID'); }
+
+  function spawnConfetti() {
+    var colors = ['#b8975a','#4caf50','#6366f1','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4'];
+    var container = document.getElementById('confetti-container');
+    for (var i = 0; i < 50; i++) {
+      var el = document.createElement('div');
+      el.className = 'confetti';
+      el.style.left = Math.random() * 100 + '%';
+      el.style.top = -(Math.random() * 40 + 10) + 'px';
+      el.style.width = (Math.random() * 10 + 6) + 'px';
+      el.style.height = (Math.random() * 10 + 6) + 'px';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      el.style.animationDelay = Math.random() * 2 + 's';
+      el.style.animationDuration = (Math.random() * 3 + 3) + 's';
+      container.appendChild(el);
+    }
+  }
+
+  function loadData() {
+    if (!TOKEN) {
+      document.getElementById('pack-name').textContent = 'Silakan login terlebih dahulu.';
+      document.getElementById('cta-btn').href = '/login.html';
+      document.getElementById('cta-btn').textContent = 'Login →';
+      return;
+    }
+    spawnConfetti();
+
+    fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var plan = d.plan || 'flash';
+        var u = unlocks[plan] || unlocks.flash;
+        var fb = d.flash_balance || 0;
+        var pb = d.pro_balance || 0;
+
+        document.getElementById('pack-emoji').textContent = u.emoji;
+        document.getElementById('pack-name').textContent = 'Paket ' + u.title + ' — ' + (d.plan_name || '');
+
+        var balCard = document.getElementById('balance-card');
+        balCard.style.display = 'block';
+
+        if (fb > 0) {
+          document.getElementById('flash-row').style.display = 'flex';
+          document.getElementById('flash-bal').textContent = fmt(fb) + ' token';
+        }
+        if (pb > 0) {
+          document.getElementById('pro-row').style.display = 'flex';
+          document.getElementById('pro-bal').textContent = fmt(pb) + ' token';
+        }
+        if (fb > 0 && pb > 0) {
+          document.getElementById('bal-divider').style.display = 'block';
+        }
+
+        var unlocksDiv = document.getElementById('unlocks');
+        u.features.forEach(function(f) {
+          var item = document.createElement('div');
+          item.className = 'unlock-item';
+          item.innerHTML = '<span class="check">✓</span> ' + f;
+          unlocksDiv.appendChild(item);
+        });
+      })
+      .catch(function() {
+        document.getElementById('pack-name').textContent = 'Pembayaran berhasil! Sedang memproses...';
+      });
+  }
+
+  function tick() {
+    COUNTDOWN--;
+    if (COUNTDOWN <= 0) {
+      clearInterval(interval);
+      window.location.href = '/chat/';
+      return;
+    }
+    document.getElementById('countdown-text').textContent = 'Otomatis ke chat dalam ' + COUNTDOWN + ' detik...';
+  }
+
+  loadData();
+  interval = setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
