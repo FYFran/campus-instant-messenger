@@ -64,12 +64,15 @@ type thinkCfg struct {
 }
 
 func (c *Client) ChatStream(ctx context.Context, messages []Message, model string, maxTokens int, w io.Writer) error {
-	// 满血: Pro model with reasoning enabled
+	// DeepSeek V4 defaults to thinking=enabled. We disable it for Flash/Pro
+	// so users don't see internal monologue. Only Ultimate gets reasoning.
 	var useThinking *thinkCfg
 	apiModel := model
 	if model == "deepseek-v4-ultimate" {
 		apiModel = "deepseek-v4-pro"
-		useThinking = &thinkCfg{Type: "enabled"} // enable reasoning for 满血
+		useThinking = &thinkCfg{Type: "enabled"}
+	} else {
+		useThinking = &thinkCfg{Type: "disabled"}
 	}
 	reqBody, err := json.Marshal(chatReq{Model: apiModel, Messages: messages, Stream: true, MaxTokens: maxTokens, Thinking: useThinking, Temperature: 0.7, TopP: 0.9, FrequencyPenalty: 0.3, PresencePenalty: 0.2})
 	if err != nil {
