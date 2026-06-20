@@ -1053,8 +1053,12 @@ async function send() {
       }
     }
 
+    // Final render: always show accumulated full text at full opacity
+    if (full && full.trim()) {
+      bubbleBody.innerHTML = mdToHtml(full);
+    }
+
     // Show token usage under the message
-      if (botWrap._usage) {
         var u = botWrap._usage;
         var costTag = document.createElement('div');
         costTag.className = 'text-[10px] text-black/20 mt-2 pt-2 border-t border-black/[0.03]';
