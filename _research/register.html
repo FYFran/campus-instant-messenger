@@ -44,8 +44,8 @@ input[type=checkbox]{width:auto;margin-top:.2rem;flex-shrink:0}
     <form onsubmit="register(event)">
       <label>Email</label>
       <input type="email" id="email" placeholder="kamu@email.com" required autofocus>
-      <label>Password (minimal 6 karakter)</label>
-      <input type="password" id="pw" placeholder="••••••" minlength="6" required>
+      <label>Password (minimal 8 karakter, 1 huruf besar, 1 angka)</label>
+      <input type="password" id="pw" placeholder="••••••" minlength="8" required>
       <label>Nomor Telepon</label>
       <input type="tel" id="phone" placeholder="628xxxxxxxxxx" pattern="628[0-9]{8,12}">
       <p class="hint">Opsional — diperlukan untuk reset password</p>
@@ -78,7 +78,7 @@ async function register(e){
   e.preventDefault();
   var em=document.getElementById('email').value.trim(),pw=document.getElementById('pw').value;
   var phone=document.getElementById('phone').value.trim(),err=document.getElementById('err'),btn=document.getElementById('btn');
-  if(pw.length<6){S(err,'Password minimal 6 karakter');return}
+  if(pw.length<8){S(err,'Password minimal 8 karakter');return}
   if(!document.getElementById('agree').checked){S(err,'Anda harus menyetujui Syarat & Ketentuan');return}
   if(phone&&!phone.match(/^628\d{8,12}$/)){S(err,'Format nomor: 628xxxxxxxxxx');return}
   H(err);btn.disabled=true;btn.textContent='Mendaftar...';
@@ -89,7 +89,7 @@ async function register(e){
     if(!r.ok){S(err,d.message||'Gagal mendaftar');btn.disabled=false;btn.textContent='Daftar Gratis';return}
     authToken=d.token||(d.data&&d.data.token);
     if(!authToken){S(err,'Gagal mendapatkan token');btn.disabled=false;btn.textContent='Daftar Gratis';return}
-    localStorage.setItem('tl_tok',authToken);
+    // Token stored in httpOnly cookie (XSS-proof). Keep in variable for OTP step.
     if(phone){
       document.getElementById('step-register').style.display='none';
       document.getElementById('step-otp').style.display='block';

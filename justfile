@@ -40,8 +40,12 @@ ci-all:
     python pete.py ci
 
 # ── 编译 ──
-build:
+build: check-build
     python pete.py build
+
+check-build:
+    @echo "=== Build Gate: build_check ==="
+    python f:/ClaudeFiles/build_check.py
 phone: build
     python pete.py phone
 
@@ -59,6 +63,19 @@ hooks:
     lefthook run pre-commit
 hooks-all:
     lefthook run pre-push
+
+# ── 安全恢复（替代 git checkout --）──
+restore file:
+    @echo "=== RESTORE GATE ==="
+    @echo "即将丢弃本地修改: {{file}}"
+    @git diff -- {{file}} 2>&1 || echo "(new/untracked)"
+    @echo "确认恢复？运行: git checkout -- {{file}}"
+
+# ── 安全删除（替代 rm -rf）──
+nuke target:
+    @echo "=== NUKE GATE ==="
+    @echo "检查: {{target}}"
+    @python f:/ClaudeFiles/.claude/hooks/guard-rm-nuke.py "{{target}}"
 # ── 蓝绿部署 ──
 deploy-bg:
     bash deploy_blue_green.sh

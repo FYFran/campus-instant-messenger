@@ -7,23 +7,26 @@
 <link rel="icon" href="/favicon.svg">
 <script src="/assets/js/chart.umd.min.js" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js'"></script>
 <style>
-:root{--bg:#faf9f6;--card:#fff;--accent:#1a1c2c;--gold:#b8975a;--muted:rgba(26,28,44,.45);--hair:rgba(0,0,0,.06)}
+:root{--ink:#1a1c2c;--canvas:#faf9f6;--surface:#fff;--gold:#b8975a;--muted:rgba(26,28,44,.45);--hairline:rgba(0,0,0,.06);--focus-ring:0 0 0 2px var(--ink),0 0 0 4px rgba(26,28,44,.2)}
+@media(prefers-color-scheme:dark){:root{--ink:#e0e0e0;--canvas:#121212;--surface:#1e1e1e;--muted:rgba(224,224,224,.45);--hairline:rgba(255,255,255,.08);--focus-ring:0 0 0 2px #6366f1,0 0 0 4px rgba(99,102,241,.3)}}
 *{font-family:'Inter',system-ui,sans-serif;box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--accent);min-height:100vh;line-height:1.5}
-body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(120,120,160,.03) 0%,transparent 100%);pointer-events:none;z-index:-1}
+:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:4px}
+body{background:var(--canvas);color:var(--ink);min-height:100vh;line-height:1.5}
+nav a:focus-visible,button:focus-visible,a:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 
-nav{position:sticky;top:0;z-index:30;background:rgba(26,28,44,.95);backdrop-filter:blur(16px);color:#fff;padding:0 1.5rem;height:3.5rem;display:flex;align-items:center;justify-content:space-between}
+nav{position:sticky;top:0;z-index:30;background:var(--ink);color:var(--surface);padding:0 1.5rem;height:3.5rem;display:flex;align-items:center;justify-content:space-between}
 nav h1{font-size:1rem;font-weight:700;letter-spacing:-.01em}
-nav .info{font-size:.75rem;opacity:.5;display:flex;align-items:center;gap:1rem}
-.pulse-dot{width:.4rem;height:.4rem;border-radius:50%;background:#34d399;animation:pulse 2s infinite}@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+nav .info{font-size:.75rem;opacity:.65;display:flex;align-items:center;gap:1rem}
+.pulse-dot{width:.5rem;height:.5rem;border-radius:50%;background:#34d399;animation:pulse-dot 2s infinite}@keyframes pulse-dot{0%,100%{opacity:.4}50%{opacity:1}}
 
 .container{max-width:1400px;margin:0 auto;padding:1.25rem 1.5rem 3rem}
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
-@media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-2,.grid-3{grid-template-columns:1fr}}
+@media(max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.grid-4,.grid-2,.grid-3{grid-template-columns:1fr}.card{padding:1rem}button,.btn{padding:.5rem 1rem;min-height:44px}}
 
-.card{background:var(--card);border:1px solid var(--hair);border-radius:1rem;padding:1.25rem}
+.card{background:var(--surface);border:1px solid var(--hairline);border-radius:1rem;padding:1.25rem}
 .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
 .card-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .big-num{font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin:.25rem 0}
@@ -50,7 +53,7 @@ nav .info{font-size:.75rem;opacity:.5;display:flex;align-items:center;gap:1rem}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .skel{background:linear-gradient(90deg,rgba(0,0,0,.04) 25%,rgba(0,0,0,.08) 50%,rgba(0,0,0,.04) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
 #retry-banner{display:none;text-align:center;padding:.75rem;background:#fbe9e7;border-left:3px solid #e94560;border-radius:.5rem;margin-bottom:1rem;font-size:.8rem}
-#retry-banner button{margin-left:.5rem;padding:.3rem .8rem;background:var(--accent);color:#fff;border:none;border-radius:.4rem;cursor:pointer;font-size:.75rem}
+#retry-banner button{margin-left:.5rem;padding:.5rem 1rem;background:var(--ink);color:var(--surface);border:none;border-radius:.4rem;cursor:pointer;font-size:.75rem;min-height:44px}
 </style>
 </head>
 <body>
@@ -161,17 +164,15 @@ nav .info{font-size:.75rem;opacity:.5;display:flex;align-items:center;gap:1rem}
 </div>
 
 <script>
-// URL hash key always overrides localStorage (so shared links work)
-if(location.hash){
-  var m=location.hash.match(/key=([^&]+)/);
-  if(m){localStorage.setItem('tl_admin_key',m[1]);history.replaceState(null,'',location.pathname)}
-}
-var KEY = localStorage.getItem('tl_admin_key') || '';
-if(!KEY){KEY=prompt('管理密码:');if(KEY)localStorage.setItem('tl_admin_key',KEY)}
+// Admin key: use sessionStorage (cleared on tab close, not persistent like localStorage).
+// URL hash key parsing removed — leaks via browser history and Referer headers.
+var KEY = sessionStorage.getItem('tl_admin_key') || '';
+if(!KEY){KEY=prompt('管理密码:');if(KEY)sessionStorage.setItem('tl_admin_key',KEY)}
 if(!KEY){document.body.innerHTML='<div style="text-align:center;padding:5rem;font-size:1.2rem">需要管理密码</div>';throw new Error('no key')}
 
 var B=location.origin, ypChart=null, costDoughnut=null, salesBar=null;
 
+function ce(t,c,tx){var e=document.createElement(t);if(c)e.className=c;if(tx!==undefined)e.textContent=tx;return e}
 function F(n,d){d=d||0;return Number(n||0).toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d})}
 function C(n){return n>=0?'¥'+F(n,1):'-'}
 function usd2cny(n){return n>=0?'¥'+F(n*7.25,2):'-'}
@@ -182,7 +183,7 @@ async function refresh(){
   try{
     document.getElementById("retry-banner").style.display="none";
     var a=await fetch(B+'/api/admin/balances',{headers:{'X-Admin-Key':KEY}});
-    if(!a.ok){document.body.innerHTML='<div style="text-align:center;padding:5rem"><h2>认证失败</h2><a href="javascript:localStorage.removeItem(\"tl_admin_key\");location.reload()">重输密码</a></div>';return}
+    if(!a.ok){document.body.innerHTML='<div style="text-align:center;padding:5rem"><h2>认证失败</h2><a href="javascript:sessionStorage.removeItem(\"tl_admin_key\");location.reload()">重输密码</a></div>';return}
     var d=await a.json(),b=d.balance,al=d.alerts||[],hist=d.history||[];
     var h=await fetch(B+'/api/health'),hd=await h.json();
 
@@ -206,19 +207,24 @@ async function refresh(){
     document.getElementById('run-val').textContent=b.predicted_runway;
     document.getElementById('run-sub').textContent='月烧 '+C(b.monthly_burn_cny)+' | 总余额 ¥'+F(b.yunpian_balance_cny+b.deepseek_balance_usd*7.25,2);
 
-    // 2. Alerts (enhanced)
+    // 2. Alerts (safe rendering — escapes backend data as text)
     var ac=document.getElementById('alerts');
     var allAlerts=al.slice();
     // Add SSL alert
     if(hd.ssl_cert&&hd.ssl_cert.days_left<30){
       allAlerts.push({level:hd.ssl_cert.days_left<7?'critical':'warning',service:'SSL证书',message:'SSL证书 '+hd.ssl_cert.days_left+' 天后到期 ('+hd.ssl_cert.expires_at+')'});
     }
-    if(!allAlerts.length){ac.innerHTML='<div class="alert-row alert-ok">✅ 所有系统正常</div>'}
-    else{ac.innerHTML=allAlerts.map(function(a){
+    if(!allAlerts.length){ac.textContent=''; ac.appendChild(ce('div','alert-row alert-ok','✅ 所有系统正常'))}
+    else{ac.textContent=''; allAlerts.forEach(function(a){
       var cls=a.level==='critical'?'alert-crit':a.level==='warning'?'alert-warn':'alert-info';
       var icon=a.level==='critical'?'🔴':a.level==='warning'?'🟡':'ℹ️';
-      return'<div class="alert-row '+cls+'"><span>'+icon+'</span><strong>'+a.service+'</strong>: '+a.message+'</div>';
-    }).join('')}
+      var row=ce('div','alert-row '+cls);
+      row.appendChild(ce('span','',icon));
+      var strong=ce('strong',''); strong.textContent=a.service;
+      row.appendChild(strong);
+      row.appendChild(document.createTextNode(': '+a.message));
+      ac.appendChild(row);
+    })}
 
     // 3. Timers
     if(hd.ssl_cert){
