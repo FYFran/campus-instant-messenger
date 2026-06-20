@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>TokenLine Pro — Asisten Menulis AI</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;550;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -1063,6 +1066,7 @@ async function send() {
         bubbleBody.appendChild(costTag);
       }
       // Fallback: if AI returned empty (no content AND no reasoning), show something visible
+      console.log('send() SSE done — full length:', full.length, 'bubble text length:', bubbleBody.textContent.trim().length, 'full preview:', full.substring(0, 100));
       if ((!full || !full.trim()) && bubbleBody.textContent.trim().length < 10) {
         bubbleBody.innerHTML = '<span style="color:rgba(0,0,0,.25);font-style:italic">AI tidak menghasilkan respons. Coba kirim ulang pesan Anda.</span>' + bubbleBody.innerHTML;
       }
