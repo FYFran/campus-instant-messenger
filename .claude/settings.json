@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/auto-check.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/quality-reminder.py"
+          }
+        ]
+      }
+    ]
+  }
+}
