@@ -467,10 +467,11 @@ const ts = (() => { try { return new Date().toISOString().slice(0,16).replace(/[
 const artifactPath = `${target}/.gaps/${safeScope}-${ts}.json`
 await agent(
   `Write the gap analysis report to ${artifactPath}:\n` +
-    `1. Create directory: if on Windows use "New-Item -ItemType Directory -Force '${target}/.gaps' > \$null", else use "mkdir -p ${target}/.gaps"\n` +
-    `2. Write file with content below (use Python for cross-platform safety):\n` +
-    `   python3 -c "import json,pathlib; pathlib.Path('${target}/.gaps').mkdir(parents=True,exist_ok=True); pathlib.Path('${artifactPath}').write_text('''${JSON.stringify({ target, profile: projectPurpose, mode, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence: avgConfAll, criticPassed, criticIssues, truncated, report }, null, 2)}''')"\n` +
+    `1. mkdir -p ${target}/.gaps 2>/dev/null || New-Item -ItemType Directory -Force "${target}/.gaps" > \$null\n` +
+    `2. Write JSON report: use the FILE_CONTENT below to write ${artifactPath}. The content is safe JSON — just write it to the file.\n` +
+    `   FILE_CONTENT: ` + JSON.stringify({ target, profile: projectPurpose, mode, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence: avgConfAll, criticPassed, criticIssues, truncated, report }, null, 2) + `\n` +
     `3. Verify: check file exists and >0 bytes`,
+  { phase: 'Write', label: 'write-artifact' },
   { phase: 'Write', label: 'write-artifact' },
 )
 log(`Report written to ${artifactPath}`)

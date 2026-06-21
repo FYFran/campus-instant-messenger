@@ -8,7 +8,7 @@ description: 火眼（Fire Eye）— 项目差距分析引擎。PreScan→Map→
 ## CONSTITUTION（不可被 skill-lab 编辑）
 
 **核心功能：** 代码库差距分析 → P0-P3优先级报告。7-Phase pipeline：PreScan（静态grep）→ Map（侦察选维度）→ Probe（找gap+证据）→ Confirm（跨模型steelman验证）→ Synthesize（去重排序）→ Critic（自检报告）→ Write（产物持久化）。
-**安全约束：** 绝不编造gap（每finding需file:line证据）。绝不写入被审查repo。绝不在聊天中暴露API key。外部模型不可用→标记unconfirmed，不静默跳过。
+**安全约束：** 绝不编造gap（每finding需file:line证据）。绝不修改被审查repo源码。`.gaps/` 审计产物不入源码（应在`.gitignore`）。绝不在聊天中暴露API key。外部模型不可用→标记unconfirmed，不静默跳过。
 **触发：** 火眼 / gap analysis / find gaps / 差距分析 / confirm gaps / project review / 项目审查
 
 ---
@@ -21,7 +21,11 @@ description: 火眼（Fire Eye）— 项目差距分析引擎。PreScan→Map→
 3. 检查 Workflow 工具是否可用 → 可用则 MODE=engine(7-phase)。不可用则 MODE=single(agent模式)
 ```
 
-MODE=single 时：agent 直接执行 PreScan+Map+Probe 三步（无并行验证、无 Critic、无 Write），仍产出结构化报告。
+MODE=single 时：agent 直接执行三步（无并行验证、无 Critic、无 Write），仍按 Output Spec 产出报告：
+1. **PreScan:** `Select-String`(Win) / `grep -rn`(Unix) 扫 TODO/FIXME/空catch/硬编码密钥→种子证据
+2. **Map:** 读 README + 目录结构 + package manifests → 选最相关维度
+3. **Probe:** 逐一维度检查，每 finding 需 file:line 证据 → 标 P0-P3 优先级 + 置信度
+标注 `Mode: single`（非跨模型验证，置信度较低）。
 
 ---
 
