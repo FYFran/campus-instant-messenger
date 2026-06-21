@@ -1,20 +1,10 @@
 ---
-name: pantheon-gap-custom
+name: 火眼
 description: >-
-  A skill that runs a GAP ANALYSIS & feedback review of an existing project through a multi-agent
-  harness (configurable variant: the user PICKS which AI model runs the adversarial confirm step —
-  including non-Anthropic models like DeepSeek, Qwen, Kimi, or a local Ollama/LM Studio model). Same
-  map → probe (one agent per dimension finds gaps with file-level evidence) → adversarial confirm →
-  synthesize pipeline as the pantheon-gap base, but the confirm/skeptic model is chosen per run via a
-  `verifier` argument and external/local models are driven through the `codex` CLI (a multi-provider
-  router). Use when the user says "pantheon gap custom", "confirm gaps with deepseek/qwen", "review my
-  project with a local model", "갭 분석 모델 골라서", "딥시크로 갭 확인", "큐원으로 프로젝트 점검",
-  "오픈클로처럼 리뷰 모델 선택". If no model is given it defaults to Claude (same as the pantheon-gap
-  base). For the fixed presets use pantheon-gap (Claude) / pantheon-gap-x (GPT-5.5). For GENERATING code
-  rather than reviewing, use pantheon-custom. Don't use for a quick single-file glance (cost is high).
+  火眼（Fire Eye）— 项目差距分析引擎。map（侦察选维度）→ probe（多维度找gap+证据）→ adversarial confirm（用户指定模型反驳验证）→ synthesize（P0-P3优先级报告）。Use when: "火眼", "gap analysis", "find gaps", "差距分析", "confirm gaps with deepseek/qwen", "review project with local model", "项目审查". 默认 Claude confirm，可选 DeepSeek/Qwen/Kimi/Ollama。
 ---
 
-# Pantheon gap-analysis harness (configurable · user-selectable confirm model)
+# 火眼 — 项目差距分析引擎
 
 ## CONSTITUTION（本段不可被 skill-lab 编辑）
 
