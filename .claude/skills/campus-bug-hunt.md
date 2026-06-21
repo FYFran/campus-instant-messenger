@@ -74,14 +74,15 @@ TIER1 命令自动适配：Windows=`Select-String`，Linux/Mac=`grep -rnE`，rg 
 **TIER1:** `rg -n "<bug_pattern>" campus_go/ -t go` 和 `campus_app/server/ -t py` 交叉搜。
 门控：两个后端都检查过 → PASS。部署映射用 `deploy.py` 确认。
 
-### Step 4 — 找根因（非症状）
+### Step 4 — 找根因（半形式推理）
 
-1. **复现** — 精确步骤 + 期望 vs 实际
-2. **隔离** — 二分法，注释一半逻辑
-3. **单变量验证** — 一次改一个变量
-4. **根因陈述** — 格式 `{机制} → {因果链} → {症状}`
-   - ❌ "500 on signup" → ✅ "FOR UPDATE 缺失→竞态→unique violation"
-   - ❌ "Page blank" → ✅ "setState after widget disposed"
+1. **Premise:** 观察到的行为 + Step 1-2 收集的证据
+2. **Trace:** 从症状沿调用链追溯到假设根因（完整数据流路径）
+3. **Check:** 单变量测试验证假设。改一个变量→重测。否定假设 → 回 Premise 重新观察
+4. **Conclusion:** 根因陈述，含置信度。格式 `{机制} → {因果链} → {症状} (confidence: X.X)`
+   - ❌ "500 on signup" → ✅ "FOR UPDATE 缺失→竞态→unique violation (0.95)"
+   - ❌ "Page blank" → ✅ "setState after widget disposed (0.90)"
+   - Confidence <0.8 → ⚪ SUSPECT，不标 CRITICAL
 
 ### Step 5 — 修复 + Critic
 
@@ -116,10 +117,11 @@ rg -n "<bug_pattern>" -t py -t go -t dart  # 搜同 bug 模式
 ## Bug Report — {title}
 **Environment:** {prod/local/file} | **Mode:** {TIER1/TIER2} | **Steps:** {n}/7
 **Symptom:** {用户看到的}
-**Root Cause:** {根本原因，1-2 句}
+**Root Cause:** {根本原因，1-2 句} (confidence: X.X)
 **Fix:** {file:line-range} — {改动说明}
 **Verified:** {check OK / flutter OK / manual OK}
 **Regression:** {同模式 {n} 处 / 无}
+**TRUNCATED:** {如 <7/7 steps 完成，列出已跳过步骤及原因}
 ```
 
 ---
@@ -152,14 +154,12 @@ Micro-tuning failure → micro-tuning more = waste + new bugs.
 - "再试一次"(已 2+ 次)
 - 每次修复暴露新问题
 
-## No-Hedge
+## Quality Rules
 
-禁止: might / could / maybe / I think / probably / try changing
-每条 finding: file:line + concrete reason。不确定 → ⚪ SUSPECT，不编造。
-
-## Convergence
-
-重跑 Step 1→2。两轮零新发现 → DONE。最多 3 轮。同 bug 连续 2 轮重现 → severity +1, PERSISTENT。
+- **Convergence:** 重跑 Step 1→2。两轮零新发现 → DONE。最多 3 轮。同 bug 连续 2 轮重现 → severity +1, PERSISTENT。
+- **Confidence:** Finding >0.8 sure → CRITICAL/HIGH。0.5-0.8 → SUSPECT。不要编造置信度。
+- **No-Hedge:** 禁止 might/could/maybe/I think/probably/try changing。每条 finding: file:line + concrete reason。
+- **TRUNCATED AT:** <50% steps completed → 报告标记 PARTIAL，列出已完成/跳过步骤及原因。
 
 ---
 
@@ -177,3 +177,4 @@ Micro-tuning failure → micro-tuning more = waste + new bugs.
 | 8 | 接受 Critic "没问题" | 无效。换角度重跑 |
 | 9 | 不读 bug-patterns.md | 已知模式秒解。跳过 = 重复踩坑 |
 | 10 | 模糊报错直接猜 | Step 1 先收集证据 |
+| 11 | Confidence <0.8 却标 CRITICAL | <0.8 → ⚪ SUSPECT。编造置信度比没confidence更危险 |
