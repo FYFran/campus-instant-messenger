@@ -81,62 +81,76 @@ description: >-
 
 ---
 
-## 5 维评估卡（简化自 SkillLens 9 维）
+## 6 维评估卡（5 维 + 确定性断言层）
 
-| # | 维度 | 权重 | 评估方式 |
-|---|------|------|---------|
-| 1 | **可执行具体性** | 25 | 静态：有无具体参数/格式/示例？有无模糊措辞？ |
-| 2 | **失败模式编码** | 25 | 静态：有无 if-then fallback？错误恢复路径？ |
-| 3 | **工作流清晰度** | 20 | 静态：步骤是否有序号？输入/输出是否明确？ |
-| 4 | **检查点设计** | 15 | 静态：关键决策前有无确认点？是否显性标记？ |
-| 5 | **实测表现** | 15 | 动态：跑 test-prompts，对比优化前后输出质量 |
+| # | 维度 | 权重 | 评估方式 | 噪声 |
+|---|------|------|---------|------|
+| 1 | **可执行具体性** | 25 | 静态：有无具体参数/格式/示例？有无模糊措辞？ | 低 |
+| 2 | **失败模式编码** | 25 | 静态：有无 if-then fallback？错误恢复路径？ | 低 |
+| 3 | **工作流清晰度** | 20 | 静态：步骤是否有序号？输入/输出是否明确？ | 低 |
+| 4 | **检查点设计** | 15 | 静态：关键决策前有无确认点？是否显性标记？ | 低 |
+| 5a | **确定性验证** | 8 | 自动：test-prompts.json 中的断言检查 | **无** |
+| 5b | **内容质量** | 7 | 动态：3 judge 盲评 consensus | 低（3 judge 多数） |
+| **总分** | — | **100** | — | ~±2 分噪声带 |
 
 **评分规则：**
 - 维度 1-4：静态分析，每个维度 1-10 分 × 权重
-- 维度 5：跑 test-prompts，spawn 独立子 agent 对比输出，1-10 分 × 权重
+- 维度 5a：确定性断言通过率 × 10 → 0-10 分。断言来自 test-prompts.json 的 `assert` 字段
+- 维度 5b：3 个独立 judge（Agent 工具）盲评对比。取中位数 × 权重。3 judge 全分歧 → 标记 SUSPECT，人工判断
 - 总分 = Σ(维度分 × 权重) / 10，满分 100
 - 改进后总分必须**严格 >** 改进前才保留
+- 确定性断言（5a）不可被 LLM judge 覆盖 — 如果断言失败，即使 LLM judge 判高分也 REVERT
+
+### test-prompts.json 格式（含断言）
+
+```json
+[
+  {
+    "id": 1,
+    "scenario": "典型场景描述",
+    "prompt": "用户会说的话",
+    "assert": {
+      "mustContain": ["必须包含的文字1", "必须包含的文字2"],
+      "mustNotContain": ["禁止出现的文字", "might", "could考虑"],
+      "regex": ["匹配模式1", "匹配模式2"],
+      "lengthMin": 50,
+      "lengthMax": 2000
+    },
+    "expect": "期望输出的简短描述（给 LLM judge 看的）"
+  }
+]
+```
+
+`assert` 字段是可选的。如果 skill 类型不适合确定性断言（如风格类 skill），5a 自动记满分，5b 承担全部 15 分。
 
 ---
 
 ## 核心循环
 
-### 子 Agent 生成机制（维度 5 执行验证的核心）
+### 子 Agent 生成机制（维度 5b 内容质量验证）
 
 ```
 用环境中实际存在的 Agent 工具（Tool: Agent）生成独立评估者。
 关键：新会话、无编辑记忆、盲评。
 
-# 单个测试（基线评估时）
+# 盲评对比（优化后验证时）
 Agent(
   subagent_type: "general-purpose",
-  description: "Evaluate {skill_name} on prompt {id}",
-  prompt: '''
-    Read {skill_path}/SKILL.md.
-    Then read {skill_path}/test-prompts.json prompt #{id}.
-    Execute the prompt as if you were the skill's target agent.
-    Compare: with-skill output vs what a generic agent would do without the skill.
-    Return ONLY: {"quality_score": 1-10, "notes": "why this score"}
-  '''
-)
-
-# 盲评对比（优化后验证时）— 防止"我刚改的肯定更好"偏差
-Agent(
-  subagent_type: "general-purpose", 
-  description: "Blind-compare {skill_name} versions",
+  description: "Blind-judge {skill_name} prompt#{id}",
   prompt: '''
     Version A output: {old_output}
     Version B output: {new_output}
-    Which better fulfills the intent described in {skill_path}/test-prompts.json prompt #{id}?
+    Intent (from test-prompts.json): {expect}
+    Which better fulfills the intent?
     Return ONLY: {"winner": "A" or "B" or "tie", "confidence": 0-100, "reasoning": "one sentence"}
   '''
 )
 
-# 双 judge 共识 + 死锁处理
-# 2 judge 都判 B → 保留。都判 A → 回滚。
-# 分歧（A vs B）→ 第 3 judge 打破平局。
-# 2 judge 都低置信（<50%）→ 标记 SUSPECT，不自动决策，交给人类判断。
-# dry_run 比例 > 30% → 评估失效警告（来自 darwin-skill controlled study）
+# 3 judge consensus（降低方差）
+# 3 个独立 judge 盲评 → 取多数（2/3 或 3/3）
+# 3 judge 全分歧（A/B/tie 各一）→ 标记 SUSPECT，人工判断
+# 单个 judge 置信度 < 50% → 该 judge 投票降权为 0.5
+# 最终 score = (判 B 的加权票数 / 总加权票数) × 10
 ```
 
 ### 收敛循环定义
@@ -182,12 +196,16 @@ for each skill in 范围:
   1. 读 SKILL.md 全文
   2. 按维度 1-4 逐项打分（附简短理由）
 
-  # 效果验证（独立子 agent — 见"子 Agent 生成机制"）
-  3. 对每个测试 prompt，spawn 独立子 agent：
-     - 用 Agent(subagent_type="general-purpose") 执行测试
-     - 子 agent 只看到: SKILL.md + test-prompts.json prompt #N
-     - 子 agent 返回: {"quality_score": 1-10, "notes": "..."}
-  4. 取 2 个独立子 agent 的平均分作为维度 5 得分
+  # 确定性验证（维度 5a — 无 LLM）
+  3. 对每个测试 prompt：
+     - 用 Read 工具获取 skill 执行后的输出
+     - 逐条检查 test-prompts.json 的 assert 规则
+     - 通过率 × 10 = 维度 5a 得分
+
+  # 内容质量（维度 5b — 3 judge 盲评）
+  4. 对每个测试 prompt，spawn 3 个独立子 agent：
+     - Agent(subagent_type="general-purpose"，盲评对比)
+     - 取多数 consensus → 维度 5b 得分
 
   # 汇总
   5. 计算加权总分
@@ -221,10 +239,11 @@ for each skill in 优化范围 (按基线分数从低到高排序):
       git add + commit（message: "skill-lab: {skill} round{round} {改进摘要}"）
       检查 150% 体积上限（行数：`wc -l`，新文件行数 > 旧文件 × 1.5 → 拒绝提交，精简后重试）
 
-    Step 4 — 重新评估（盲评 + 双 judge）：
+    Step 4 — 重新评估：
       维度 1-4：主 agent 重新打分
-      维度 5：spawn 2 个新独立子 agent，盲评对比（见"子 Agent 生成机制"）
-             关键：子 agent 不知道哪个是旧版、哪个是新版
+      维度 5a：确定性断言重跑（自动化，无噪声）
+      维度 5b：spawn 3 个新独立 judge，盲评对比（见"子 Agent 生成机制"）
+      关键：judge 不知道哪个是旧版、哪个是新版
 
     Step 5 — 决策：
       if 新总分 > 旧总分:
