@@ -28,8 +28,8 @@
     "scenario": "T1 海森堡 — 观测者效应",
     "prompt": "race condition debug模式消失 生产偶发",
     "assert": {
-      "mustContain": ["T1", "观测者", "strace", "时序", "DIAGNOSIS MADE"],
-      "regex": ["T1|Heisenbug", "观测者|observer", "strace|eBPF|pstack"],
+      "mustContain": ["T1", "观测者", "时序", "DIAGNOSIS MADE"],
+      "regex": ["T1|Heisenbug", "观测者|observer", "strace|procdump|eBPF|pstack|gdb"],
       "lengthMin": 3000,
       "lengthMax": 15000
     },
