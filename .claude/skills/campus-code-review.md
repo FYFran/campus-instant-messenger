@@ -44,11 +44,12 @@ tools: [Read, Grep, Glob, codegraph_search, codegraph_callers, codegraph_context
 | Read actual file contents | `Read` | Always verify before judging |
 
 ### Review Budget & Progressive Disclosure
-**Default budget: 4000 tokens per review stage.** If a stage would exceed budget:
+**Budget heuristic: >5 findings or >1000 lines changed = over token budget.** If a stage exceeds budget:
 1. **Stage 1 first** → deliver findings + verdict immediately
 2. **Ask user:** "Stage 1 complete. Continue to Stage 2 (Code Quality)?"
 3. Large file (>1000 lines): focus on changed sections only (use `git diff`), read full file only for security-sensitive areas
-4. **10+ findings?** → group by category, report top 5 by severity first, ask before expanding
+4. **>5 findings?** → group by category, report top 5 by severity first, ask before expanding
+5. **Reserve full semi-formal trace for CRITICAL/HIGH only.** For MEDIUM: brief source→sink summary. For LOW: severity + category + fix only.
 
 ### "Security-Related" Boundary (for auto-fix rule)
 | Security-related (never auto-fix) | Not security-related (can offer to fix) |
@@ -58,14 +59,22 @@ tools: [Read, Grep, Glob, codegraph_search, codegraph_callers, codegraph_context
 ## Trigger
 When user says: "review this", "review", "code review", "is this correct", "check my code", "check this", "check out", "check", before committing code
 
-## Process — Three-Stage Gated Protocol
+## Process — Three-Stage Gated Protocol with Convergence
 
-**Gate rule: failure in an earlier stage blocks later stages.** Stage 1 must PASS before Stage 2 runs.
+**Gate rule: failure in an earlier stage blocks later stages.** Stage 1 must PASS before Stage 2 runs. (If Stage 1 is blocked by SUSPECT findings → escalate to security-auditor, skip to report.)
+
+**Convergence rule (production-audit pattern):** After completing all applicable stages, re-sweep each stage one more time. If the second pass finds ZERO new findings → DONE. If it finds anything new → re-sweep. Continue until **two consecutive complete passes yield zero new findings** or until budget exhausted (max 3 passes per stage). Mark final pass count in report header: `Passes: N (converged / budget-exhausted)`.
+
+**Confidence filter (Cursor pattern):** Report only findings with >80% confidence they are real problems. If uncertain → SUSPECT (see calibration). Do NOT manufacture findings to fill the report.
+
+**No hedging (production-audit pattern):** Zero tolerance for "might/could/consider/suggest/maybe/possibly." Every finding has concrete evidence (`file:line`) + concrete fix. If you can't provide both → don't report it. If context runs out before completing → mark `TRUNCATED AT: {last_checked}` — never fake a complete review.
 
 **Target detection:** Before starting, detect what changed:
-- `.py` or `.go` files → run Stage 1 (security) + Stage 2 (quality) + Stage 3 (cross-backend)
-- `.dart` files only → Stage 1: check secrets + dependency CVEs only, then go directly to Stage 3 Flutter section
-- Mixed `.py`/`.go` + `.dart` → full Stage 1-3 for backend, Stage 3 Flutter section for frontend
+- `.py` or `.go` files → Stage 1 + Stage 2 + Stage 3 cross-backend
+- `.dart` files only → Stage 1: secrets + dependency CVEs only, then Stage 3 Flutter
+- Mixed `.py`/`.go` + `.dart` → full Stage 1-3 for backend + Stage 3 Flutter for frontend
+- **Other file types** (`.ts`, `.rs`, `.js`, etc.) → Stage 1 secrets check only. Report with caveat: "Limited review — language not in primary coverage set."
+- **Only one backend exists?** → skip cross-backend signature comparison. Note: "Single backend — cross-comparison skipped."
 
 ### Stage 1: Security & Correctness 🔴 CHECKPOINT
 **Goal: catch things that break production or leak data. Must PASS.**
@@ -80,7 +89,7 @@ Conclusion: [SAFE if all hops verified. VULNERABLE if any hop breaks. SUSPECT if
 ```
 If any hop cannot be verified → report as CRITICAL. This is Meta's 93% accuracy technique.
 
-**Calibration rule (防止门控误报):** If you cannot definitively conclude SAFE or VULNERABLE → mark as 🟡 SUSPECT, not 🔴 CRITICAL. SUSPECT findings do NOT block Stage 2. They escalate to security-auditor for deeper review. This prevents a single uncertain finding from blocking all downstream quality checks.
+**Calibration rule (防止门控误报):** Applies to ALL severity levels. If you cannot definitively conclude SAFE or VULNERABLE → mark as 🟡 SUSPECT, one level BELOW what you would have guessed. SUSPECT findings do NOT block stage gates. They escalate to security-auditor for deeper review. This prevents uncertain findings from blocking downstream checks.
 
 #### 1.2 Security Categories (source→sink trace required)
 For each finding, trace the complete input→output path. Do NOT just pattern-match.
@@ -175,18 +184,20 @@ For each finding, trace the complete input→output path. Do NOT just pattern-ma
 
 ## Review Artifacts
 
-**Before writing: `mkdir -p f:/ClaudeFiles/.reviews` if the directory does not exist.**
+**Before writing: `mkdir -p {project_root}/.reviews` if the directory does not exist.** (`{project_root}` = repository root from `git rev-parse --show-toplevel`)
 
-**Every review writes to `.reviews/{filename}-{YYMMDD-HHMM}.md`** — survives context compaction, enables escalation tracking.
+**Every review writes to `{project_root}/.reviews/{filename}-{YYMMDD-HHMM}.md`** — survives context compaction, enables escalation tracking.
 
 ```
-f:/ClaudeFiles/.reviews/
+.reviews/
 ├── main_remote-20260621-1430.md    ← this review
 ├── auth_go-20260621-1500.md        ← previous review
 └── ESCALATIONS.md                   ← recurring findings tracker
 ```
 
 **Escalation rule:** If same finding appears in 2+ consecutive reviews of the same file → auto-escalate severity one level (LOW→MEDIUM→HIGH→CRITICAL) and flag in `ESCALATIONS.md`.
+
+**Cleanup:** Keep last 20 review files per directory. Delete older than 30 days. `.reviews/` should be in `.gitignore`.
 
 ## Review Outcome Template
 ```
