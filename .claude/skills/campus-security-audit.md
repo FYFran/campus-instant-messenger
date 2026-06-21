@@ -44,6 +44,18 @@ tools: [Read, Grep, Glob, Bash, codegraph_search, codegraph_callers, codegraph_c
 ## Trigger
 When user says: "audit security", "check security", "find vulnerabilities", "is it safe", "security scan", "gitleaks", "semgrep"
 
+## Quality Rules（production-audit 模式）
+
+**Convergence rule:** After completing all applicable steps, re-sweep each step one more time. If second pass finds ZERO new findings → DONE. If it finds anything new → re-sweep. Continue until **two consecutive complete passes yield zero new findings** or budget exhausted (max 3 passes per step). Mark final pass count in report header: `Passes: N (converged / budget-exhausted)`.
+
+**Confidence filter:** Report only findings with >80% confidence they are real problems. If uncertain → mark as `SUSPECT` and escalate to human. Do NOT manufacture findings to fill the report.
+
+**No hedging:** Zero tolerance for "might/could/consider/suggest/maybe/possibly." Every finding has concrete evidence (`file:line`) + concrete fix. If you can't provide both → don't report it.
+
+**TRUNCATED AT marker:** If context runs out before completing all steps → mark `TRUNCATED AT: {last_checked_step}` in report header. Never fake a complete audit. If budget exhausted → deliver partial findings immediately, ask user: "Continue from Step {N}?"
+
+**Progressive disclosure:** >5 findings or >1000 lines changed → group by severity, report CRITICAL/HIGH first, ask before expanding. Reserve full semi-formal trace for CRITICAL/HIGH only. MEDIUM: brief source→sink summary. LOW: severity + category + fix only.
+
 ## Process
 
 ### Step 1 — Gitleaks Secret Scan
@@ -74,6 +86,17 @@ Custom rules in `.semgrep/python.yml` catch:
 🔴 **CHECKPOINT Step 2 — Semgrep Gate:** If any ERROR severity finding → flag report as BLOCKING, but continue to Step 3 (endpoint audit may reveal related issues). If only WARNING → PASS, continue. Always read `.semgrep/python.yml` before reporting — rules evolve.
 
 ### Step 3 — Endpoint Security Audit
+
+**Semi-Formal Reasoning (required for every CRITICAL/HIGH finding):**
+For each security-significant code path, fill this logical certificate BEFORE reporting:
+```
+Premise: [What does this code assume? e.g., "user['id'] comes from a valid JWT"]
+Trace:  [Follow input from entry to sink. e.g., "request → get_current_user → JWT decode → user['id'] → SQL query"]
+Check:  [Verify at each hop. JWT verified? user['id'] type-checked? parameterized?]
+Conclusion: [SAFE if all hops verified. VULNERABLE if any hop breaks. SUSPECT if uncertain → escalate to human.]
+```
+If any hop cannot be verified → report as CRITICAL. This is Meta's 93% accuracy technique.
+
 Check every endpoint category against SECURITY_KB.md:
 
 **A. Authentication (12 endpoints):**
@@ -140,6 +163,16 @@ Use `pg-ops slow-queries` to check for slow SQL, `pg-ops locks` for active locks
 1. Review all findings across steps — any CRITICAL from Step 1 skipped Step 2-7? If so, note in report.
 2. Verify no duplicate findings across steps (same secret flagged by gitleaks AND hardcoded secrets grep).
 3. If any step was skipped due to tool unavailability → mark in report header: `Status: PARTIAL — {n}/7 steps completed`.
+
+### Severity Guide
+
+| Level | Criteria | Requires |
+|-------|----------|----------|
+| 🔴 CRITICAL | Auth bypass, hardcoded production secret, SQLi, data leak to unauthenticated user | Semi-formal trace mandatory |
+| 🟠 HIGH | RBAC gap, race condition, XSS, missing rate limit on auth endpoint | Semi-formal trace mandatory |
+| 🟡 MEDIUM | Missing input validation, error exposure, logging gap, SELECT *, Go/Python divergence | Source→sink trace recommended |
+| 🔵 LOW | Dependency patch, code style, missing docstring | Brief analysis sufficient |
+| ⚪ SUSPECT | Uncertain finding — cannot definitively conclude SAFE or VULNERABLE | Escalate to human for triage |
 
 ### Step 8 — Report Generation
 ```
