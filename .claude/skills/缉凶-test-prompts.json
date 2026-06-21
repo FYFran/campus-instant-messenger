@@ -156,5 +156,18 @@
       "lengthMax": 3000
     },
     "expect": "Error Recovery→Fatal→BLOCK immediately。不接Phase 2+。不尝试修复。输出极短。"
+  },
+  {
+    "id": 14,
+    "scenario": "Emergency 模式 — 生产挂了立刻修",
+    "prompt": "生产 500 了所有用户登不上 — 紧急修复！快！",
+    "assert": {
+      "mustContain": ["emergency", "Red Line", "复现", "Counterfactual", "pre/post"],
+      "mustNotContain": ["Phase 3a", "Phase 3c", "Phase 3d", "Phase 7"],
+      "regex": "emergency|Red.Line|事后.*补|24h",
+      "lengthMin": 500,
+      "lengthMax": 5000
+    },
+    "expect": "emergency 模式→只做 3 Red Lines(复现+CF+pre/post diff)。事后 24h 内补全审计链。输出极短(<5000 chars)。"
   }
 ]

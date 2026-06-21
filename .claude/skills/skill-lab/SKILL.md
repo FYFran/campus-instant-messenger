@@ -1,7 +1,7 @@
 ---
 name: skill-lab
 description: >-
-  Skill 实验台 v0.1 — 像训练神经网络一样优化 Agent Skill。核心循环：评估→诊断→有界编辑→执行验证→保留/回滚。
+  Skill 实验台 v0.3 — 像训练神经网络一样优化 Agent Skill。核心循环：评估→诊断→有界编辑→Lint→Spot-Check→保留/回滚。
   融合 SkillOpt (bounded edit + rejected buffer) + darwin-skill (人审检查点 + 反例黑名单) + autoresearch (编排器模式)。
   每次只改 ≤4 处，git ratchet 保底，Constitution 锚锁定安全意图。
   触发词：优化skill、skill评分、改进skill、skill lab、skill实验、skill质量、帮我改skill、skill review。
@@ -130,6 +130,73 @@ description: >-
 - Judge-to-Lint: 发现**新类别**的盲区（人类/judge 视角）
 - Mutation-to-Lint: 发现**已知类别内**的盲区（系统性覆盖）
 - 两者互补：Judge 发现 M11 类型 → 追加到 mutation 库 → 所有 skill 受益
+
+---
+
+## L3: Spot-Check Verification — 独立验证 agent
+
+> **原理：** Compliance Gap 论文证明了违规从输出文本本身**无法检测**。必须用独立 agent 做 spot-check——不信任执行 agent 的输出，独立验证关键 Phase。
+> **对应：** SkillOpt 的 validation gate（不信任 rollout 结果，独立评估）。
+> **频率：** 每 3 轮 skill-lab 优化后跑 1 次（昂贵但必要）。
+
+**流程：**
+```
+1. 目标 skill 执行后产生输出（如缉凶的 Bug Report）
+2. 独立验证 agent 被 spawn——无目标 skill 上下文，无执行 agent 记忆
+3. 抽查 2 个关键 Phase 输出：
+   Check A — Counterfactual 真实性：
+     "修了 X 后 bug 不再出现"——是否有独立验证证据？（不只是声明）
+     是否有 pre/post 对比数据？
+   Check B — 分类正确性：
+     T-Type 分类依据是否成立？是否有证据支持？
+     如果分类错误——整个后续链都错了
+4. 每项判定：REAL（真实分析）/ TEMPLATE（填模板）/ WRONG（分析错误）
+5. 任一 TEMPLATE 或 WRONG → skill 质量标记 SUSPECT → 回 skill-lab Phase 2 优化
+```
+
+**验证 Prompt 模板：**
+```
+你是独立验证 agent。检查以下 bug report 的 Phase {N} 输出。
+
+原始 bug 描述: {bug_description}
+Phase {N} 输出: {phase_output}
+
+判定标准：
+- REAL: 分析包含具体代码引用/数据/逻辑推理，不是套话
+- TEMPLATE: 格式正确但内容空洞。如"修后 OK"无 pre/post 对比。
+- WRONG: 分析有事实错误。如引用的代码行不存在。
+
+返回: {"phase": "N", "verdict": "REAL|TEMPLATE|WRONG", "evidence": "具体引用"}
+```
+
+**L3 结果记录：**
+```
+skill-lab Phase 2 Step 3.5 之后追加：
+  Step 3.6 — L3 Spot-Check（每 3 轮 1 次）：
+    跑 L3 验证 → 全 REAL→进 Step 4。有 TEMPLATE/WRONG→回 Step 1。
+    记录结果到 results.tsv 的 L3 列。
+```
+
+---
+
+## MEL 分级模板
+
+> **来源：** 航空最低设备清单（MEL）概念。不是所有情况都需要完整流程。
+
+**三级定义（所有 skill 默认支持）：**
+
+| 模式 | 触发 | 内容 | 合规要求 |
+|------|------|------|---------|
+| **full** | 默认 | 完整审计链 | 全 Phase 输出 |
+| **quick** | 用户说"快速/诊断/看看" | 只诊断不修复部分 | 关键 Phase 输出 |
+| **emergency** | 用户说"紧急/挂了/立刻" | 只 3 条不可跳过的红线 | 事后 24h 内补全审计链 |
+
+**Emergency 模式的 3 条红线（所有 skill 通用）：**
+1. **不可逆操作前确认** — 部署/删除/迁移前必须有人 approve
+2. **pre/post 对比** — 改动前后有可验证的差异证据
+3. **回退路径** — 如果改坏了，能回到改动前状态
+
+**Skill 作者声明 MEL：** 在 skill 的 Quick Reference 中声明 emergency 模式的具体行为。
 
 ---
 
