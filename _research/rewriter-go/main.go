@@ -306,6 +306,14 @@ func main() {
 func requireJSON(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" || r.Method == "PUT" || r.Method == "PATCH" {
+			// File upload and callback endpoints accept multipart/form-data
+			if strings.HasPrefix(r.URL.Path, "/api/upload") ||
+				strings.HasPrefix(r.URL.Path, "/api/sms-callback") ||
+				strings.HasPrefix(r.URL.Path, "/api/payment/callback") ||
+				strings.HasPrefix(r.URL.Path, "/api/payment/midtrans-callback") {
+				next.ServeHTTP(w, r)
+				return
+			}
 			ct := r.Header.Get("Content-Type")
 			if ct != "" && !strings.HasPrefix(ct, "application/json") {
 				w.Header().Set("Content-Type", "application/json")
