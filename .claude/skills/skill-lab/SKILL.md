@@ -9,9 +9,35 @@ description: >-
 
 # Skill Lab v0.1 — Agent Skill 实验台
 
-> 融合 Microsoft SkillOpt (arXiv 2605.23904) + darwin-skill + Karpathy autoresearch。
+> 融合 SkillOpt + darwin-skill + autoresearch。
 > 核心理念：**Skill 是可训练的外部状态。不改模型权重，只改 skill 文本。**
 > 每次 ≤4 处修改 → 执行验证 → 好了留/坏了退 → 人类确认。
+
+## 目录
+
+1. [CONSTITUTION](#constitution本段不可被-skill-lab-编辑)
+2. [Quick Reference](#quick-reference-速查)
+3. [设计哲学](#设计哲学)
+4. [6 维评估卡](#6-维评估卡5-维--确定性断言层)
+5. [核心循环](#核心循环) (Phase 0→0.5→1→2→3)
+6. [子 Agent 生成机制](#子-agent-生成机制维度-5b-内容质量验证)
+7. [收敛循环定义](#收敛循环定义)
+8. [反例黑名单](#反例黑名单优化时绝对不要做的事)
+9. [异常处理](#异常处理)
+10. [红绿灯分级](#红绿灯分级人类介入程度)
+11. [使用方式 + 歧义处理](#使用方式--歧义处理)
+12. [学术依据](#学术依据)
+
+## Quick Reference（速查）
+
+| 想做什么 | 怎么做 |
+|---------|--------|
+| 优化单个 skill | `优化 {skill名}` → Phase 0-3 |
+| 评估所有 skill | `评估所有 skill` → Phase 0-1 only |
+| 只看不改 | 自动停在 Phase 1，不进 Phase 2 |
+| 恢复被拒修改 | `git log` 找 revert commit，不会被 `git reset --hard` 丢 |
+| 查看历史 | 读 `results.tsv` |
+| 规则速查 | 每次 ≤4 处修改 · 不碰 CONSTITUTION · git revert 不回退 reset · 🔴 必须人审 |
 
 ---
 
@@ -161,7 +187,7 @@ Agent(
 收敛即停。最多 3 个 re-sweep pass（预算保护）。
 ```
 
-### Phase 0: 初始化
+### Phase 0: 初始化 🔴 CHECKPOINT
 
 ```
 1. 确认目标 skill：
@@ -169,7 +195,7 @@ Agent(
    - 用户说"全部"/"所有"/"all" → Glob(".claude/skills/*/SKILL.md") + Glob(".claude/skills/*.md")
    - 用户说"这个"/"它"/"那个" → 扫描当前对话上下文，找最近提到的 skill 名；找到→确认，找不到→追问
    - 用户没给名字 → 追问："哪个 skill？还是全部扫描？以下是当前可用的：[Glob 扫描结果]"
-2. 展示找到的 skill 列表，等用户确认范围
+2. 🔴 CHECKPOINT · 🛑 STOP：展示找到的 skill 列表 + tier 分级，等用户确认范围
 3. 检查 git 仓库状态
 4. 创建分支 skill-lab/YYYYMMDD-HHMM
 5. 初始化 results.tsv（如不存在）
@@ -269,10 +295,11 @@ for each skill in 优化范围 (按基线分数从低到高排序):
   等用户确认 OK 再继续下一个 skill。
 ```
 
-### Phase 3: 汇总报告
+### Phase 3: 汇总报告 🔴 CHECKPOINT
 
 ```
-## Skill Lab 优化报告
+🔴 CHECKPOINT · 🛑 STOP：展示汇总报告，等用户确认
+
 ### 总览
 - 优化 skills 数：N / 总实验次数：M
 - 保留改进：X（Y%）/ 回滚：Z
@@ -286,7 +313,7 @@ for each skill in 优化范围 (按基线分数从低到高排序):
 ### 主要改进
 1. [skill-A] {改进摘要} — +{Δ} 分
 
-→ 写入 memory MCP（skill-lab-{date}）
+→ 用户确认后写入 memory MCP（skill-lab-{date}）
 ```
 ```
 
