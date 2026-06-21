@@ -26,7 +26,9 @@ description: >-
 9. [异常处理](#异常处理)
 10. [红绿灯分级](#红绿灯分级人类介入程度)
 11. [使用方式 + 歧义处理](#使用方式--歧义处理)
-12. [学术依据](#学术依据)
+12. [Phase 4: DISCOVER](#phase-4-discover--从失败中发现新-skillevoskill-模式)
+13. [使用追踪](#使用追踪usage-tracker)
+14. [学术依据](#学术依据)
 
 ## Quick Reference（速查）
 
@@ -68,7 +70,7 @@ description: >-
 | **SkillOpt** | bounded edit、rejected buffer、epoch early stop、best_skill.md 部署 | 全自动（无人审）、单 skill、需外部 API |
 | **darwin-skill** | 人审检查点、反例黑名单、150% 体积上限、git ratchet | LLM judge 评分（46.4% 不准）、9 维 rubric 过度复杂 |
 | **autoresearch** | 编排器模式、state 持久化、安全不变量 | 通用任务框架（非 skill 专用） |
-| **皮特独有** | Constitution 锚、pantheon 执行验证、memory MCP 经验库 | — |
+| **皮特独有** | Constitution 锚、pantheon 执行验证、memory MCP 经验库、DISCOVER 新 skill 发现、使用追踪 | — |
 
 ---
 
@@ -324,7 +326,77 @@ for each skill in 优化范围 (按基线分数从低到高排序):
 
 → 用户确认后写入 memory MCP（skill-lab-{date}）
 ```
+
+---
+
+## Phase 4: DISCOVER — 从失败中发现新 Skill（EvoSkill 模式）
+
+当现有 skill 无法处理某个任务时，DISCOVER 分析是否需要**新 skill**。
+
 ```
+触发条件：
+  - 任务执行失败，且失败原因不是"skill 不够好"而是"没有对应的 skill"
+  - 用户说"这个应该有个 skill" / "能不能自动做这个" / "缺个 skill"
+  - 某个任务类型被手动执行了 3+ 次（重复劳动信号）
+
+流程：
+  1. Failure Analyzer — 分析最近的失败/手动任务：
+     问：这个任务有 skill 覆盖吗？
+     有 → 用 EVOLVE 优化那个 skill
+     没有 → 继续
+
+  2. Skill Proposer — 生成新 skill 提案：
+     - 功能：这个 skill 做什么
+     - 触发词：什么时候该用
+     - 核心指令（草稿）
+     - 与其他 skill 的关系（互补/依赖/独立）
+
+  3. 🔴 CHECKPOINT · 🛑 STOP — 展示提案，等用户确认
+     用户确认 → 创建 SKILL.md + test-prompts.json
+     用户拒绝 → 记录到 rejected proposals
+
+  4. Skill Builder — 自动生成：
+     - .claude/skills/{name}/SKILL.md（含 CONSTITUTION）
+     - .claude/skills/{name}/test-prompts.json（2-3 用例）
+     - 更新 CLAUDE.md 路由表
+
+  5. 创建完成后 → 自动进入 Phase 1（基线评估）
+     然后可进入 Phase 2（优化循环）
+```
+
+### 重复劳动信号检测
+
+```
+扫描 skill-lab/skill-usage.jsonl：
+  如果同一 task_type 出现 3+ 次且无对应 skill →
+  🔴 CHECKPOINT："我注意到你手动做了 3 次 {task_type}。要我创建一个 skill 来自动化吗？"
+```
+
+---
+
+## 使用追踪（Usage Tracker）
+
+每次 skill 被调用时，追加到 `.claude/skills/skill-lab/skill-usage.jsonl`：
+
+```json
+{"timestamp": "2026-06-21T15:00", "skill": "campus-code-review", "task": "review auth.go changes", "outcome": "success", "tokens": 3200, "notes": "found 2 HIGH findings"}
+```
+
+**追踪维度：**
+| 字段 | 用途 |
+|------|------|
+| timestamp | 使用频率分析 |
+| skill | 哪个 skill 被触发 |
+| task | 任务描述 |
+| outcome | success/failure/partial |
+| tokens | 消耗 token 数 |
+| notes | 简要备注 |
+
+**skill-lab 如何使用追踪数据：**
+- 按使用频率排序 → 优先优化高频 skill
+- 按失败率排序 → 优先修复高失败率 skill
+- 检测 180 天未使用的 skill → 提议退役
+- 检测重复劳动信号 → 触发 DISCOVER
 
 ---
 
