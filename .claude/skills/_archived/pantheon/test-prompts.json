@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "scenario": "典型场景：高强度代码改动",
+    "prompt": "用 pantheon 实现 campus_app 的用户角色权限重构 — 现在 college_admin 能越权看到其他学院的数据，需要修复",
+    "expected": "skill 应执行 Workflow：plan → 3 parallel variants → test-driven self-correction → 2 adversarial verification → synthesis。最终输出通过测试的代码 + 验证报告"
+  },
+  {
+    "id": 2,
+    "scenario": "不适用场景",
+    "prompt": "pantheon fix this typo in README.md — line 42 says 'recieve' should be 'receive'",
+    "expected": "skill 应拒接或警告：pantheon 不适合 trivial 改动（成本高）。建议用 caveman:builder 直接修。不应启动完整 Workflow"
+  },
+  {
+    "id": 3,
+    "scenario": "边界场景：需求模糊",
+    "prompt": "run it through pantheon — the login is slow, make it faster",
+    "expected": "skill 应先追问：慢多少？什么条件下慢？有没有可测量的性能指标？再决定是否适用 pantheon 还是用 performance-analyzer"
+  }
+]

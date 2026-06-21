@@ -28,6 +28,10 @@
 | 架构设计 | 架构/新系统 | architect |
 | UI设计 | UI/界面/样式 | impeccable |
 | 代码审查 | review/审查 | code-reviewer |
+| 高强度改动 | 重要/关键/mission-critical/pantheon | pantheon-custom (3变体并行+任意模型对抗验证) |
+| 项目差距分析 | gap/what's missing/audit repo | pantheon-gap-custom (9维度审查+任意模型确认) |
+| 自主监控 | 自检/watch/发现 | watcher (cost-watchdog + 自分配任务) |
+| Skill优化 | 优化skill/skill评分/改进skill/skill lab | skill-lab (评估→诊断→有界编辑→验证→保留/回滚) |
 | 搜索代码 | 找/在哪/搜 | codegraph_search (不用 Grep -r) |
 
 ## 捷径
