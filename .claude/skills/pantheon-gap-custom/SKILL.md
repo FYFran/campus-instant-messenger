@@ -46,6 +46,17 @@ description: >-
 | 5 | **不改 config 每次手动指定** | 重复劳动，容易打错模型名 | 用 `/pantheon-model` 设默认 |
 | 6 | **单 dimension 扫描当全面报告** | gap scan 覆盖度取决于 dimension 选择 | 标注 "Partial — {n}/{total} dimensions probed" |
 
+## Gotchas — 真实踩坑（最高信号）
+
+| # | 坑 | 表现 | 正确做法 |
+|---|-----|------|---------|
+| 1 | **codex exec 静默失败** | codex 返回 exit 0 但 output 为空 JSON（模型 unreachable 或 key 过期） | 检查 output 非空 + 含 `valid` 字段。空输出 → 标记 `unconfirmed`，不静默跳过 |
+| 2 | **pipeline 并行竞态** | `pipeline()` 的 probe 和 confirm 阶段共享 `target` 路径，agent 同时读没问题但 confirm 的 codex exec 可能锁文件 | confirm 阶段使用 `--sandbox read-only`（已在 JS 中设置），绝不加 `--sandbox none` |
+| 3 | **DeepSeek API 返回中文 verdict** | DeepSeek 有时输出中文 JSON key（`"有效": true` 而非 `"valid": true`） | JS 的 VERDICT_SCHEMA 强制 schema 验证，解析失败 → `valid:true, reason:"parse error — gap kept"` |
+| 4 | **大项目 probe 超时** | 单 dimension probe agent 读 50+ 文件 → 3-5 分钟 → agent 超时返回 null | `maxDimensions` 默认 6，大项目降到 4。单 probe 超时 → 该 dimension 标记 `SKIPPED`，不阻塞 pipeline |
+| 5 | **verifier 全票否决但全是弱理由** | 3 verifier 都说 `valid:false` 但 steelman 字段为空或 reason 是 "seems unnecessary" | JS 已强制 `steelman` 必填。steelman 为空或 reason 不含 code reference → verdict 降权 0.5 |
+| 6 | **config.json schema 变更** | `/pantheon-model` 升级后 `verifier` 字段可能变成 `defaultVerifier` | 读取 config 时兼容两种 key：`verifier ?? defaultVerifier ?? 'claude'` |
+
 ---
 
 ## Quick Reference（速查）
@@ -97,50 +108,19 @@ User picks confirm model per run via `verifier` arg. External models driven thro
 | `model:<name>` or a bare model id | that codex model id | `codex` CLI configured for it |
 
 ## Requirements
-- **Workflow orchestration** — a paid plan (Pro/Max/Team/Enterprise, v2.1.154+); on Pro enable
-  `/config` → Dynamic workflows. Same as `pantheon-gap`. Not on the Free tier.
-- **Claude-tier verifiers (`opus`/`sonnet`/`haiku`/`fable`) need nothing extra.**
-- **External / local verifiers need the `codex` CLI on PATH** — it's the router this skill drives via
-  `codex exec`. Note this is the codex **binary**, *not* the Codex plugin: the plugin
-  (`codex:codex-rescue`) is only needed for `verifier: codex`/`gpt`. Per choice:
-  - `deepseek` / `qwen` / `kimi` → the matching API-key env var must be set (`DEEPSEEK_API_KEY`,
-    `OPENROUTER_API_KEY`, `MOONSHOT_API_KEY`).
-  - `ollama:` / `lmstudio:` → that local server running with the model pulled (no API key, fully local).
-  - `profile:` / bare model id → the provider/model defined in `~/.codex/config.toml`.
-- **If the chosen verifier can't actually run** (codex missing, key unset, model unreachable), the
-  driver KEEPS the gap tagged "external verifier unavailable — unconfirmed" rather than silently
-  dropping it; treat such a report as not really cross-checked. Check availability first (step 2); if
-  you can't, fall back to the `pantheon-gap` base or a Claude tier.
-
-## When to use
-- A real project/repo you want an evidence-backed, cross-checked gap list for — before a launch, after
-  an MVP, inheriting a codebase — where you want a specific model to filter the findings (a cross-vendor
-  model to strip same-model confirmation bias hardest, a free local model to save cost, or a Claude tier).
-- Don't use it to *write* code — that's `pantheon-custom`. Don't use it for a trivial one-file look.
-  Each run costs real tokens.
+- Workflow orchestration: Pro/Max/Team/Enterprise plan (not Free tier)
+- External verifiers: `codex` CLI on PATH + matching `*_API_KEY` in `~/.pantheon/env`
+- Claude-tier verifiers (`opus`/`sonnet`/`haiku`): nothing extra needed
+- Verifier unavailable → flag `unconfirmed`, don't silently substitute
 
 ## Procedure (when this skill triggers)
-1. **Resolve the confirm model** 🔴 CHECKPOINT — Gate: No config + no inline model → **BLOCK**, send user to `/pantheon-model`. Config found or inline model named → **PASS**, continue.
-   1. If the user named a model inline ("confirm with deepseek", "ollama/qwen2.5:7b로 점검"), use that —
-      just this run; it doesn't change the saved default.
-   2. Else **Read `~/.pantheon/config.json`** and use its `verifier`. If it also has a `providers` block,
-      keep it to pass along (step 5). The default is shared with `pantheon-custom`.
-   3. If there's **no config yet**, tell the user to run **`/pantheon-model`** once to pick a model (it
-      lists what's available and sets up any API key), then either wait or proceed with the Claude
-      default (`= the pantheon-gap base`) for this run. Don't onboard here — picking the model is
-      `/pantheon-model`'s job.
-   Formats: OpenClaw-style `provider/model-id` (`ollama/qwen2.5:7b`, `deepseek/deepseek-chat`, …) or an
-   alias (`deepseek`, `qwen`, `kimi`, `codex`, `ollama:<m>`, `profile:<name>`).
-2. **Sanity-check the confirm model** 🔴 CHECKPOINT — Gate: Verifier unavailable → flag "unconfirmed" but **continue** (don't block pipeline). Verifier available → **PASS**. Never silently substitute Claude for external model.
-   - Claude tier → nothing to check.
-   - `codex`/`gpt` → the `codex:codex-rescue` agent type (Codex plugin) is installed.
-   - Local (`ollama/…`, `lmstudio/…`) → `codex` CLI on PATH and the local server up with the model pulled.
-   - Cloud (deepseek, qwen, gemini, …) → `codex` CLI on PATH and the provider's key available
-     (`printenv <ENVKEY>`, or in `~/.pantheon/env` which the harness sources before codex). **If the key
-     isn't set up, send the user to `/pantheon-model`** — it does the secure key setup (key goes in a
-     file, never the chat). Don't collect keys here.
-   If it can't run, offer a Claude tier or the `pantheon-gap` base instead of shipping an unconfirmed
-   report.
+1. **Resolve the confirm model** 🔴 CHECKPOINT — Gate: No config + no inline model → **BLOCK**, send to `/pantheon-model`. Config found or inline model named → **PASS**.
+   - Inline model named → use it this run. Else read `~/.pantheon/config.json` → use its `verifier` + `providers`.
+   - No config yet → offer Claude default or wait for `/pantheon-model` (don't onboard here).
+   - Format: `provider/model-id` or alias (`deepseek`, `qwen`, `ollama:<m>`, `profile:<name>`).
+2. **Sanity-check the confirm model** 🔴 CHECKPOINT — Gate: Unavailable → flag "unconfirmed", **continue**. Available → **PASS**. Never silently substitute Claude.
+   - Claude tier: nothing. `codex`/`gpt`: plugin installed. Local: `codex` + server up. Cloud: `codex` + key in `~/.pantheon/env`.
+   - Can't run → offer Claude tier or `pantheon-gap` base.
 3. **Pin the target** 🔴 CHECKPOINT — Gate: No target path → **BLOCK**, ask 1 short question. Target pinned + focus clear → **PASS**, continue. Never guess target path. (e.g. "security and
    tests only")? If unclear, ask 1 short question.
 4. **Decide the parameters:**
@@ -171,6 +151,36 @@ User picks confirm model per run via `verifier` arg. External models driven thro
    probed, how many gaps were found vs. confirmed by the chosen model (survived adversarial dismissal),
    the top prioritized gaps, the quick wins, and the single highest-leverage fix. **State which model
    did the confirming** (the script logs it).
+
+## Output Specification
+
+When Workflow completes, deliver this structured summary (no preamble):
+
+```
+## Gap Analysis: {target} — {YYMMDD-HHMM}
+**Confirm model:** {VR.who} | **Passes:** {N} | **Lenses:** {lensCoverage}
+
+### Summary
+{one-paragraph project state assessment}
+
+### Confirmed Gaps ({n})
+| # | P | Dimension | Gap | Evidence | Confidence | Fix |
+|---|----|-----------|-----|----------|------------|-----|
+| 1 | 🔴P0 | security | No auth on /admin | admin.py:42 | 0.95 | Add Depends(get_current_user) |
+
+### SUSPECT Gaps ({n}) — avg confidence <0.8, treat as suggestions
+| # | Dimension | Gap | Confidence | Why SUSPECT |
+|---|-----------|-----|------------|-------------|
+
+### Quick Wins ({n})
+- [ ] {cheap high-value fix 1}
+- [ ] {cheap high-value fix 2}
+
+### Highest-Leverage Fix
+**{title}** — {why this one first}
+```
+
+**Rule:** Never list a gap without file:line evidence. Never list a confirmed gap with confidence <0.8 (those are SUSPECT). Always state which model did the confirming.
 
 ## Pipeline (what the script does)
 
