@@ -30,9 +30,9 @@
     "scenario": "零依赖回退 — codegraph/SSH/firecrawl 都不可用",
     "prompt": "fix the signup bug in main_remote.py — don't use any external tools, just local investigation",
     "assert": {
-      "mustContain": ["TIER1", "Read", "grep", "local", "Select-String", "PARTIAL"],
+      "mustContain": ["TIER1", "Read", "grep", "local", "PARTIAL"],
       "mustNotContain": ["let me ssh", "fetching from firecrawl", "codegraph shows"],
-      "regex": ["TIER1", "(PARTIAL|CAPABILITY|unavailable|SKIP)"],
+      "regex": ["TIER1", "(PARTIAL|CAPABILITY|unavailable|SKIP)", "(Select-String|grep -rnE|rg -n)"],
       "lengthMin": 200,
       "lengthMax": 4000
     },
@@ -68,7 +68,7 @@
     "scenario": "双后端检查 — Python bug 必须同时查 Go",
     "prompt": "fix the broken permission check in the Python backend — users can access other users' data",
     "assert": {
-      "mustContain": ["Step 3", "Go", "both", "campus_go", "cross-check"],
+      "mustContain": ["Step 3", "Go", "campus_go", "两个后端", "都检查"],
       "mustNotContain": ["only fix Python", "skip Go", "just Python"],
       "regex": ["(Go|go|golang).*(check|verify|inspect)", "campus_go.*main_remote|main_remote.*campus_go"],
       "lengthMin": 200,
