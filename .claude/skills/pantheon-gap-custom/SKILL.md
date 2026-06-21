@@ -109,7 +109,7 @@ the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a fri
   Each run costs real tokens.
 
 ## Procedure (when this skill triggers)
-1. **Resolve the confirm model** 🔴 CHECKPOINT — the model is configured separately by `/pantheon-model`:
+1. **Resolve the confirm model** 🔴 CHECKPOINT — Gate: No config + no inline model → **BLOCK**, send user to `/pantheon-model`. Config found or inline model named → **PASS**, continue.
    1. If the user named a model inline ("confirm with deepseek", "ollama/qwen2.5:7b로 점검"), use that —
       just this run; it doesn't change the saved default.
    2. Else **Read `~/.pantheon/config.json`** and use its `verifier`. If it also has a `providers` block,
@@ -120,7 +120,7 @@ the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a fri
       `/pantheon-model`'s job.
    Formats: OpenClaw-style `provider/model-id` (`ollama/qwen2.5:7b`, `deepseek/deepseek-chat`, …) or an
    alias (`deepseek`, `qwen`, `kimi`, `codex`, `ollama:<m>`, `profile:<name>`).
-2. **Sanity-check the confirm model can run:**
+2. **Sanity-check the confirm model** 🔴 CHECKPOINT — Gate: Verifier unavailable → flag "unconfirmed" but **continue** (don't block pipeline). Verifier available → **PASS**. Never silently substitute Claude for external model.
    - Claude tier → nothing to check.
    - `codex`/`gpt` → the `codex:codex-rescue` agent type (Codex plugin) is installed.
    - Local (`ollama/…`, `lmstudio/…`) → `codex` CLI on PATH and the local server up with the model pulled.
@@ -130,7 +130,7 @@ the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a fri
      file, never the chat). Don't collect keys here.
    If it can't run, offer a Claude tier or the `pantheon-gap` base instead of shipping an unconfirmed
    report.
-3. **Pin the target** 🔴 CHECKPOINT — Which project/path is being reviewed, and is there a focus (e.g. "security and
+3. **Pin the target** 🔴 CHECKPOINT — Gate: No target path → **BLOCK**, ask 1 short question. Target pinned + focus clear → **PASS**, continue. Never guess target path. (e.g. "security and
    tests only")? If unclear, ask 1 short question.
 4. **Decide the parameters:**
    - `target`: an **absolute path** to the project root to audit.
@@ -139,7 +139,13 @@ the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a fri
    - `maxDimensions`: how many dimensions to probe (default 6).
    - `verifiers`: skeptical reviewers per finding (default 2; bump to 3 to be stricter).
    - `verifier`: the model that runs the adversarial confirm (see the table above). Omit for Claude.
-5. **Run the Workflow** — **Read `pantheon-gap-class.js` in this same directory**, then pass its
+5. 🔴 CHECKPOINT — **Pre-Workflow Gate:** Confirm parameters before launch:
+   - Target: `{target}` exists and is absolute path?
+   - Dimensions: `{maxDimensions}` dims, focused on `{focus or "none"}`
+   - Verifier: `{VR.who}` with `{verifiers}` skeptics per gap
+   - Expected cost: ~{maxDimensions} probe agents + ~{maxDimensions × verifiers} confirm agents + synthesize
+   - User confirms → **PASS**, launch Workflow. User declines → **ABORT**, return to step 3-4.
+6. **Run the Workflow** — **Read `pantheon-gap-class.js` in this same directory**, then pass its
    contents inline as the Workflow `script` argument. **Pass the chosen `verifier`:**
    ```
    Workflow({
@@ -150,7 +156,7 @@ the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a fri
    (`providers` = the `providers` block from `~/.pantheon/config.json` if present — `/pantheon-model`
    writes it for custom cloud providers; omit it and the built-in ~15-provider catalog still routes.
    This skill's instruction is itself the approval to call Workflow.)
-6. **It runs in the background.** When the completion notice arrives, report: which dimensions were
+7. **It runs in the background.** When the completion notice arrives, report: which dimensions were
    probed, how many gaps were found vs. confirmed by the chosen model (survived adversarial dismissal),
    the top prioritized gaps, the quick wins, and the single highest-leverage fix. **State which model
    did the confirming** (the script logs it).
@@ -166,12 +172,41 @@ the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a fri
 - **Synthesize** — a Claude judge dedups and prioritizes by impact × effort: top gaps, quick wins, and
   the highest-leverage next fix.
 
+## Quality Rules（production-audit 模式）
+
+**Convergence loop:** If gap report is critical (pre-launch/pre-production), re-run probe phase with different dimension angles. Two consecutive passes with zero new gaps → DONE. Max 2 re-probes (budget protection). Mark: `Passes: N (converged / budget-exhausted)`.
+
+**Confidence filter:** Report only gaps with >80% confidence they are real. Uncertain → mark `SUSPECT`, do not block action. Never manufacture gaps to fill the report.
+
+**No hedging:** Zero tolerance for "might/could/consider/suggest/maybe/possibly." Every gap: concrete `file:line` evidence + concrete fix suggestion. Can't provide both → don't report.
+
+**TRUNCATED AT:** Context exhausted mid-pipeline → mark `TRUNCATED AT: {phase}`. Deliver partial findings, ask: "Continue from {phase}?"
+
+**Progressive disclosure:** >8 gaps or >3000 lines → CRITICAL/HIGH first, ask before expanding. CRITICAL: full evidence trace. HIGH: evidence + suggestion. MEDIUM: brief summary. LOW: dimension + fix only.
+
 ## Post-Report Protocol 🔴 CHECKPOINT
 
 After delivering the gap report:
 - **Confirmed gaps** → list top 3 by impact×effort + quick wins. Ask: "Prioritize these, or drill deeper into a specific dimension?"
 - **Unconfirmed gaps** (external model unavailable) → flag them: "These gaps were NOT cross-checked — treat as suggestions, not findings."
 - **Zero gaps found** → suggest: widen dimension set, lower confirm threshold, or run with a different verifier model.
+
+## Report Artifacts
+
+**Before writing: `mkdir -p {target}/.gaps` if the directory does not exist.**
+
+Every gap analysis writes to `{target}/.gaps/{scope}-{YYMMDD-HHMM}.md` — survives context compaction, enables trend tracking.
+
+```
+.gaps/
+├── full-20260621-1430.md     ← this analysis
+├── security-20260620-0900.md ← previous focused scan
+└── ESCALATIONS.md             ← recurring gap tracker
+```
+
+**Escalation rule:** If same gap appears in 2+ consecutive analyses of the same project → auto-escalate severity one level (LOW→MEDIUM→HIGH→CRITICAL) and flag in `ESCALATIONS.md`.
+
+**Cleanup:** Keep last 20 gap files per directory. Delete older than 90 days. `.gaps/` should be in `.gitignore`.
 
 ## 反例黑名单（运行时绝对不要做的事）
 
