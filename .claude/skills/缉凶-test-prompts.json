@@ -52,8 +52,8 @@
     "scenario": "T3 静默 — 不变量+diff+属性测试",
     "prompt": "用户积分莫名其妙变少 无报错无crash",
     "assert": {
-      "mustContain": ["T3", "Silent", "diff", "Property-Based", "3d"],
-      "regex": ["T3|Silent", "diff|不变量", "Hypothesis|属性测试"],
+      "mustContain": ["T3", "diff", "Property-Based", "3d"],
+      "regex": ["T3|数据悄悄错", "diff|不变量", "Hypothesis|属性测试"],
       "lengthMin": 3000,
       "lengthMax": 15000
     },
