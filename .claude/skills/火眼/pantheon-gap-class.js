@@ -259,10 +259,10 @@ function verifierAgent(promptCore, meta) {
       `You are a DRIVER. Delegate this gap confirmation to an INDEPENDENT external model (${VR.who}) by calling its OpenAI-compatible chat API DIRECTLY (not via codex), then relay ITS verdict. Do NOT judge the gap yourself.\n\n` +
         `Steps (use Bash; never print the key):\n` +
         `1. Load the key: [ -f ~/.pantheon/env ] && . ~/.pantheon/env   (sets $${VR.envKey}).\n` +
-        `2. Using python3 so the prompt is safely JSON-escaped, write a request-body file with: model="${VR.model}", temperature=0, messages=[{"role":"user","content": THE REVIEW PROMPT BELOW, followed by "Inspect the actual code, then output ONLY one compact JSON object with keys valid(boolean), reason(string), adjustedSeverity(one of low|medium|high|critical)."}].\n` +
+        `2. Using python3 so the prompt is safely JSON-escaped, write a request-body file with: model="${VR.model}", temperature=0, messages=[{"role":"user","content": THE REVIEW PROMPT BELOW, followed by "Inspect the actual code, then output ONLY one compact JSON object with keys: valid(boolean), steelman(string,best argument FOR this gap), reason(string), confidence(number 0-1), adjustedSeverity(one of low|medium|high|critical). Steelman field is MANDATORY even when valid=false."}].\n` +
         `3. POST it: curl -s -w "\\n%{http_code}" ${VR.baseUrl}/chat/completions -H "Authorization: Bearer $${VR.envKey}" -H "Content-Type: application/json" -d @BODYFILE\n` +
         `4. From the JSON response take choices[0].message.content, extract the verdict JSON object it contains, and return THAT as your structured output (unchanged).\n` +
-        `5. If $${VR.envKey} is empty, the HTTP status is not 200, or no JSON comes back, return valid=true, reason="external verifier ${VR.who} unavailable: <short error> — gap KEPT unconfirmed, verify manually", adjustedSeverity="medium". Never fabricate a dismissal.\n\n` +
+        `5. If $${VR.envKey} is empty, the HTTP status is not 200, or no JSON comes back, return {"valid":true,"steelman":"external verifier unavailable — cannot assess independently","reason":"external verifier ${VR.who} unavailable: <short error> — gap KEPT unconfirmed, verify manually","confidence":0.3,"adjustedSeverity":"medium"}. Never fabricate a dismissal.\n\n` +
         `REVIEW PROMPT <<<\n${promptCore}\n>>>`,
       { schema: VERDICT_SCHEMA, ...meta },
     )
@@ -275,7 +275,7 @@ function verifierAgent(promptCore, meta) {
         `2. Write the REVIEW PROMPT (between <<< >>> below) to a file $PROMPT.\n` +
         `3. Load saved API keys (if any), then run EXACTLY (OUT = another mktemp file). Do NOT print the keys:\n   [ -f ~/.pantheon/env ] && . ~/.pantheon/env;  codex exec --skip-git-repo-check --ephemeral --sandbox read-only -C ${target} ${VR.codexArgs.join(' ')} --output-schema "$SCHEMA" -o "$OUT" < "$PROMPT"\n   If codex rejects --output-schema for this provider, drop that flag and instead extract the JSON object the model prints to stdout.\n` +
         `4. Read $OUT (or the parsed stdout JSON) and return it as your structured verdict, unchanged.\n` +
-        `If codex is missing / the *_API_KEY is unset / the model is unreachable / no JSON is produced, return {"valid":true,"reason":"external verifier ${VR.who} unavailable: <short error> — gap KEPT unconfirmed, verify manually","adjustedSeverity":"medium"} — never fabricate a dismissal.\n\n` +
+        `If codex is missing / the *_API_KEY is unset / the model is unreachable / no JSON is produced, return {"valid":true,"steelman":"external verifier unavailable — cannot assess independently","reason":"external verifier ${VR.who} unavailable: <short error> — gap KEPT unconfirmed, verify manually","confidence":0.3,"adjustedSeverity":"medium"} — never fabricate a dismissal.\n\n` +
         `REVIEW PROMPT <<<\n${promptCore}\n\nInspect the actual code, then output ONLY the verdict JSON.\n>>>`,
       { schema: VERDICT_SCHEMA, ...meta },
     )
@@ -361,7 +361,10 @@ while (passes < MAX_PASSES) {
     const critDims = [...new Set(confirmed.filter((g) => g.adjustedSeverity === 'critical').map((g) => g.dimension))]
     const complementDims = critDims.map((d) => COMPLEMENTS[d] || d).filter((d) => !critDims.includes(d))
     // Merge: critical dims first, then complements, then original rotation for coverage
-    currentDims = [...new Set([...critDims, ...complementDims, ...currentDims.slice(1), currentDims[0]])].slice(0, maxDims)
+    // Convert critDims/complementDims strings back to {key, why} objects to avoid d.key=undefined
+    const critDimObjs = critDims.map((k) => ({ key: k, why: `re-probe: CRITICAL gap found in ${k}` }))
+    const compDimObjs = complementDims.map((k) => ({ key: k, why: `complementary to critical dimension` }))
+    currentDims = [...new Map([...critDimObjs, ...compDimObjs, ...currentDims].map((d) => [d.key, d])).values()].slice(0, maxDims)
     log(`Pass ${passes}: ${confirmed.length} confirmed (CRITICAL in ${critDims.join(',')}) → re-probing: ${currentDims.map((d) => d.key || d).join(', ')}`)
     currentSeed = confirmed.filter((g) => g.adjustedSeverity === 'critical').map((g) => `[RE-PROBE seed] ${g.dimension}: ${g.title} — ${g.evidence}`)
   } else {

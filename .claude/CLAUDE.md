@@ -20,7 +20,7 @@
 |------|--------|-------------|
 | 改代码(1-2文件) | 修/fix/patch | caveman:builder + code-reviewer + security-auditor |
 | 改代码(3+文件) | 重构/refactor | refactor-master |
-| 安全审计 | 安全/漏洞/audit | security-auditor-supreme + security-auditor |
+| 安全审计 | 铁壁/安全/漏洞/audit/security audit | 铁壁 (7步门控: gitleaks→semgrep→端点审计→密钥→CVE→nuclei→DB) |
 | Bug排查 | bug/报错/不工作 | codegraph_context → debugger |
 | 读代码 | 怎么实现的/在哪 | codegraph_context → codegraph_explore |
 | 部署 | deploy/上线 | deploy-captain |
@@ -29,7 +29,7 @@
 | UI设计 | UI/界面/样式 | impeccable |
 | 代码审查 | review/审查 | code-reviewer |
 | 高强度改动 | 重要/关键/mission-critical/pantheon | pantheon-custom (3变体并行+任意模型对抗验证) |
-| 项目差距分析 | gap/what's missing/audit repo | pantheon-gap-custom (9维度审查+任意模型确认) |
+| 项目差距分析 | 火眼/gap/差距/find gaps/confirm gaps | 火眼 (7 Phase pipeline: PreScan→Map→Probe→Confirm→Synthesize→Critic→Write) |
 | 自主监控 | 自检/watch/发现 | watcher (cost-watchdog + 自分配任务) |
 | Skill优化 | 优化skill/skill评分/改进skill/skill lab | skill-lab (评估→诊断→有界编辑→验证→保留/回滚) |
 | 搜索代码 | 找/在哪/搜 | codegraph_search (不用 Grep -r) |

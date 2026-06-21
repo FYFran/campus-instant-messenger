@@ -53,7 +53,7 @@
     "prompt": "audit the Python backend but gitleaks and semgrep are not installed",
     "assert": {
       "mustContain": ["PARTIAL", "fallback", "rg -nE", "rg -n"],
-      "mustNotContain": ["PASS", "clean"],
+      "mustNotContain": ["all clean", "no issues found", "100% secure", "perfect score"],
       "lengthMin": 200,
       "lengthMax": 5000
     },

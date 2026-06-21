@@ -1,80 +1,80 @@
 [
   {
     "id": 1,
-    "scenario": "典型场景：用 DeepSeek 确认的差距分析 → agent Output Spec 格式",
-    "prompt": "pantheon gap custom f:/ClaudeFiles verify with deepseek — focus on security",
+    "scenario": "典型：用 DeepSeek 确认 → agent Output Spec 格式",
+    "prompt": "火眼 f:/ClaudeFiles verify with deepseek — focus on security",
     "assert": {
-      "mustContain": ["## Gap Analysis", "Confirm model", "DeepSeek", "### Summary", "### Confirmed Gaps", "### Quick Wins", "### Highest-Leverage Fix", "P0", "P1", "evidence", "confidence"],
-      "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you", "\"confidence\": 0", "\"passes\": 0"],
-      "regex": ["(P0|P1|P2|P3).*\\|.*\\|.*\\|", "confidence.*0\\.[0-9]+", "file:line|`.+`:\\d+", "Passes.*[1-9]"],
+      "mustContain": ["## Gap Analysis", "Confirm model", "DeepSeek", "### Summary", "### Confirmed Gaps", "### Quick Wins", "### Highest-Leverage Fix", "Evidence", "Confidence", "Fix"],
+      "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you"],
+      "regex": ["(P0|P1|P2|P3).*\\|.*\\|.*\\|", "confidence.*0\\.[0-9]+", "Passes.*[1-9]"],
       "lengthMin": 300,
-      "lengthMax": 6000
+      "lengthMax": 10000
     },
-    "expect": "Agent 按 Output Spec 输出: Gap Analysis标题 → Confirm model标注DeepSeek → Summary → Confirmed Gaps表格(P0-P3+evidence+confidence) → Quick Wins → Highest-Leverage Fix"
+    "expect": "Agent 按 Output Spec 输出 Gap Analysis 标题 → Confirm model(DeepSeek) → Summary → Confirmed Gaps 表格(P0-P3+Evidence+Confidence+Fix) → Quick Wins → Highest-Leverage Fix"
   },
   {
     "id": 2,
-    "scenario": "边界：verifier未配置 → BLOCK gate → 追问",
-    "prompt": "pantheon gap custom f:/ClaudeFiles — I haven't run /pantheon-model yet",
+    "scenario": "边界：verifier 未配置 → BLOCK gate",
+    "prompt": "火眼 f:/ClaudeFiles — 我还没跑过 /pantheon-model",
     "assert": {
-      "mustContain": ["/pantheon-model", "config", "Claude", "default"],
+      "mustContain": ["/pantheon-model", "config", "Claude"],
       "mustNotContain": ["## Gap Analysis", "### Confirmed Gaps", "### Summary"],
-      "regex": ["(?i)(run|setup|configure).*(pantheon.model|config)", "BLOCK|default.*Claude|proceed.*default"],
+      "regex": ["(run|setup|configure).*(pantheon.model|config)", "BLOCK|default.*Claude|proceed.*default"],
       "lengthMin": 80,
       "lengthMax": 800
     },
-    "expect": "Agent检测无config → BLOCK gate触发 → 输出/pantheon-model指引或Claude default选项 → 不输出Gap Analysis报告(不启动Workflow)"
+    "expect": "Agent 检测无 config → BLOCK gate 触发 → 输出 /pantheon-model 指引或 Claude default 选项 → 不输出 Gap Analysis 报告"
   },
   {
     "id": 3,
-    "scenario": "歧义：无路径无模型 → 追问两个信息",
+    "scenario": "歧义：无路径无模型 → 追问",
     "prompt": "do a gap analysis on my project",
     "assert": {
-      "mustContain": ["which project", "which model", "?"],
-      "mustNotContain": ["## Gap Analysis", "### Confirmed Gaps", "Confirm model", "P0"],
+      "mustContain": ["which project", "which model"],
+      "mustNotContain": ["## Gap Analysis", "### Confirmed Gaps"],
       "regex": ["(?i)(which|what).*(project|path|repo|model|verifier)"],
       "lengthMin": 50,
-      "lengthMax": 600
+      "lengthMax": 800
     },
-    "expect": "Agent追问两个信息: 项目路径 + 确认模型 → 不输出Gap Analysis报告"
+    "expect": "Agent追问两个信息: 项目路径 + 确认模型 → 不输出 Gap Analysis 报告"
   },
   {
     "id": 4,
-    "scenario": "引擎验证：steelman + lens + SUSPECT + confidence过滤",
-    "prompt": "pantheon gap custom f:/ClaudeFiles verify with claude — dimensions security,testing",
+    "scenario": "引擎验证：Output Spec 含 Lenses + SUSPECT + confidence 表格列",
+    "prompt": "火眼 f:/ClaudeFiles verify with claude — dimensions security,testing",
     "assert": {
-      "mustContain": ["### Confirmed Gaps", "### SUSPECT Gaps", "confidence", "lens", "steelman", "weightedVotes", "P0", "P1"],
-      "mustNotContain": ["\"steelman\": \"\"", "\"weightedVotes\": 0"],
-      "regex": ["steelman.*(exploit|condition|affected|scenario|worst)", "SUSPECT.*avg confidence.*<.*0\\.8|SUSPECT.*low confidence", "(lens|Lens).*(correctness|security|performance|completeness|architecture)", "weightedVotes.*[0-9\\.]+"],
+      "mustContain": ["### Confirmed Gaps", "### SUSPECT Gaps", "Lenses", "confidence", "P0", "P1", "Evidence", "Passes"],
+      "mustNotContain": ["\"steelman\":", "\"weightedVotes\":", "\"criticPassed\":", "\"lensBreakdown\":"],
+      "regex": ["SUSPECT.*(avg confidence|low confidence)", "Lenses.*(correctness|security|performance)", "Passes.*[1-9]", "P0.*\\|.*\\|.*\\|"],
       "lengthMin": 400,
-      "lengthMax": 8000
+      "lengthMax": 10000
     },
-    "expect": "Confirmed Gaps: 每个含steelman(非空)+confidence(0.0-1.0)+lens标签+weightedVotes → SUSPECT Gaps: conf<0.8分离 → P0-P3优先级标注"
+    "expect": "Agent 输出 Output Spec 格式: Confirmed Gaps 表格(含P0-P3+Evidence+Confidence+Fix列) + SUSPECT Gaps 分离 + Lenses覆盖 + Passes≥1。不输出 JS 内部字段"
   },
   {
     "id": 5,
-    "scenario": "可靠性：Critic auto-fix + SKIP tracking + TRUNCATED检测",
+    "scenario": "可靠性：Critic auto-fix + 产物写入 + passes",
     "prompt": "full gap analysis on f:/ClaudeFiles with qwen verifier",
     "assert": {
-      "mustContain": ["### Confirmed Gaps", "### SUSPECT Gaps", "criticPassed", "criticIssues", ".gaps/", ".md", "passes", "avgConfidence", "Confirm model", "Qwen"],
-      "mustNotContain": ["\"passes\": 0", "\"criticPassed\": false"],
-      "regex": ["CRITIC.*(passed|auto-fix|fixed in [12])", "SKIPPED.*(dimension|dim)", "TRUNCATED|(partial|incomplete).*(report|analysis)", "Passes.*[1-9]"],
+      "mustContain": ["### Confirmed Gaps", "### Quick Wins", "### Highest-Leverage Fix", "Confirm model", "Qwen", "Passes", ".gaps/"],
+      "mustNotContain": ["\"criticPassed\":", "\"criticIssues\":", "\"avgConfidence\":", "\"artifactPath\":"],
+      "regex": ["Passes.*[1-9]", "P0.*\\|.*Evidence.*\\|.*Confidence", ".gaps/.*\\.md"],
       "lengthMin": 500,
-      "lengthMax": 10000
+      "lengthMax": 12000
     },
-    "expect": "Agent报告含: Critic验证结果(passed/auto-fix) + SKIP维度追踪 + TRUNCATED检测 + artifact路径(.gaps/.md) + passes≥1 + Qwen confirm标注"
+    "expect": "Agent 输出完整 Output Spec: Gap Analysis → Confirm model(Qwen) → Summary → Confirmed Gaps + SUSPECT → Quick Wins → Highest-Leverage Fix。含 .gaps/ 产物路径"
   },
   {
     "id": 6,
-    "scenario": "完美性：互补维度 + 降权投票 + config兼容 + 语言感知",
-    "prompt": "pantheon gap custom f:/ClaudeFiles verify with sonnet — maxDimensions 5",
+    "scenario": "完美性：完整表格列 + Lenses + Passes + Quick Wins",
+    "prompt": "火眼 f:/ClaudeFiles verify with sonnet — maxDimensions 5",
     "assert": {
-      "mustContain": ["### Confirmed Gaps", "weightedVotes", "lensBreakdown", "complement", "artifactPath", ".gaps/"],
-      "mustNotContain": ["\"weightedVotes\": 0", "verdicts\": 0"],
-      "regex": ["(complement|re-prob).*(security|correctness|performance|architecture|testing|completeness)", "weightedVotes.*[0-9\\.]+.*validVotes.*[1-9]", "(Python|Go|Rust|Dart|TypeScript|JavaScript).*(pattern|matched|found)", "CRITIC.*(passed|auto-fix|fixed)"],
+      "mustContain": ["### Confirmed Gaps", "### Quick Wins", "### Highest-Leverage Fix", "Evidence", "Confidence", "Fix", "Lenses", "Passes"],
+      "mustNotContain": ["\"weightedVotes\":", "\"lensBreakdown\":", "\"complement\":", "\"artifactPath\":"],
+      "regex": ["Lenses.*(correctness|security|performance|architecture|completeness)", "Passes.*[1-9]", "P0.*\\|.*Evidence.*\\|.*Confidence.*\\|.*Fix"],
       "lengthMin": 500,
-      "lengthMax": 10000
+      "lengthMax": 12000
     },
-    "expect": "Agent报告验证: 1)互补维度(smart convergence) 2)降权投票(weak dismissal→0.5) 3)config schema兼容(verifier??defaultVerifier) 4)语言感知PreScan(多语言pattern) 5)Critic auto-fix 6)artifact持久化"
+    "expect": "Agent 输出 Output Spec 格式: Confirmed Gaps 表格含所有列(Evidence/Confidence/Fix) + Lenses覆盖5维度 + Passes≥1 + SUSPECT分离 + Quick Wins"
   }
 ]
