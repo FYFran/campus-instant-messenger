@@ -157,6 +157,31 @@
     "expect": "emergency→只 3 条 Red Line。事后 24h 补全合同链。"
   },
   {
+    "id": 15,
+    "scenario": "3 次修复失败 → STOP 回分类步",
+    "prompt": "修了 3 次都没好 — 每次改不同的地方，bug 还在",
+    "assert": {
+      "mustContain": ["STOP", "3", "分类"],
+      "mustNotContain": ["第 4 次"],
+      "regex": "STOP|3.*次|重读|重判|分类",
+      "lengthMin": 500,
+      "lengthMax": 3000
+    },
+    "expect": "分析步: 3+次修复失败→STOP。回分类步重判。不继续改。"
+  },
+  {
+    "id": 16,
+    "scenario": "修前确认部署文件映射",
+    "prompt": "bug 在 main_remote.py — 但生产跑的是 main.py 还是 main_remote.py？帮我确认",
+    "assert": {
+      "mustContain": ["deploy.py", "映射", "生产"],
+      "regex": "deploy\\.py|部署.*文件|main_remote|main\\.py",
+      "lengthMin": 500,
+      "lengthMax": 5000
+    },
+    "expect": "修复步前: 读 deploy.py 确认生产文件映射。不猜。"
+  },
+  {
     "id": 14,
     "scenario": "for rows.Next() 循环缺失 rows.Err() 审计",
     "prompt": "campus_go 的 ListActivities API 在数据库为空时返回 500 — 查",
