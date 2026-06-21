@@ -51,6 +51,7 @@ When user says: "audit security", "check security", "find vulnerabilities", "is 
 # Run from f:/ClaudeFiles
 gitleaks detect --source . --no-git --verbose
 ```
+**Fallback (gitleaks not installed):** Use `rg -nE '(password|secret|key|token)\s*=\s*["\x27][^"\x27]{8,}' --type-add 'code:*.{py,dart,go,yaml,toml,sh,js,ts}' -t code` to catch hardcoded secrets. Mark report header: `Status: PARTIAL — gitleaks unavailable, grep fallback used (higher false-negative risk)`.
 - Check `.gitleaks.toml` allowlist for legitimate exclusions (pet_config.json, audit.log)
 - Focus on: JWT secrets, DB passwords, API keys (DeepSeek, OpenAI), Aliyun keys
 - Any finding in `.py`, `.dart`, `.go`, `.yaml`, `.toml` files is HIGH severity
@@ -62,6 +63,7 @@ gitleaks detect --source . --no-git --verbose
 ```powershell
 semgrep --config=.\ .semgrep\ --error
 ```
+**Fallback (semgrep not installed):** Use `rg -n 'except\s*(Exception)?\s*:\s*pass' --type py` for bare-except, `rg -n 'SELECT \*' --type py` for SELECT *, `rg -n 'http://' --type py` for http:// URLs. Mark report: `Status: PARTIAL — semgrep unavailable, grep fallback used`.
 Custom rules in `.semgrep/python.yml` catch:
 - `campus-bare-except-pass` — bare except:pass (severity: ERROR)
 - `campus-dict-bracket-access` — dict bracket access without .get() (WARNING)
@@ -118,6 +120,7 @@ rg -n "password.*=.*["']" -t code --ignore-case
 ```powershell
 pip-audit
 ```
+**Fallback (pip-audit not installed):** Check `requirements.txt` against known vulnerability databases: `pip list --outdated --format=json`. For manual CVE check: search each direct dependency at https://cve.mitre.org or use `safety check`. Mark report: `Status: PARTIAL — pip-audit unavailable`.
 For Dart/Flutter: check pubspec.lock against known advisories
 For Go: `go list -m all` and check against vuln.go.dev
 
