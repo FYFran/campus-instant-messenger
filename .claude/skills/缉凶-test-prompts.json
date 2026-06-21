@@ -56,7 +56,7 @@
     "scenario": "T3 静默 bug — 不变量推断 + 数据 diff",
     "prompt": "用户积分有时莫名其妙变少了，没有报错没有 crash",
     "assert": {
-      "mustContain": ["T3", "Silent", "invariant", "中间断言", "Step 2.5"],
+      "mustContain": ["T3", "Silent", "不变量", "中间断言", "Step 2.5", "diff"],
       "mustNotContain": ["add try/except", "just add validation", "add check"],
       "regex": ["T3|Silent", "(invariant|不变量|assert.*should|expected.*actual)"],
       "lengthMin": 150,
