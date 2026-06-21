@@ -177,14 +177,23 @@ Agent(
 # 3 judge 全分歧（A/B/tie 各一）→ 标记 SUSPECT，人工判断
 # 单个 judge 置信度 < 50% → 该 judge 投票降权为 0.5
 # 最终 score = (判 B 的加权票数 / 总加权票数) × 10
+
+# Critic 强制挑刺（super-fix 模式）：
+# 每个 judge 必须至少指出 1 个改进空间。"两个版本都好"/"没问题"= 无效评估，重跑。
+# 这防止 judge 偷懒给 B 满分——强制找出差异点。
 ```
 
-### 收敛循环定义
+### 收敛循环定义 + 铁律
 
 ```
 收敛 = 连续 2 次 re-sweep 后总分提升 < 1 分（Δ < 1.0），且无新增维度评分下降。
 "零新发现" = re-sweep 过程中未出现新的 FAIL 项或评分退化。
 收敛即停。最多 3 个 re-sweep pass（预算保护）。
+
+铁律（systematic-debugging 模式）：
+  3+ 轮 re-sweep 无进展 → 停止微调。
+  建议探索性重写（Phase 2.5），而非继续改同一个维度。
+  微调无效时继续微调 = 浪费 token + 过度优化风险。
 ```
 
 ### Phase 0: 初始化 🔴 CHECKPOINT
@@ -358,11 +367,20 @@ timestamp	commit	skill	old_score	new_score	status	dimension	note
 
 ---
 
-## 使用方式 + 歧义处理
+## 使用方式 + 歧义处理 + 分级执行
+
+### 分级执行（super-fix 模式）
+| 模式 | 触发 | 行为 |
+|------|------|------|
+| **full** | `优化 {skill}` (默认) | Phase 0→0.5→1→2→3 全流程，3 judge 盲评 |
+| **quick** | `快速评估 {skill}` | Phase 0→1 only，1 judge，跳 test-prompts 生成 |
+| **safe** | `安全优化 {skill}` | full 流程但跳过 🔴 tier 的自动编辑，每步人审 |
+
+### 使用方式
 
 ```
 用户："优化 {skill名}" 或 "{skill名} skill评分"
-→ Phase 0-3 完整流程，单个 skill
+→ Phase 0-3 完整流程，单个 skill (full 模式)
 
 用户："优化全部" / "优化所有" / "全部skill"
 → Phase 0: Glob(".claude/skills/*/SKILL.md") + Glob(".claude/skills/*.md")
