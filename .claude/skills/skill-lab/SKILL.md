@@ -92,6 +92,47 @@ description: >-
 
 ---
 
+## Mutation-to-Lint — 合成变异自动发现新 lint 规则
+
+> **原理：** 不等 judge 发现盲区——主动制造缺陷看 lint 能否捕获。类似 mutation testing。
+> **目标：** lint 漏报率 < 5%（50 个 mutation 中 <3 个漏报）。
+
+**流程：**
+```
+1. 取已知高质量 skill（lint 全 PASS）
+2. 每类常见错误生成 5 个 mutation：
+   M1 删 gate row    M2 改工具名      M3 混平台命令
+   M4 删回退链       M5 变量未定义    M6 Mode描述不一致
+   M7 断言不对齐     M8 缺终端出口     M9 IP硬编码无注释
+   M10 重复内容措辞不同
+3. 每个 mutation → 跑 Pre-Judge Lint
+4. 漏报（lint PASS 但 mutation 引入了真实缺陷）→ 分析 → 新 lint 规则
+5. 追加到 Pre-Judge Lint（L16, L17...）
+```
+
+**运行频率：** 每次 lint 规则更新后重跑。新 skill 创建时跑。
+
+**常见错误类型库（持续增长）：**
+| # | Mutation 类型 | 示例 | 期望 lint 捕获 |
+|---|--------------|------|---------------|
+| M1 | 删 gate row | 删 `\| 5 \| 未先写测试 \| BLOCK \|` | L2 |
+| M2 | 改工具名 | PREFLIGHT 检测 `python3` 但命令用 `python` | L11 |
+| M3 | 混平台命令 | Phase 6 只有 bash 无 PowerShell | L1 |
+| M4 | 删回退链 | Phase 3a 删 `codegraph失败→TIER1 rg` | L6 |
+| M5 | 变量未定义 | 用 `$UNDEFINED_VAR` | L3 |
+| M6 | Mode 不一致 | QuickRef 说 Phase 5 skip 但 Phase 5 prose 没提 | L5 |
+| M7 | 断言不对齐 | test 要求 `mustContain: "Silent"` 但 skill 文本无此词 | L4 |
+| M8 | 缺终端出口 | Error Recovery 删 `BLOCK immediately` | L8 |
+| M9 | 硬编码无注释 | IP 地址无说明 | L14 |
+| M10 | 重复内容分歧 | Iron Law 两处措辞不同 | L15 |
+
+**与 Judge-to-Lint 的关系：**
+- Judge-to-Lint: 发现**新类别**的盲区（人类/judge 视角）
+- Mutation-to-Lint: 发现**已知类别内**的盲区（系统性覆盖）
+- 两者互补：Judge 发现 M11 类型 → 追加到 mutation 库 → 所有 skill 受益
+
+---
+
 ## 反例黑名单（优化时绝对不要做的事）
 
 这些是真实踩过的坑。每轮改动前对照一次。任一命中 → 改方案重写。
@@ -109,25 +150,34 @@ description: >-
 
 ---
 
-## 6 维评估卡（5 维 + 确定性断言层）
+## 6 维评估卡（Lint-Gated — v0.2）
+
+> **设计原则（2026 学术证据）：** LLM-as-judge 存在结构性天花板——评分压缩(σ_J/σ_H≈0.3-0.5)、误差相关(9 judge≈2 有效票)、高质量输出最难评。
+> 因此：LLM judge 只做粗筛（<90 vs ≥90），精细判别交给确定性检查（Pre-Judge Lint + 断言）。
 
 | # | 维度 | 权重 | 评估方式 | 噪声 |
 |---|------|------|---------|------|
-| 1 | **可执行具体性** | 25 | 静态：有无具体参数/格式/示例？有无模糊措辞？ | 低 |
-| 2 | **失败模式编码** | 25 | 静态：有无 if-then fallback？错误恢复路径？ | 低 |
-| 3 | **工作流清晰度** | 20 | 静态：步骤是否有序号？输入/输出是否明确？ | 低 |
-| 4 | **检查点设计** | 15 | 静态：关键决策前有无确认点？是否显性标记？ | 低 |
-| 5a | **确定性验证** | 8 | 自动：test-prompts.json 中的断言检查 | **无** |
-| 5b | **内容质量** | 7 | 动态：3 judge 盲评 consensus | 低（3 judge 多数） |
-| **总分** | — | **100** | — | ~±2 分噪声带 |
+| 1 | **可执行具体性** | 25 | 静态：L1,L5,L6 检查项覆盖 | 低 |
+| 2 | **失败模式编码** | 25 | 静态：L6,L7,L8 检查项覆盖 | 低 |
+| 3 | **工作流清晰度** | 20 | 静态：L3,L10 检查项覆盖 | 低 |
+| 4 | **检查点设计** | 15 | 静态：L2 检查项覆盖 | 低 |
+| 5a | **断言验证** | 10 | 自动：test-prompts.json 断言通过率×10 | **无** |
+| 5b | **Lint 门禁** | 5 | 自动：Pre-Judge Lint 10项全 PASS→满分 | **无** |
+| **总分** | — | **100** | — | **~±1 分（v0.1 的 ±2→±1）** |
 
-**评分规则：**
-- 维度 1-4：静态分析，每个维度 1-10 分 × 权重
-- 维度 5a：确定性断言通过率 × 10 → 0-10 分。断言来自 test-prompts.json 的 `assert` 字段
-- 维度 5b：3 个独立 judge（Agent 工具）盲评对比。取中位数 × 权重。3 judge 全分歧 → 标记 SUSPECT，人工判断
+**评分规则（v0.2 核心变更）：**
+- 维度 1-4：静态分析，对照 Pre-Judge Lint 逐项打分。不再主观判断——每项 PASS/FAIL 有客观标准
+- 维度 5a：test-prompts.json 断言通过率 × 10。这是执行验证，不是 judge 评分
+- 维度 5b：Pre-Judge Lint 10项 → 全 PASS = 10 分。每 FAIL 1 项 = -1 分。最低 0 分
+- **不再使用 3-judge blind consensus 做精细判别。** Judge 只用于：(a) 粗筛（明显 <90 的 skill 识别）(b) 发现新 lint 规则（L11, L12...）
 - 总分 = Σ(维度分 × 权重) / 10，满分 100
-- 改进后总分必须**严格 >** 改进前才保留
-- 确定性断言（5a）不可被 LLM judge 覆盖 — 如果断言失败，即使 LLM judge 判高分也 REVERT
+
+**为什么废弃 3-judge 精细评分：**
+- Kohli 2026: "9 个 judge 提供 ~2 个有效票的信息量"
+- Song 2026: "高质量输出 paradoxical 地收到最不一致的评估"
+- Mukherjee 2026: "LLM 评分轴与人类几乎正交(87°-89°)" 
+- 我们的实测：5 轮 15 judge，median 始终 8.7-9.0，无法突破 9.0
+- **结论：LLM judge 能区分 7 分和 9 分的 skill，但不能区分 9 分和 9.5 分**
 
 ### test-prompts.json 格式（含断言）
 
@@ -300,6 +350,11 @@ for each skill in 优化范围 (按基线分数从低到高排序):
       | L8 | 终端升级路径：最坏情况（所有工具都不可用）是否有明确的 BLOCK/MANUAL 出口？ | J3 |
       | L9 | test-prompts 覆盖：每个 T-Type / Phase / Mode 是否有至少 1 个 test prompt？ | J12 |
       | L10 | 生产安全：print()/写操作是否区分 dev/prod？ | J13,J15 |
+      | L11 | 工具名一致性：PREFLIGHT 检测的工具名与下游命令使用的名是否一致？（如检测python3但命令用python） | J16,J18 |
+      | L12 | Quick/skip mode 依赖完整性：跳过的 Phase 产出是否被后续 Phase 硬编码引用？（如跳过3b但4a引用其输出） | J16,J17,J18 |
+      | L13 | 测试断言跨平台：assert 中的工具名/命令是否在所有平台都有效？（如 strace 仅 Linux） | J16 |
+      | L14 | 环境配置抽象：是否有硬编码 IP/端口/路径？至少标注说明 | J18 |
+      | L15 | 重复内容一致性：同一规则/法律出现多次时措辞完全一致？标注权威版本 | J16,J17 |
 
       任一 FAIL → 修 → 重跑该检查。全 PASS → 进 Step 4。
       此清单随 judge 新发现持续增长（Growability 模式）。
