@@ -94,5 +94,41 @@
       "lengthMax": 15000
     },
     "expect": "Skill Text Audit 四测试：删除测试(逐行删→diff)、替换测试(反义词→diff)、覆盖测试(MUST→grep test)、一致测试(MUST→grep CHECKPOINT)。输出 Skill Audit 表格。"
+  },
+  {
+    "id": 9,
+    "scenario": "T5 状态机 bug — 状态转移日志",
+    "prompt": "用户报名后状态一直 pending 不变成 confirmed — 查",
+    "assert": {
+      "mustContain": ["T5", "状态", "Phase 1", "Phase 3b"],
+      "regex": ["T5|State Machine", "状态转移|state transition|status flow"],
+      "lengthMin": 3000,
+      "lengthMax": 15000
+    },
+    "expect": "Phase 1→T5(State Machine)。Phase 3b 状态转移日志。追踪状态迁移链(pending→?→confirmed)。找断点。"
+  },
+  {
+    "id": 10,
+    "scenario": "T6 环境特定 bug — Docker/CI/k8s 诊断",
+    "prompt": "本地好好的 CI 里测试全挂 — 帮我查",
+    "assert": {
+      "mustContain": ["T6", "Phase 2d", "环境"],
+      "regex": ["T6|Environment|env diff", "docker|CI|k8s|bare.metal"],
+      "lengthMin": 3000,
+      "lengthMax": 15000
+    },
+    "expect": "Phase 1→T6。Phase 2d Docker/CI/k8s/裸金属环境诊断。环境快照diff→找差异项。"
+  },
+  {
+    "id": 11,
+    "scenario": "T7 NOT_A_BUG — 代码对需求错",
+    "prompt": "用户说积分规则不对 — 但代码和需求文档一致",
+    "assert": {
+      "mustContain": ["T7", "NOT_A_BUG", "Phase 1"],
+      "regex": ["T7|NOT_A_BUG|需求|产品"],
+      "lengthMin": 1500,
+      "lengthMax": 8000
+    },
+    "expect": "Phase 1→T7(NOT_A_BUG)。不修代码。标记 NOT_A_BUG。输出需求差异说明。长度较短(不接Phase 2-7)。"
   }
 ]
