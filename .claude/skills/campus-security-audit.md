@@ -56,6 +56,8 @@ gitleaks detect --source . --no-git --verbose
 - Any finding in `.py`, `.dart`, `.go`, `.yaml`, `.toml` files is HIGH severity
 - False positive in `pet_config.json` is allowed (verified by allowlist)
 
+🔴 **CHECKPOINT Step 1 — Gitleaks Gate:** If any CRITICAL secret found (real JWT key, DB password, API key in source code) → **BLOCK immediately**, skip to Step 8 report. Do NOT continue to Step 2. If only allowlisted false positives → PASS, continue.
+
 ### Step 2 — Semgrep SAST
 ```powershell
 semgrep --config=.\ .semgrep\ --error
@@ -66,6 +68,8 @@ Custom rules in `.semgrep/python.yml` catch:
 - `campus-select-star` — SELECT * queries (WARNING)
 - `campus-hardcoded-compare` — hardcoded password/secret comparison (ERROR)
 - `campus-http-url` — http:// instead of https:// (WARNING)
+
+🔴 **CHECKPOINT Step 2 — Semgrep Gate:** If any ERROR severity finding → flag report as BLOCKING, but continue to Step 3 (endpoint audit may reveal related issues). If only WARNING → PASS, continue. Always read `.semgrep/python.yml` before reporting — rules evolve.
 
 ### Step 3 — Endpoint Security Audit
 Check every endpoint category against SECURITY_KB.md:
@@ -118,10 +122,21 @@ For Dart/Flutter: check pubspec.lock against known advisories
 For Go: `go list -m all` and check against vuln.go.dev
 
 ### Step 6 — Nuclei Server Scan
+
+🛑 **CHECKPOINT — External Scan Confirmation:** Nuclei sends requests to production server (139.196.50.134). Before running:
+1. Confirm user wants external scan: "Run nuclei scan against production? This sends ~100 requests to the live server."
+2. If user declines → skip Step 6, note "Nuclei: skipped (user declined)" in report.
+3. If nuclei not installed → skip with note "Nuclei: tool not available".
+
 Run `nuclei -u http://139.196.50.134 -severity critical,high,medium` to check for known CVEs in nginx, Uvicorn, PostgreSQL, Redis on the production server. Add results under a new `### Nuclei Scan` section in the report.
 
 ### Step 7 — pg-ops DB Audit
 Use `pg-ops slow-queries` to check for slow SQL, `pg-ops locks` for active locks, `pg-ops index-usage` for missing indexes. Run after every schema change or migration.
+
+🔴 **CHECKPOINT Step 7 — Pre-Report Gate:** All 7 checks complete. Before generating report:
+1. Review all findings across steps — any CRITICAL from Step 1 skipped Step 2-7? If so, note in report.
+2. Verify no duplicate findings across steps (same secret flagged by gitleaks AND hardcoded secrets grep).
+3. If any step was skipped due to tool unavailability → mark in report header: `Status: PARTIAL — {n}/7 steps completed`.
 
 ### Step 8 — Report Generation
 ```
