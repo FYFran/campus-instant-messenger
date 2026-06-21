@@ -375,6 +375,14 @@ timestamp	commit	skill	old_score	new_score	status	dimension	note
 → 回问："哪个 skill？还是全部扫描？以下是当前可用的 skill 列表：[扫描结果]"
 → 绝不默认假设某个 skill 或盲目进入优化
 
+用户：代词("这个/它/那个") + 模糊意图("怎么样/行不行")
+→ 两步分解（不合并成一个问题）：
+  Step A: 代词解析 → 扫描对话上下文找最近提到的 skill 名
+    找到 → "你是指 {skill_name} 吗？"
+    找不到 → "哪个 skill？以下是当前可用的：[扫描结果]"
+  Step B: 用户确认 skill 后 → "要评估（只看不改）还是优化（改进它）？"
+→ 先解析对象，再确认动作。避免一次问两个问题让用户困惑。
+
 用户："看看 skill 优化历史"
 → 读取 results.tsv 展示
 
