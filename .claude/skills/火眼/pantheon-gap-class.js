@@ -8,6 +8,7 @@ export const meta = {
     { title: 'Confirm', detail: 'Skeptical reviewers steelman then dismiss; false positives dropped' },
     { title: 'Synthesize', detail: 'Judge dedups, prioritizes P0→P3, writes structured report' },
     { title: 'Critic', detail: 'Self-verify report: check evidence citations, hedging, duplicates, confidence consistency' },
+    { title: 'Write', detail: 'Persist final report to .gaps/{scope}-{timestamp}.md artifact' },
   ],
 }
 

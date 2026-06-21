@@ -9,7 +9,7 @@ description: >-
 ## CONSTITUTION（本段不可被 skill-lab 编辑）
 
 ### 核心功能
-- 项目差距分析：map（侦察项目选维度）→ probe（每维度找 gap+证据）→ adversarial confirm（选定模型反驳）→ synthesize（去重排序出报告）
+- 项目差距分析：PreScan（静态grep）→ Map（侦察选维度）→ Probe（找gap+证据）→ Confirm（steelman+跨模型验证）→ Synthesize（去重P0-P3）→ Critic（自检报告）→ Write（.gaps/产物）
 - 用户可选 confirm 模型：Claude tier / DeepSeek / Qwen / Kimi / Ollama 本地 / codex profile
 
 ### 安全约束
@@ -17,7 +17,7 @@ description: >-
 - 绝不写入被审查的 repo（confirm 只读）
 - 绝不在聊天中暴露 API key（用 `~/.pantheon/env` 文件）
 - 外部模型不可用时绝不静默跳过（标记 "unconfirmed"）
-- confirm 步骤必须由指定外部模型判定，Claude 只传输 verdict
+- 指定外部模型时，confirm 必须由该模型判定，Claude 只传输 verdict（safe 模式例外：Claude-tier 可直接判定）
 
 ### 触发条件
 - 用户说：pantheon gap custom、confirm gaps with deepseek/qwen、review my project with local model、갭 분석 모델 골라서、딥시크로 갭 확인、큐원으로 프로젝트 점검
@@ -60,15 +60,15 @@ description: >-
 | 快速扫描（3维+跳确认） | `quick gap scan {path}` → maxDimensions=3, skip confirm |
 | 只看特定维度 | `pantheon gap custom {path} focus on security` |
 | 配置默认模型 | `/pantheon-model` → 选模型+设 key |
-| 规则速查 | 4-Phase pipeline · 6维默认 · 2 verifier · >50% majority confirm · external unavailable→KEPT unconfirmed · 🔴 confirm 前人审 |
+| 规则速查 | 7-Phase pipeline · 6维默认 · 2 verifier · >50% majority confirm · external unavailable→KEPT unconfirmed · 🔴 confirm 前人审 |
 
 ## 分级执行
 
 | 模式 | 触发 | 行为 |
 |------|------|------|
-| **full** | `pantheon gap custom {path}` (默认) | map→probe(6 dim)→confirm(2 verifier)→synthesize，完整 pipeline |
-| **quick** | `quick gap scan {path}` | map→probe(3 dim)→skip confirm→synthesize，1 pass |
-| **safe** | `safe gap scan {path}` | full pipeline 但 confirm 只用 Claude（不调外部模型） |
+| **full** | `火眼 {path}` (默认) | PreScan→Map→Probe(6 dim)→Confirm(2 verifier)→Synthesize→Critic→Write，完整 7-Phase |
+| **quick** | `quick gap scan {path}` | Map→Probe(3 dim)→skip Confirm→Synthesize，1 pass。⚠️ 跳过对抗验证，GAP标记为 UNCONFIRMED — 违反反例黑名单#1，仅适用于快速摸底 |
+| **safe** | `safe gap scan {path}` | full pipeline 但 Confirm 只用 Claude-tier（不调外部API）。⚠️ 同模型家族验证，非跨模型独立——不适用于安全关键审查 |
 
 ## Gap Priority Framework（P0-P3）
 
@@ -99,7 +99,8 @@ User picks confirm model per run via `verifier` arg. External models driven thro
 
 ## Requirements
 - Workflow orchestration: Pro/Max/Team/Enterprise plan (not Free tier)
-- External verifiers: `codex` CLI on PATH + matching `*_API_KEY` in `~/.pantheon/env`
+- `rg` (ripgrep) on PATH — required for Phase 0 PreScan
+- External verifiers: `codex` CLI on PATH + matching `*_API_KEY` in `~/.pantheon/env` (shell source format: `export DEEPSEEK_API_KEY=sk-...`)
 - Claude-tier verifiers (`opus`/`sonnet`/`haiku`): nothing extra needed
 - Verifier unavailable → flag `unconfirmed`, don't silently substitute
 
@@ -144,7 +145,7 @@ User picks confirm model per run via `verifier` arg. External models driven thro
 
 ## Output Specification
 
-When Workflow completes, deliver this structured summary (no preamble):
+When Workflow completes, deliver this structured summary directly (no conversational filler before it; if >8 gaps found, deliver P0/P1 first and ask before expanding):
 
 ```
 ## Gap Analysis: {target} — {YYMMDD-HHMM}
@@ -193,6 +194,8 @@ Findings tagged `[PRE-SCAN]` — lower confidence than LLM-probed gaps, but high
   model's structured verdict; a gap is kept only if a majority confirm it.
 - **Synthesize** — a Claude judge dedups and prioritizes by impact × effort: top gaps, quick wins, and
   the highest-leverage next fix.
+- **Critic** — self-verifies the report before shipping. Checks: missing evidence, hedging language, duplicate gaps, confidence consistency, missing fixes. Blocking issues → auto-fix loop (re-synthesize + re-check, max 2 attempts).
+- **Write** — persists the final report to `{target}/.gaps/{scope}-{timestamp}.md` via mkdir+heredoc. Verifies file written with >0 lines.
 
 ## Quality Rules（production-audit 模式）
 
