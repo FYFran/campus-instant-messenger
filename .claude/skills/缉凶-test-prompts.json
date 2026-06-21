@@ -1,46 +1,46 @@
 [
   {
     "id": 1,
-    "scenario": "T0 确定性 bug — 标准 7-step + Runtime Observe",
+    "scenario": "T0 确定性 bug — 完整 7-Phase",
     "prompt": "用户报名活动时报 500 错误 — 帮我找出根因并修好",
     "assert": {
-      "mustContain": ["T0", "Step -1", "Step 0", "Step 2.5", "Step 4", "Divergence Point", "Causal Chain", "Counterfactual", "confidence", "Root Cause"],
+      "mustContain": ["T0", "Phase 1", "Phase 2", "Phase 3b", "Phase 4", "Divergence Point", "Causal Chain", "Counterfactual", "confidence", "Root Cause", "Phase 6", "Phase 7"],
       "mustNotContain": ["might be the issue", "could try", "maybe", "I think", "probably", "快速修一下"],
-      "regex": ["T[0-7]", "confidence.*0\\.\\d+", "TIER[12]", "file:.*line"],
+      "regex": ["T[0-7]", "confidence.*0\\.\\d+", "TIER[12]", "file:.*line", "Phase [1-7]/7"],
       "lengthMin": 400,
       "lengthMax": 6000
     },
-    "expect": "Step -1 分类→T0。Step 0 三源搜索→Step 1 证据→Step 2 静态追踪→Step 2.5 Runtime Observe(print注入)→Step 3 双后端→Step 4 Divergence Point+Counterfactual→Step 5 修复+Critic Auto-Fix→Step 6 回归+Masking Detection→Step 7 报告+成长。"
+    "expect": "Phase 1 分类→T0。Phase 2a 搜索→2c 证据。Phase 3a 静态追踪→3b Runtime Observe→3c 双后端。Phase 4 Divergence+Causal+Counterfactual+Assertion→Phase 5 修复+Critic→Phase 6 回归+Masking→Phase 7 报告+Grow。"
   },
   {
     "id": 2,
-    "scenario": "T4 回归 bug — git bisect 定位引入 commit",
+    "scenario": "T4 回归 bug — git bisect 定位",
     "prompt": "login 功能昨天还好好的，今天就报 500 了 — 帮我查",
     "assert": {
-      "mustContain": ["T4", "Step 0.5", "bisect", "git log", "commit", "Step -1"],
+      "mustContain": ["T4", "Phase 2b", "bisect", "git log", "commit", "Phase 1"],
       "mustNotContain": ["probably config change", "try restarting", "maybe cache"],
       "regex": ["bisect (start|bad|good|reset)", "T4"],
       "lengthMin": 200,
       "lengthMax": 4000
     },
-    "expect": "Step -1 分类→T4(Regression)。Step 0.5 git bisect 定位引入 commit→读 diff 理解改动→再继续标准流程。不猜测配置或缓存问题。"
+    "expect": "Phase 1→T4。Phase 2b git bisect 定位引入 commit→读 diff 理解改动→继续 Phase 2c。不猜配置/缓存。"
   },
   {
     "id": 3,
-    "scenario": "T1 海森堡 bug — 观测者效应警告 + 低开销观测",
+    "scenario": "T1 海森堡 — 观测者效应 + 低开销观测",
     "prompt": "这个 race condition 在 debug 模式下消失了，生产环境偶发出现",
     "assert": {
-      "mustContain": ["T1", "Heisenbug", "观测者效应", "Step 2.5", "时序", "低开销"],
+      "mustContain": ["T1", "Heisenbug", "观测者效应", "Phase 3b", "时序", "低开销"],
       "mustNotContain": ["just add more logs", "try running again", "add sleep"],
-      "regex": ["T1|Heisenbug", "观测者|observer", "(strace|eBPF|print.*trace)"],
+      "regex": ["T1|Heisenbug", "观测者|observer", "(strace|eBPF|print.*trace|ltrace)"],
       "lengthMin": 150,
       "lengthMax": 3000
     },
-    "expect": "Step -1→T1。⚠️观测者效应警告。Step 2.5 低开销观测(strace/eBPF)。加 print 后消失→诊断：时序敏感 bug。不加 sleep/重试等掩盖手段。"
+    "expect": "Phase 1→T1。⚠️观测者效应警告。Phase 3b 低开销观测(strace/eBPF)。加 print 消失→诊断：时序敏感。不加 sleep/重试掩盖。"
   },
   {
     "id": 4,
-    "scenario": "T2 多因 bug — 每个因素独立 Counterfactual",
+    "scenario": "T2 多因 — 每个因素独立 Counterfactual",
     "prompt": "用户有时看不到活动列表 — 换了 3 种修法都只能部分解决",
     "assert": {
       "mustContain": ["T2", "Multi-Cause", "Counterfactual", "每个因素", "独立"],
@@ -49,24 +49,24 @@
       "lengthMin": 200,
       "lengthMax": 4000
     },
-    "expect": "Step -1→T2。≥2 独立因素→每个因素独立 Counterfactual。修一个≠根因。必须声明所有已修+未修因素。"
+    "expect": "Phase 1→T2。≥2 因素→每因素独立 Counterfactual。修一个≠根因。Phase 4c 必须声明所有因素。"
   },
   {
     "id": 5,
-    "scenario": "T3 静默 bug — 不变量推断 + 数据 diff",
+    "scenario": "T3 静默 bug — 不变量 + 数据 diff + 中间断言",
     "prompt": "用户积分有时莫名其妙变少了，没有报错没有 crash",
     "assert": {
-      "mustContain": ["T3", "Silent", "不变量", "中间断言", "Step 2.5", "diff"],
+      "mustContain": ["T3", "Silent", "不变量", "中间断言", "Phase 3b", "diff"],
       "mustNotContain": ["add try/except", "just add validation", "add check"],
-      "regex": ["T3|Silent", "(invariant|不变量|assert.*should|expected.*actual)"],
+      "regex": ["T3|Silent", "(不变量|invariant|assert.*should|expected.*actual)"],
       "lengthMin": 150,
       "lengthMax": 3000
     },
-    "expect": "Step -1→T3(Silent)。无 crash/error→不变量推断+数据 diff。在关键点放中间断言：积分变更前=100→变更后应=90，实际=85→根因在上游。"
+    "expect": "Phase 1→T3(Silent)。无 crash→不变量推断+数据 diff。Phase 4d 中间断言：积分变更前=100→后应=90，实际=85→根因在上游。"
   },
   {
     "id": 6,
-    "scenario": "Growability — 修复后自动提取 pattern",
+    "scenario": "Growability — 修复后自动提取 pattern + 追加回归测试",
     "prompt": "刚才修完一个 N+1 query bug — 记录到 bug-patterns 并加回归测试",
     "assert": {
       "mustContain": ["bug-patterns", "Growability", "regression", "test", "pattern"],
@@ -75,19 +75,19 @@
       "lengthMin": 100,
       "lengthMax": 2000
     },
-    "expect": "Step 7 报告后→Growability 触发：提取 Root Pattern+N+1+SQL→追加 bug-patterns.md。复现用例→追加 campus_check.py。"
+    "expect": "Phase 7 报告后→Growability 触发：提取 N+1 query pattern→追加 bug-patterns.md。复现用例→追加 campus_check.py。"
   },
   {
     "id": 7,
-    "scenario": "零依赖回退 — 无外部工具仍可分类+Runtime Observe",
+    "scenario": "零依赖回退 — 无外部工具仍可全流程",
     "prompt": "fix the signup bug — no external tools available",
     "assert": {
-      "mustContain": ["TIER1", "Step -1", "Step 2.5", "PARTIAL", "print"],
+      "mustContain": ["TIER1", "Phase 1", "Phase 3b", "PARTIAL", "print"],
       "mustNotContain": ["let me ssh", "codegraph shows", "firecrawl"],
       "regex": ["TIER1", "print\\(.*trace|print\\(.*TRACE"],
       "lengthMin": 200,
       "lengthMax": 4000
     },
-    "expect": "PREFLIGHT 无外部工具→全部 TIER1。Step -1 仍可分类。Step 2.5 TIER1 print() 注入做 Runtime Observe。报告标记 PARTIAL。"
+    "expect": "PREFLIGHT 无外部工具→全部 TIER1。Phase 1 仍可分类。Phase 3b TIER1 print() 做 Runtime Observe。Phase 6 用 campus_check.py 回归。标记 PARTIAL。"
   }
 ]
