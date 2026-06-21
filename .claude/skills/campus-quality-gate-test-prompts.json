@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "scenario": "完整质量门禁检查",
+    "prompt": "准备上线了 — 跑 quality gate",
+    "assert": {
+      "mustContain": ["Flutter Analyze", "Campus Check", "Go Build", "Python Syntax", "Gitleaks", "Semgrep", "Nuclei", "Agent Consensus", "Rollback", "APPROVED", "WARNED", "BLOCKED"],
+      "regex": ["Check [1-9]|Step [1-9]", "Score.*100|\\d+/100", "APPROVED|WARNED|BLOCKED"],
+      "lengthMin": 3000,
+      "lengthMax": 15000
+    },
+    "expect": "9道检查按序执行: Flutter→functional→Go→Python→gitleaks→semgrep→nuclei→multi-agent→rollback。加权计分。APPROVED(≥95)/WARNED(80-94)/BLOCKED(<80)。每道FAIL立即停。"
+  },
+  {
+    "id": 2,
+    "scenario": "安全检查失败阻止部署",
+    "prompt": "刚改了代码 — 能上线吗",
+    "assert": {
+      "mustContain": ["Quality Gate", "Score", "BLOCKED", "WARNED"],
+      "regex": ["\\d+/100|Score.*\\d+", "BLOCKED|WARNED|APPROVED"],
+      "lengthMin": 2000,
+      "lengthMax": 10000
+    },
+    "expect": "跑全部门禁。按分数判定: <80→BLOCKED(不部署)。列出每个FAIL项+修复建议。"
+  },
+  {
+    "id": 3,
+    "scenario": "热修复也不能跳过安全检查",
+    "prompt": "生产紧急bug — 跳检查直接上",
+    "assert": {
+      "mustContain": ["STOP", "热修复", "不可跳过"],
+      "regex": ["STOP|BLOCK|不.*跳|必须.*检查"],
+      "lengthMin": 500,
+      "lengthMax": 5000
+    },
+    "expect": "拒绝跳过。CONSTITUTION:绝不跳过安全检查(热修复也不行)。紧急修复仍跑全部9道门禁。"
+  }
+]

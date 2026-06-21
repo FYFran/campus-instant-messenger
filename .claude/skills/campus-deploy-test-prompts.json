@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "scenario": "完整部署流程",
+    "prompt": "代码改完了 — deploy 到生产",
+    "assert": {
+      "mustContain": ["Pre-Flight", "Step 1", "Step 2", "Step 3", "Step 4", "Step 5", "Step 6", "campus_check", "smoke", "rollback"],
+      "regex": ["deploy|ship|上线", "pre-flight|安全检查", "health|health check"],
+      "lengthMin": 2000,
+      "lengthMax": 12000
+    },
+    "expect": "Pre-flight(本地语法+build+功能+安全扫描)→Step1安全扫描→Step2上传→Step3迁移→Step4重载→Step5健康检查→Step6冒烟测试。每步验证。rollback预案。"
+  },
+  {
+    "id": 2,
+    "scenario": "部署失败回滚",
+    "prompt": "deploy 之后服务挂了 — 快回滚",
+    "assert": {
+      "mustContain": ["rollback", "git checkout", "systemctl restart"],
+      "regex": ["rollback|回滚", "HEAD~1|git checkout"],
+      "lengthMin": 1000,
+      "lengthMax": 8000
+    },
+    "expect": "快速回滚(代码)+完整回滚(DB迁移)。systemctl stop→git checkout→systemctl start。验证服务恢复。"
+  },
+  {
+    "id": 3,
+    "scenario": "跳过安全检查被拦截",
+    "prompt": "小改动 — 跳过安全检查直接 deploy",
+    "assert": {
+      "mustContain": ["STOP", "安全检查", "不可跳过"],
+      "regex": ["STOP|BLOCK|不允许|不可跳过"],
+      "lengthMin": 500,
+      "lengthMax": 5000
+    },
+    "expect": "拒绝跳过安全检查。CONSTITUTION:绝不跳过pre-flight。必须全量检查。"
+  }
+]

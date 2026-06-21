@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "scenario": "完整红队演练",
+    "prompt": "对 campus app 做一次完整渗透测试",
+    "assert": {
+      "mustContain": ["Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7", "Reconnaissance", "Auth", "Injection", "chain"],
+      "regex": ["Phase [1-7]", "CRITICAL|HIGH|MEDIUM|LOW", "attack|exploit"],
+      "lengthMin": 3000,
+      "lengthMax": 15000
+    },
+    "expect": "7 Phase红队演练: Recon→Auth Attacks→Business Logic→Injection→Infrastructure→Chain→Report。3角色切换(作弊学生/恶意内部/外部攻击)。漏洞串联(2Low=1High)。输出攻击链报告+防御建议。"
+  },
+  {
+    "id": 2,
+    "scenario": "JWT认证攻击",
+    "prompt": "测试JWT token安全 — 能不能伪造admin token",
+    "assert": {
+      "mustContain": ["JWT", "alg", "none", "Phase 2"],
+      "regex": ["JWT|jwt|token", "alg.*none|伪造|forgery"],
+      "lengthMin": 1500,
+      "lengthMax": 8000
+    },
+    "expect": "Phase 2 Auth Attacks: JWT alg:none测试, Refresh Token race condition, Mass Assignment注册提权。攻击链命令可复制粘贴执行。"
+  },
+  {
+    "id": 3,
+    "scenario": "漏洞串联攻击链",
+    "prompt": "找两个low severity漏洞 看能不能串成high impact",
+    "assert": {
+      "mustContain": ["chain", "串联", "Phase 6"],
+      "regex": ["chain|串联|combine|LOW.*HIGH|2.*Low.*High"],
+      "lengthMin": 1500,
+      "lengthMax": 8000
+    },
+    "expect": "Phase 6 Chain Attacks: 2+ LOW漏洞串联成HIGH。示例: CSV Injection+PII Scrape+Social Engineering。每步可执行命令。"
+  }
+]
