@@ -2,10 +2,12 @@ export const meta = {
   name: 'pantheon-gap-class',
   description: 'Multi-agent gap analysis & feedback review: map the project -> probe each dimension for gaps -> adversarially confirm each gap -> synthesize a prioritized report',
   phases: [
+    { title: 'PreScan', detail: 'Deterministic grep for TODO/FIXME/empty-catch/hardcoded → seed evidence' },
     { title: 'Map', detail: 'Scout the project: stated purpose, stack, maturity, and which dimensions to audit' },
-    { title: 'Probe', detail: 'One agent per dimension hunts for gaps with file-level evidence' },
-    { title: 'Confirm', detail: 'Skeptical reviewers try to dismiss each gap; false positives are dropped' },
-    { title: 'Synthesize', detail: 'Judge dedups, prioritizes by impact x effort, writes the report' },
+    { title: 'Probe', detail: 'One agent per dimension hunts for gaps with file-level evidence + seed evidence' },
+    { title: 'Confirm', detail: 'Skeptical reviewers steelman then dismiss; false positives dropped' },
+    { title: 'Synthesize', detail: 'Judge dedups, prioritizes P0→P3, writes structured report' },
+    { title: 'Critic', detail: 'Self-verify report: check evidence citations, hedging, duplicates, confidence consistency' },
   ],
 }
 
@@ -107,6 +109,21 @@ const REPORT_SCHEMA = {
   },
   required: ['summary', 'highestLeverage', 'topGaps'],
 }
+
+// ---- Phase 0: PRE-SCAN — deterministic grep for code smells (no LLM judgment, seed evidence for probes) ----
+const PRE_SCAN_FINDINGS = { type: 'object', properties: { findings: { type: 'array', items: { type: 'object', properties: { pattern: { type: 'string' }, file: { type: 'string' }, line: { type: 'number' }, snippet: { type: 'string' } }, required: ['pattern', 'file', 'line'] } } }, required: ['findings'] }
+phase('PreScan')
+const preScan = await agent(
+  `Run these grep commands in ${target} and return EVERY match as a structured finding (no filtering, no judgment — grep is deterministic):\n` +
+    `1. rg -n "TODO|FIXME|HACK|XXX" --type-add 'code:*.{py,go,js,ts,dart,rs}' -t code\n` +
+    `2. rg -n "except\\s*(Exception)?\\s*:\\s*pass" --type py\n` +
+    `3. rg -n "catch\\s*\\(.*\\)\\s*\\{\\s*\\}" --type ts --type js\n` +
+    `4. rg -nE '(password|secret|key|token)\\s*=\\s*["\\x27][^"\\x27]{8,}' --type-add 'code:*.{py,go,js,ts,dart,yaml,toml}' -t code\n` +
+    `Return { findings: [{ pattern: "TODO|FIXME|...", file: "path:line", line: N, snippet: "matched line" }] }. Empty array if no matches.`,
+  { schema: PRE_SCAN_FINDINGS, phase: 'PreScan', label: 'prescan' },
+)
+const seedEvidence = (preScan?.findings ?? []).map((f) => `[PRE-SCAN] ${f.pattern}: ${f.file} — ${(f.snippet ?? '').slice(0, 80)}`)
+if (seedEvidence.length > 0) log(`Pre-scan: ${seedEvidence.length} code smells → seed evidence for probes`)
 
 // ---- Phase 1: MAP — scout the project and choose the dimensions worth auditing ----
 phase('Map')
@@ -228,7 +245,12 @@ function verifierAgent(promptCore, meta) {
   return agent(promptCore, { schema: VERDICT_SCHEMA, ...meta, ...extra })
 }
 
-const reviewed = await pipeline(
+// Convergence loop: if CRITICAL gaps survive, re-probe with shifted angles (max 3 total passes)
+let allReviewed = []; let finalConfirmed = []; let finalSuspects = []; let passes = 0; const MAX_PASSES = 3
+let currentDims = dims; let currentSeed = seedEvidence
+while (passes < MAX_PASSES) {
+  passes++
+  const reviewed = await pipeline(
   dims,
   // Stage 1 — probe one dimension for concrete, evidence-backed gaps
   (d) =>
@@ -275,11 +297,34 @@ const reviewed = await pipeline(
     ),
 )
 
-const allGaps = reviewed.filter(Boolean).flat().filter(Boolean)
-const confirmed = allGaps.filter((g) => g.kept && !g.suspect)
-const suspects = allGaps.filter((g) => g.kept && g.suspect)
+  const allGaps = reviewed.filter(Boolean).flat().filter(Boolean)
+  const confirmed = allGaps.filter((g) => g.kept && !g.suspect)
+  const suspects = allGaps.filter((g) => g.kept && g.suspect)
+  allReviewed = allReviewed.concat(allGaps)
+  // Merge: new confirmed replace old for same dimension+title, else append
+  for (const g of confirmed) {
+    const idx = finalConfirmed.findIndex((x) => x.dimension === g.dimension && x.title === g.title)
+    if (idx >= 0) finalConfirmed[idx] = g; else finalConfirmed.push(g)
+  }
+  for (const g of suspects) {
+    const idx = finalSuspects.findIndex((x) => x.dimension === g.dimension && x.title === g.title)
+    if (idx >= 0) finalSuspects[idx] = g; else finalSuspects.push(g)
+  }
+  const hasCritical = confirmed.some((g) => g.adjustedSeverity === 'critical')
+  if (hasCritical && passes < MAX_PASSES) {
+    log(`Pass ${passes}: ${confirmed.length} confirmed (CRITICAL found) → re-probing with angle shift`)
+    // Shift dimension order to get fresh angles (rotate + swap adjacent)
+    currentDims = [...currentDims.slice(1), currentDims[0]]
+    currentSeed = confirmed.filter((g) => g.adjustedSeverity === 'critical').map((g) => `[RE-PROBE seed] ${g.dimension}: ${g.title} — ${g.evidence}`)
+  } else {
+    log(`Pass ${passes}: ${confirmed.length} confirmed, ${suspects.length} SUSPECT → ${hasCritical ? 'max passes' : 'converged'}`)
+    break
+  }
+}
+const confirmed = finalConfirmed; const suspects = finalSuspects
+const allGaps = allReviewed.filter(Boolean).flat().filter(Boolean)
 const avgConfAll = confirmed.length > 0 ? Math.round(confirmed.reduce((s, g) => s + (g.avgConfidence ?? 0), 0) / confirmed.length * 100) / 100 : 0
-log(`Confirmed ${confirmed.length}/${allGaps.length} gaps (avg confidence ${avgConfAll})${suspects.length > 0 ? ', ' + suspects.length + ' SUSPECT (avg conf < 0.8)' : ''} after adversarial review`)
+log(`Final: ${confirmed.length}/${allGaps.length} gaps confirmed (avg confidence ${avgConfAll})${suspects.length > 0 ? ', ' + suspects.length + ' SUSPECT' : ''} after ${passes} pass(es)`)
 
 // ---- Phase 4: SYNTHESIZE — dedup, prioritize, write the feedback report ----
 phase('Synthesize')
@@ -314,14 +359,47 @@ const report = await agent(
   { schema: REPORT_SCHEMA },
 )
 
+// ---- Phase 5: CRITIC — self-verify the report before shipping ----
+phase('Critic')
+const CRITIC_SCHEMA = { type: 'object', properties: { passed: { type: 'boolean' }, issues: { type: 'array', items: { type: 'object', properties: { severity: { type: 'string', enum: ['blocking', 'warning'] }, type: { type: 'string', enum: ['missing_evidence', 'hedging', 'duplicate', 'confidence_mismatch', 'missing_fix'] }, detail: { type: 'string' } }, required: ['severity', 'type', 'detail'] } } }, required: ['passed', 'issues'] }
+const critic = await agent(
+  `You are the CRITIC. Verify this gap report before shipping:\n` +
+    JSON.stringify(report, null, 2) + `\n\n` +
+    `Check: 1) Every gap has file:line evidence? 2) No hedging (might/could/possibly/consider/suggest)? 3) No duplicates with different wording? 4) P0 gaps have confidence ≥0.9? 5) Every P0/P1 has concrete fix?\n` +
+    `Return { passed, issues: [{ severity: "blocking"|"warning", type: "missing_evidence"|"hedging"|"duplicate"|"confidence_mismatch"|"missing_fix", detail }] }. Ship if passed.`,
+  { schema: CRITIC_SCHEMA, phase: 'Critic', label: 'critic' },
+)
+const criticIssues = critic?.issues ?? []
+const criticPassed = critic?.passed ?? true
+if (!criticPassed) log(`CRITIC: ${criticIssues.filter((i) => i.severity === 'blocking').length} blocking, ${criticIssues.filter((i) => i.severity === 'warning').length} warnings`)
+
+// ---- Phase 6: WRITE ARTIFACT — persist report to .gaps/ ----
+phase('Write')
+const scope = focus ? focus.replace(/\s+/g, '-') : 'full'
+const artifactPath = `${target}/.gaps/${scope}-${new Date().toISOString().slice(0,16).replace(/[T:]/g,'')}.md`
+await agent(
+  `Run: mkdir -p ${target}/.gaps && cat > ${artifactPath} << 'REPORT_EOF'\n${JSON.stringify({ target, profile: profile.statedPurpose, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence, criticPassed, criticIssues, report }, null, 2)}\nREPORT_EOF\n` +
+    `Then verify: wc -l ${artifactPath} shows >0 lines.`,
+  { phase: 'Write', label: 'write-artifact' },
+)
+log(`Report written to ${artifactPath}`)
+
+// TRUNCATED AT safety net: if context exhausted mid-pipeline, mark partial
+const truncated = confirmed.length < allGaps.length * 0.5 ? `TRUNCATED AT: ${passes < MAX_PASSES ? 'Probe pass ' + passes : 'Synthesize'} — ${confirmed.length}/${allGaps.length} gaps confirmed` : null
+if (truncated) log(truncated)
+
 return {
+  criticPassed,
+  criticIssues,
   target,
-  profile: { purpose: profile.statedPurpose, stack: profile.stack, maturity: profile.maturity, dimensions: dims.map((d) => d.key), passes: 1 },
+  profile: { purpose: profile.statedPurpose, stack: profile.stack, maturity: profile.maturity, dimensions: dims.map((d) => d.key), passes },
   probed: dims.map((d) => d.key),
   gapsFound: allGaps.length,
   gapsConfirmed: confirmed.length,
   gapsSuspect: suspects.length,
   avgConfidence: confirmed.length > 0 ? Math.round(confirmed.reduce((s, g) => s + (g.avgConfidence ?? 0), 0) / confirmed.length * 100) / 100 : 0,
-  lensCoverage: LENSES.slice(0, V),  // which lenses were used
+  lensCoverage: LENSES.slice(0, V),
+  artifactPath,
+  truncated,
   report,
 }

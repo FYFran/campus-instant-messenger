@@ -1,16 +1,16 @@
 [
   {
     "id": 1,
-    "scenario": "典型场景：用 DeepSeek 确认的项目差距分析",
+    "scenario": "典型场景：用 DeepSeek 确认的项目差距分析（全7 Phase引擎）",
     "prompt": "pantheon gap custom f:/ClaudeFiles verify with deepseek — focus on security",
     "assert": {
-      "mustContain": ["map", "probe", "confirm", "DeepSeek", "dimension", "gap", "confidence", "P0", "P1"],
+      "mustContain": ["map", "probe", "confirm", "DeepSeek", "dimension", "gap", "confidence", "P0", "P1", "PreScan", "passes", "Critic"],
       "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you", "seems fine"],
-      "regex": ["(evidence|file:line)", "(confirmed|survived|kept).*gap", "(steelman|argue FOR)", "(lens|correctness|security|performance)"],
-      "lengthMin": 400,
-      "lengthMax": 6000
+      "regex": ["(evidence|file:line)", "(confirmed|survived|kept).*gap", "(steelman|argue FOR)", "(lens|correctness|security|performance)", "pass(es)?.*[0-9]", "CRITIC.*(passed|blocking|warning)"],
+      "lengthMin": 500,
+      "lengthMax": 8000
     },
-    "expect": "skill 应：1) resolve DeepSeek verifier → 2) sanity-check → 3) pin target → 4) run Workflow → 5) report: probed dims + confirmed/SUSPECT gaps + confidence scores + lens coverage + P0-P3 priority + highest leverage fix + 标注 confirm 模型"
+    "expect": "skill: 1) resolve verifier → 2) sanity-check → 3) pin target → 4) run Workflow(7 phases: PreScan→Map→Probe→Confirm(converge)→Synthesize→Critic→Write) → 5) report: confirmed/SUSPECT gaps + confidence + lens + P0-P3 + passes + critic + artifact path + 标注 confirm 模型"
   },
   {
     "id": 2,
@@ -23,7 +23,7 @@
       "lengthMin": 100,
       "lengthMax": 1000
     },
-    "expect": "skill 应：检测到无 config.json → 告知用户先运行 /pantheon-model → 或提供 Claude default 选项 → 不应直接启动 Workflow"
+    "expect": "skill: 检测到无 config.json → 告知先运行 /pantheon-model → 或提供 Claude default → 不启动 Workflow"
   },
   {
     "id": 3,
@@ -36,19 +36,32 @@
       "lengthMin": 50,
       "lengthMax": 800
     },
-    "expect": "skill 应追问：1) 哪个项目/路径？2) 用哪个模型确认（Claude/DeepSeek/Qwen/本地）？→ 不应盲目启动 Workflow"
+    "expect": "skill: 追问 1) 哪个项目/路径？2) 用哪个模型？→ 不盲目启动 Workflow"
   },
   {
     "id": 4,
-    "scenario": "JS引擎验证：steelman + confidence + lens + SUSPECT 过滤",
+    "scenario": "引擎验证：steelman + confidence + lens + SUSPECT + convergence",
     "prompt": "pantheon gap custom f:/ClaudeFiles verify with claude — dimensions security,testing",
     "assert": {
-      "mustContain": ["steelman", "confidence", "lens", "validVotes", "avgConfidence"],
-      "mustNotContain": ["\"steelman\": \"\"", "\"confidence\": 0", "seems fine without code"],
-      "regex": ["confidence.*0\\.[0-9]+", "lens.*(correctness|security|performance|completeness|architecture)", "steelman.*exploit|steelman.*condition|steelman.*affected"],
+      "mustContain": ["steelman", "confidence", "lens", "validVotes", "avgConfidence", "passes", "PreScan"],
+      "mustNotContain": ["\"steelman\": \"\"", "\"confidence\": 0", "seems fine without code", "passes\": 0"],
+      "regex": ["confidence.*0\\.[0-9]+", "lens.*(correctness|security|performance|completeness|architecture)", "steelman.*exploit|steelman.*condition|steelman.*affected", "passes.*[1-9]"],
       "lengthMin": 500,
-      "lengthMax": 8000
+      "lengthMax": 10000
     },
-    "expect": "JS 引擎应输出包含：1) 每个 verdict 有 steelman 字段(非空) 2) confidence 0.0-1.0 数值 3) lens 覆盖列表 4) SUSPECT 分离(conf <0.8) 5) avgConfidence 汇总 6) P0-P3 优先级标签"
+    "expect": "JS引擎: 1) PreScan grep findings → 2) steelman+confidence+lens verdicts → 3) SUSPECT分离(conf<0.8) → 4) convergence(passes≥1) → 5) Critic self-verify → 6) Write artifact to .gaps/"
+  },
+  {
+    "id": 5,
+    "scenario": "新引擎特性：Critic自检 + 收敛循环 + 产物写入",
+    "prompt": "full gap analysis on f:/ClaudeFiles with qwen verifier",
+    "assert": {
+      "mustContain": ["criticPassed", "artifactPath", ".gaps/", "passes", "PreScan"],
+      "mustNotContain": ["\"criticPassed\": false", "\"artifactPath\": \"\"", "\"passes\": 0"],
+      "regex": ["critic(Passed|Issues)", "artifact.*\\.md", "passes.*[1-9]"],
+      "lengthMin": 600,
+      "lengthMax": 12000
+    },
+    "expect": "JS引擎: 1) PreScan→Map→Probe→Confirm(converge)→Synthesize→Critic→Write 完整7Phase 2) Critic验证report质量 3) .gaps/ 产物写入 4) passes≥1 5) TRUNCATED AT 安全网(如果context耗尽)"
   }
 ]
