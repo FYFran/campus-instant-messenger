@@ -37,150 +37,159 @@ tools: [Read, Grep, Glob, codegraph_search, codegraph_callers, codegraph_context
 ## Trigger
 When user says: "review this", "review", "code review", "is this correct", "check my code", "check this", "check out", "check", before committing code
 
-## Process
+## Process — Three-Stage Gated Protocol
 
-### Step 0 — Scope Confirmation 🔴 CHECKPOINT
-- If user specified files → confirm paths exist, proceed to Step 1
-- If user did NOT specify files → ASK: "Which files or changes should I review? (Python backend / Go backend / both / specific file)"
-- If user responds with vague scope ("the backend") → ask for specific file paths
-- **Multiple files?** → review each file separately, then cross-check for consistency between them
-- **User says what changed (not which file)?** → use `git diff` to identify changed files, confirm scope with user
+**Gate rule: failure in an earlier stage blocks later stages.** Stage 1 must PASS before Stage 2 runs.
 
-### Step 1 — Read & Review 🔴 CHECKPOINT
-- **Prefer git diff for targeted changes** — if user mentions a specific change/commit, `git diff HEAD~1` first to isolate changed lines, then read surrounding context. For new files, read the full file.
-- **For full-file review** — read the entire file, focusing review effort on changed sections
-Run through ALL 13 categories below. Each finding is severity-tagged.
+### Stage 1: Security & Correctness 🔴 CHECKPOINT
+**Goal: catch things that break production or leak data. Must PASS.**
 
-### 1. Authentication (AUTH)
-- [ ] New endpoint has `user: dict = Depends(get_current_user)`?
-- [ ] Public endpoints are truly read-only and non-sensitive? (only `/api/health`, `/api/version`)
-- [ ] `get_current_user` checks `is_active` before returning the user?
-- [ ] Auth exceptions return 401 (not 403 or 500)?
-- [ ] Go backend checks role from DB each request (not just from JWT claims)?
+#### 1.1 Semi-Formal Reasoning (for every CRITICAL/HIGH finding)
+For each security-significant code path, fill this logical certificate BEFORE reporting:
+```
+Premise: [What does this code assume? e.g., "user['id'] comes from a valid JWT"]
+Trace:  [Follow input from entry to sink. e.g., "request → get_current_user → JWT decode → user['id'] → SQL query"]
+Check:  [Verify at each hop. JWT verified? user['id'] type-checked? parameterized?]
+Conclusion: [SAFE if all hops verified. VULNERABLE if any hop breaks.]
+```
+If any hop cannot be verified → report as CRITICAL. This is Meta's 93% accuracy technique.
 
-**Check command**: `rg -n "async def " f:/ClaudeFiles/campus_app/server/main_remote.py | rg -v "get_current_user|Depends"`
+#### 1.2 Security Categories (source→sink trace required)
+For each finding, trace the complete input→output path. Do NOT just pattern-match.
 
-### 2. Authorization (RBAC)
-- [ ] Uses `require_role(*roles)` for admin functions?
+**AUTH (Authentication):**
+- [ ] Source→Sink trace: `request headers → JWT extract → decode → get_current_user → Depends() injection → endpoint handler`
+- [ ] Every write endpoint has `user: dict = Depends(get_current_user)`?
+- [ ] `get_current_user` verifies `is_active` before returning?
+- [ ] Auth failure returns 401 (not 403/500)?
+- [ ] Go: role re-verified from DB each request (not cached from JWT claims)?
+
+**SQL Injection (Source→Sink):**
+- [ ] Trace every user-supplied value: `request param → Pydantic field → query builder → SQL string → database`
+- [ ] All queries use `$1, $2, $3` parameterized syntax?
+- [ ] Dynamic column/table names sourced from code constants (not user input)?
+- [ ] No f-string or concatenation in SQL: `rg -n 'f".*SELECT.*{' {target_dir}/`
+
+**Race Conditions (Source→Sink):**
+- [ ] Trace concurrent paths: `request A → read row → request B → read same row → A writes → B writes (lost update)`
+- [ ] Concurrent writes to shared rows protected by `SELECT ... FOR UPDATE` in transaction?
+- [ ] Signup `max_participants` check: FOR UPDATE on activity row before count check?
+- [ ] Substitute operation: FOR UPDATE on both signup rows?
+
+**XSS / Injection:**
+- [ ] Trace: `user input (title/content) → DB storage → DB read → response rendering`
+- [ ] At storage: impersonation prefixes scanned? (`【系统】`, `【官方】`, etc.)
+- [ ] At rendering: CSP headers configured? (`script-src 'self'`)
+
+**Secrets:**
+- [ ] JWT secret from `os.environ` (not hardcoded)?
+- [ ] DB password, API keys in env vars (not source code)?
+- [ ] `rg -nE '(password|secret|key|token)\s*=\s*["\x27]' {target_dir}/`
+
+### Stage 2: Code Quality 🔴 CHECKPOINT
+**Runs ONLY if Stage 1 PASSES. Focus: maintainability, patterns, conventions.**
+
+**Rule: Convention Over Precedent.** Written conventions (`docs/CODE_REVIEW.md`, `docs/ARCHITECTURE.md`) override observed code patterns. If code follows a pattern that contradicts written convention → FAIL.
+
+**RBAC (Authorization):**
+- [ ] Admin functions guarded by `require_role(*roles)`?
 - [ ] Activity-modifying endpoints call `_can_manage_act()`?
-- [ ] `created_by == user["id"]` checked before modifying owned resources?
-- [ ] `college_admin` restricted to own college scope?
-- [ ] Role assignment: college_admin cannot set school_admin?
-- [ ] Publisher code revocation checks `created_by=$2`?
+- [ ] `created_by == user["id"]` verified before modifying owned resources?
+- [ ] `college_admin` scoped to own college (no cross-college access)?
+- [ ] Role assignment gated: college_admin cannot escalate to school_admin?
 
-### 3. Input Validation
-- [ ] Pydantic `BaseModel` with `Field(min_length=..., max_length=...)` used — not raw `dict = Body(...)`?
-- [ ] All string inputs bounded by `max_length`?
-- [ ] All numeric inputs bounded by `ge=` and `le=`?
-- [ ] File uploads validated by content-type (MIME), not extension?
-- [ ] File uploads size-limited to 10MB?
-- [ ] Regex patterns checked for ReDoS (no nested quantifiers)?
-- [ ] Student ID validated as 9-digit where appropriate?
+**Input Validation:**
+- [ ] Pydantic `BaseModel` with bounded `Field()` — not raw `dict = Body(...)`?
+- [ ] All strings: `max_length` set. All numerics: `ge=`/`le=` set?
+- [ ] File uploads: MIME-type validated (not extension), 10MB max?
+- [ ] Regex patterns: no nested quantifiers (ReDoS)?
 
-### 4. SQL Injection
-- [ ] All queries use parameterized `$1, $2, $3` syntax?
-- [ ] No `f"SELECT ... {variable}"` anywhere?
-- [ ] Dynamic column names in UPDATE come from Pydantic model keys, not user input?
-- [ ] ORDER BY / LIMIT values parameterized (not concatenated)?
+**Error Handling:**
+- [ ] No bare `except: pass` or `except: pass` anywhere?
+- [ ] Validation errors → generic message (not Pydantic field internals)?
+- [ ] 404 for missing, 403 for forbidden, 429 for rate-limited, "system busy" for DB errors?
+- [ ] Every catch block logs or propagates?
 
-**Check command**: `rg -n 'f".*SELECT.*{' f:/ClaudeFiles/campus_app/server/`
-
-### 5. Output / Data Exposure
-- [ ] No `SELECT *` in user-facing endpoints — columns specified explicitly?
-- [ ] Password hash, refresh token hash excluded from response?
+**Output / Data Exposure:**
+- [ ] No `SELECT *` — columns explicit?
+- [ ] Password hash, refresh token hash excluded from all responses?
 - [ ] Phone/QQ gated behind `show_phone`/`show_qq` privacy flags?
-- [ ] CSV export uses `_csv_escape()` on every cell?
-- [ ] Feedback endpoint does not expose real `user_id`?
-- [ ] Error responses generic (no internal paths, no Pydantic field-level details)?
+- [ ] CSV export: `_csv_escape()` on every cell?
+- [ ] Error responses generic: no stack traces, no internal paths?
 
-### 6. Rate Limiting
-- [ ] Login: `@limiter.limit("5/minute")`?
-- [ ] Register: `@limiter.limit("5/hour")`?
-- [ ] Password reset: `@limiter.limit("3/minute")`?
-- [ ] Messages: `@limiter.limit("60/hour")`?
-- [ ] Any new POST/PUT/DELETE has rate limiting?
+**Rate Limiting:**
+- [ ] Login: `5/minute`, Register: `5/hour`, Password reset: `3/minute`, Messages: `60/hour`?
+- [ ] Every new POST/PUT/DELETE has rate limiting?
 
-### 7. Error Handling
-- [ ] Exceptions caught log the error (no bare `except: pass`)?
-- [ ] Validation errors return generic message (not field-level)?
-- [ ] 404 for missing resources (not 500 or 200 with empty body)?
-- [ ] 403 for authorization failure (not 401 triggering re-login)?
-- [ ] Rate limit exceeded returns 429 (not 500)?
-- [ ] DB errors return "system busy" (not crash dump)?
-
-### 8. Audit Logging
-- [ ] Security-sensitive actions logged: role change, password reset, activity completion, signup approval, publish code creation/revocation?
+**Audit Logging:**
+- [ ] Security actions logged: role change, password reset, signup approval, publish code create/revoke?
 - [ ] Format: `AUDIT: action={action} by={user['id']} target={target_id} time=...`?
 
-### 9. Race Conditions
-- [ ] Concurrent writes protected by `FOR UPDATE` in transaction?
-- [ ] Signup with `max_participants` check has `FOR UPDATE` on activity row?
-- [ ] Refresh token rotation has `SELECT ... FOR UPDATE` inside transaction?
-- [ ] Substitute operation has `FOR UPDATE` on both signup rows?
-- [ ] Pattern: `async with pool.acquire() as conn: async with conn.transaction(): await conn.fetchrow("SELECT ... FOR UPDATE", ...)`
+**Password & Token:**
+- [ ] bcrypt (not MD5/SHA-1/plaintext), min length 6?
+- [ ] JWT expiry ≤ 1 hour, refresh token SHA-256 hashed, rotated on use?
 
-### 10. XSS / Injection
-- [ ] Title scanned for impersonation prefixes (`【系统】`, `【官方】`, `【教务】`, `【学工】`, `【学生】`, `【财务】`, `【学校】`)?
-- [ ] Notice content scanned for bare URLs without context keywords?
-- [ ] Activity creation has same impersonation check?
-- [ ] CSP headers set in nginx? (`script-src 'self'`)
+### Stage 3: Domain Integrity
+**Cross-cutting checks that span both backends + frontend.**
 
-### 11. Password & Token
-- [ ] Passwords hashed with bcrypt (not MD5, SHA-1, or plaintext)?
-- [ ] Minimum password length 6?
-- [ ] JWT secret from `os.environ`, not hardcoded?
-- [ ] JWT expiry <= 1 hour?
-- [ ] Refresh token stored as SHA-256 hash (not plaintext)?
-- [ ] Refresh token rotated on each use?
+**Cross-Backend Consistency:**
+- [ ] Python and Go: same auth logic? same rate limits? same input validation rules?
+- [ ] `rg -n "def \w+" {python_file}` then `rg -n "func \w+" {go_file}` → compare signatures
 
-### 12. Dependencies
-- [ ] New dependencies added in this change? Check CVEs: `pip-audit`
-- [ ] Go dependency added? Check: `go list -u -m all`
+**Dependencies:**
+- [ ] New Python dep? `pip-audit` for CVEs
+- [ ] New Go dep? `go list -u -m all` for updates
 
-### 13. Flutter-Specific
-- [ ] `mounted` checked before `setState`?
-- [ ] `dispose` calls `super.dispose()`?
-- [ ] Streams/subscriptions cancelled in `dispose`?
-- [ ] No `BuildContext` used across async gaps without checking `mounted`?
-- [ ] `dart analyze` run — 0 errors?
-- [ ] tree-sitter MCP: widget build methods under 100 lines, complexity within limits?
+**Flutter (if frontend changed):**
+- [ ] `mounted` before `setState`, `dispose` calls `super.dispose()`, streams cancelled
+- [ ] No `BuildContext` across async gaps without `mounted` check
+- [ ] `dart analyze` 0 errors
+
+## Review Artifacts
+
+**Every review writes to `.reviews/{filename}-{YYMMDD-HHMM}.md`** — survives context compaction, enables escalation tracking.
+
+```
+f:/ClaudeFiles/.reviews/
+├── main_remote-20260621-1430.md    ← this review
+├── auth_go-20260621-1500.md        ← previous review
+└── ESCALATIONS.md                   ← recurring findings tracker
+```
+
+**Escalation rule:** If same finding appears in 2+ consecutive reviews of the same file → auto-escalate severity one level (LOW→MEDIUM→HIGH→CRITICAL) and flag in `ESCALATIONS.md`.
 
 ## Review Outcome Template
 ```
 ## Code Review: {commit/feature name}
+### Stage 1: Security & Correctness — {PASS|FAIL}
+[If FAIL: BLOCKED. List CRITICAL/HIGH findings with semi-formal reasoning traces.]
 
-### Findings
-| # | Severity | Category | Issue | Fix |
-|---|----------|----------|-------|-----|
-| 1 | 🔴 CRITICAL | Auth | ... | ... |
-| 2 | 🟠 HIGH | SQL Injection | ... | ... |
-| 3 | 🟡 MEDIUM | Rate Limit | ... | ... |
-| 4 | 🔵 LOW | Dependencies | ... | ... |
+### Stage 2: Code Quality — {PASS|FAIL}  (runs only if Stage 1 PASS)
+[If FAIL: CHANGES NEEDED. List MEDIUM findings.]
 
-### Category Summary
-Auth: {PASS|FAIL} — {details}
-AuthZ: {PASS|FAIL} — {details}
-Input: {PASS|FAIL} — {details}
-Output: {PASS|FAIL} — {details}
-DB: {PASS|FAIL} — {details}
-Errors: {PASS|FAIL} — {details}
-Logging: {PASS|FAIL} — {details}
-Rate Limit: {PASS|FAIL} — {details}
-Race: {PASS|FAIL} — {details}
+### Stage 3: Domain Integrity — {PASS|FAIL}
+[Cross-backend consistency, dependencies, Flutter.]
 
-Verdict: {APPROVED / CHANGES NEEDED / BLOCKED}
-  - BLOCKED if any 🔴CRITICAL finding
-  - CHANGES NEEDED if any 🟠HIGH or 🟡MEDIUM finding
-  - APPROVED if only 🔵LOW or no findings
+### Findings Table
+| # | Stage | Severity | Category | Source→Sink Trace | Fix |
+|---|-------|----------|----------|-------------------|-----|
+| 1 | 1 | 🔴 CRITICAL | AUTH | request→JWT→Depends()→handler: no Depends() on POST | Add `user: dict = Depends(get_current_user)` |
+| 2 | 2 | 🟡 MEDIUM | Rate Limit | request→handler→response: no limiter on new endpoint | Add `@limiter.limit("5/minute")` |
+
+### Verdict
+{APPROVED / CHANGES NEEDED / BLOCKED}
+- BLOCKED: Stage 1 FAIL (any 🔴CRITICAL — fix before merge)
+- CHANGES NEEDED: Stage 2/3 FAIL (🟠HIGH/🟡MEDIUM)
+- APPROVED: All stages PASS or only 🔵LOW
 ```
 
 ### Severity Guide
-| Level | Criteria | Example |
-|-------|----------|---------|
-| 🔴 CRITICAL | Auth bypass, data leak, SQL injection, hardcoded secret | Missing `Depends(get_current_user)` on write endpoint |
-| 🟠 HIGH | RBAC gap, race condition, XSS, missing rate limit | Missing `FOR UPDATE` on signup |
-| 🟡 MEDIUM | Missing validation, error handling gap, logging gap | Pydantic field missing `max_length` |
-| 🔵 LOW | Dependency update needed, code style, documentation | `go.mod` dependency has newer patch |
+| Level | Criteria | Requires |
+|-------|----------|----------|
+| 🔴 CRITICAL | Auth bypass, SQLi, hardcoded secret, data leak | Semi-formal trace mandatory |
+| 🟠 HIGH | RBAC gap, race condition, XSS, missing rate limit | Semi-formal trace mandatory |
+| 🟡 MEDIUM | Missing validation, error gap, logging gap, Go divergence | Source→sink trace recommended |
+| 🔵 LOW | Dependency patch, code style, docs | Brief analysis sufficient |
 
 ### Step 2 — Post-Review 🔴 CHECKPOINT
 After delivering the review:
