@@ -4,13 +4,13 @@
     "scenario": "典型场景：用 DeepSeek 确认的项目差距分析",
     "prompt": "pantheon gap custom f:/ClaudeFiles verify with deepseek — focus on security",
     "assert": {
-      "mustContain": ["map", "probe", "confirm", "DeepSeek", "dimension", "gap"],
-      "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you"],
-      "regex": ["(evidence|file:line)", "(confirmed|survived|kept).*gap"],
-      "lengthMin": 300,
-      "lengthMax": 5000
+      "mustContain": ["map", "probe", "confirm", "DeepSeek", "dimension", "gap", "confidence", "P0", "P1"],
+      "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you", "seems fine"],
+      "regex": ["(evidence|file:line)", "(confirmed|survived|kept).*gap", "(steelman|argue FOR)", "(lens|correctness|security|performance)"],
+      "lengthMin": 400,
+      "lengthMax": 6000
     },
-    "expect": "skill 应：1) resolve DeepSeek verifier → 2) sanity-check deepseek API key → 3) pin target f:/ClaudeFiles + focus security → 4) run Workflow with pantheon-gap-class.js → 5) 等后台完成 → 6) report: probed dimensions + confirmed gaps + quick wins + highest leverage fix + 标注 confirm 模型是 DeepSeek"
+    "expect": "skill 应：1) resolve DeepSeek verifier → 2) sanity-check → 3) pin target → 4) run Workflow → 5) report: probed dims + confirmed/SUSPECT gaps + confidence scores + lens coverage + P0-P3 priority + highest leverage fix + 标注 confirm 模型"
   },
   {
     "id": 2,
@@ -37,5 +37,18 @@
       "lengthMax": 800
     },
     "expect": "skill 应追问：1) 哪个项目/路径？2) 用哪个模型确认（Claude/DeepSeek/Qwen/本地）？→ 不应盲目启动 Workflow"
+  },
+  {
+    "id": 4,
+    "scenario": "JS引擎验证：steelman + confidence + lens + SUSPECT 过滤",
+    "prompt": "pantheon gap custom f:/ClaudeFiles verify with claude — dimensions security,testing",
+    "assert": {
+      "mustContain": ["steelman", "confidence", "lens", "validVotes", "avgConfidence"],
+      "mustNotContain": ["\"steelman\": \"\"", "\"confidence\": 0", "seems fine without code"],
+      "regex": ["confidence.*0\\.[0-9]+", "lens.*(correctness|security|performance|completeness|architecture)", "steelman.*exploit|steelman.*condition|steelman.*affected"],
+      "lengthMin": 500,
+      "lengthMax": 8000
+    },
+    "expect": "JS 引擎应输出包含：1) 每个 verdict 有 steelman 字段(非空) 2) confidence 0.0-1.0 数值 3) lens 覆盖列表 4) SUSPECT 分离(conf <0.8) 5) avgConfidence 汇总 6) P0-P3 优先级标签"
   }
 ]
