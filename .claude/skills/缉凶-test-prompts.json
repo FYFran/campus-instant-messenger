@@ -1,93 +1,98 @@
 [
   {
     "id": 1,
-    "scenario": "T0 确定性 bug — 完整 7-Phase 结构",
+    "scenario": "T0 确定性 bug — 完整执行链",
     "prompt": "用户报名活动时报 500 错误 — 帮我找出根因并修好",
     "assert": {
-      "mustContain": ["T0", "Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7", "Divergence Point", "Causal Chain", "Counterfactual", "confidence", "Root Cause"],
-      "mustNotContain": [],
-      "regex": ["Phase [1-7].*Classify|Phase [1-7].*Search|Phase [1-7].*Trace|Phase [1-7].*Analyze|Phase [1-7].*Fix|Phase [1-7].*Verify|Phase [1-7].*(Report|Grow)", "T[0-7]", "TIER[12]", "file:.*line", "3a|3b|3c"],
+      "mustContain": ["T0", "Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7", "Divergence", "Causal Chain", "Counterfactual", "Root Cause", "confidence", "Iron Law"],
+      "regex": ["Phase [1-7]", "TIER[12]", "Expected.*Actual", "confirm|reject", "campus_check"],
       "lengthMin": 3000,
-      "lengthMax": 12000
+      "lengthMax": 15000
     },
-    "expect": "所有 7 Phase 存在。T0-T7 分类学完整。TIER1/TIER2 双路径。Phase 3a/3b/3c 子步骤。Phase 4a-4e 完整分析链。"
+    "expect": "Phase 1 分类→T0。Phase 2 搜索+证据→填空。Phase 3a/b/c/d 追踪→填空。Phase 4a-e 分析→填空。Phase 5 修复+Critic。Phase 6 回归验证。Phase 7 报告+Grow。Iron Law 在头尾双端放置。每步输出链不断。"
   },
   {
     "id": 2,
     "scenario": "T4 回归 bug — git bisect",
-    "prompt": "login 功能昨天还好好的，今天就报 500 了 — 帮我查",
+    "prompt": "login 昨天好的今天 500 — 查",
     "assert": {
-      "mustContain": ["T4", "bisect", "git log", "commit", "Phase 1"],
-      "mustNotContain": [],
+      "mustContain": ["T4", "bisect", "git log", "Phase 1", "Phase 2"],
       "regex": ["bisect (start|bad|good|reset)", "T4"],
       "lengthMin": 3000,
-      "lengthMax": 12000
+      "lengthMax": 15000
     },
-    "expect": "Phase 1→T4。2b git bisect 定位引入 commit。不猜配置/缓存。"
+    "expect": "Phase 1→T4。Phase 2b git bisect。不猜配置/缓存。"
   },
   {
     "id": 3,
     "scenario": "T1 海森堡 — 观测者效应",
-    "prompt": "这个 race condition 在 debug 模式下消失了，生产环境偶发出现",
+    "prompt": "race condition debug模式消失 生产偶发",
     "assert": {
-      "mustContain": ["T1", "Heisenbug", "观测者", "strace", "时序"],
-      "mustNotContain": [],
-      "regex": ["T1|Heisenbug", "(观测者|observer)", "(strace|eBPF|ltrace)"],
+      "mustContain": ["T1", "观测者", "strace", "时序", "DIAGNOSIS MADE"],
+      "regex": ["T1|Heisenbug", "观测者|observer", "strace|eBPF|pstack"],
       "lengthMin": 3000,
-      "lengthMax": 12000
+      "lengthMax": 15000
     },
-    "expect": "Phase 1→T1。观测者效应警告。低开销观测(strace/eBPF)。时序敏感诊断。"
+    "expect": "Phase 1→T1。观测者效应警告。Phase 3b 低开销观测。print消失→DIAGNOSIS MADE→跳到Phase 7。"
   },
   {
     "id": 4,
-    "scenario": "T2 多因 — Counterfactual",
-    "prompt": "用户有时看不到活动列表 — 换了 3 种修法都只能部分解决",
+    "scenario": "T2 多因 — 每因素独立 Counterfactual",
+    "prompt": "用户有时看不到活动列表 — 3种修法都只部分解决",
     "assert": {
-      "mustContain": ["T2", "Counterfactual", "独立"],
-      "mustNotContain": [],
-      "regex": ["T2|Multi-Cause", "每.*因素|factor.*factor"],
+      "mustContain": ["T2", "Counterfactual", "每因素", "独立"],
+      "regex": ["T2|Multi-Cause", "每.*因素|factor.*factor", "修.*后.*还出现"],
       "lengthMin": 3000,
-      "lengthMax": 12000
+      "lengthMax": 15000
     },
-    "expect": "Phase 1→T2。每因素独立 Counterfactual。修一个≠根因。"
+    "expect": "Phase 1→T2。每因素独立Counterfactual。修一个≠根因。Phase 4d声明所有因素。"
   },
   {
     "id": 5,
-    "scenario": "T3 静默 — 不变量 + diff",
-    "prompt": "用户积分有时莫名其妙变少了，没有报错没有 crash",
+    "scenario": "T3 静默 — 不变量+diff+属性测试",
+    "prompt": "用户积分莫名其妙变少 无报错无crash",
     "assert": {
-      "mustContain": ["T3", "Silent", "diff", "中间断言"],
-      "mustNotContain": [],
-      "regex": ["T3|Silent", "diff.*before|before.*diff", "(assert|Assertion)"],
+      "mustContain": ["T3", "Silent", "diff", "Property-Based", "3d"],
+      "regex": ["T3|Silent", "diff|不变量", "Hypothesis|属性测试"],
       "lengthMin": 3000,
-      "lengthMax": 12000
+      "lengthMax": 15000
     },
-    "expect": "Phase 1→T3(Silent)。不变量推断+数据 diff。中间断言定位。"
+    "expect": "Phase 1→T3(Silent)。不变量推断+数据diff。Phase 3d Hypothesis属性测试→动态证据。"
   },
   {
     "id": 6,
-    "scenario": "Growability — 模式提取 + 测试追加",
-    "prompt": "刚才修完一个 N+1 query bug — 记录到 bug-patterns 并加回归测试",
+    "scenario": "Growability — 修复后模式提取+回归追加",
+    "prompt": "刚修完N+1 query — 记录并加回归测试",
     "assert": {
-      "mustContain": ["bug-patterns", "Growability", "campus_check.py"],
-      "mustNotContain": [],
-      "regex": ["bug-patterns\\.md|campus_check\\.py", "Growability|pattern.*bug-patterns"],
+      "mustContain": ["bug-patterns", "Growability", "campus_check.py", "Phase 7"],
+      "regex": ["bug-patterns\\.md|campus_check\\.py", "Growability|pattern"],
       "lengthMin": 3000,
-      "lengthMax": 12000
+      "lengthMax": 15000
     },
-    "expect": "Phase 7→Growability 触发。模式提取→追加 bug-patterns。复现用例→追加 campus_check。"
+    "expect": "Phase 7→Growability。提取模式→追加bug-patterns。复现用例→追加campus_check。"
   },
   {
     "id": 7,
-    "scenario": "零依赖回退 — 全 TIER1",
-    "prompt": "fix the signup bug — no external tools available",
+    "scenario": "零依赖回退 — 全TIER1",
+    "prompt": "fix the signup bug — no external tools",
     "assert": {
       "mustContain": ["TIER1", "Phase 1", "PARTIAL", "print"],
-      "mustNotContain": [],
-      "regex": ["TIER1", "print.*trace|trace.*print", "(PARTIAL|CAPABILITY|unavailable)"],
+      "regex": ["TIER1", "PARTIAL|CAPABILITY|unavailable"],
       "lengthMin": 3000,
-      "lengthMax": 12000
+      "lengthMax": 15000
     },
-    "expect": "PREFLIGHT 无外部工具→全部 TIER1。Phase 1 仍可分类。print() 做 Runtime Observe。标记 PARTIAL。"
+    "expect": "PREFLIGHT无外部工具→全TIER1。Phase 1仍分类。Phase 3b print()做Runtime Observe。标记PARTIAL。"
+  },
+  {
+    "id": 8,
+    "scenario": "Skill Text Audit — 查skill文件bug",
+    "prompt": "检查 campus-code-review 这个 skill 有没有冗余行和死指令",
+    "assert": {
+      "mustContain": ["Skill Text Audit", "删除", "替换", "覆盖", "一致", "DELETE", "HARDEN", "GAP", "ORPHAN"],
+      "regex": ["Skill Audit", "DELETE|HARDEN|GAP|ORPHAN", "test-prompts"],
+      "lengthMin": 3000,
+      "lengthMax": 15000
+    },
+    "expect": "Skill Text Audit 四测试：删除测试(逐行删→diff)、替换测试(反义词→diff)、覆盖测试(MUST→grep test)、一致测试(MUST→grep CHECKPOINT)。输出 Skill Audit 表格。"
   }
 ]
