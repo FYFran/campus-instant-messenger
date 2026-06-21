@@ -1,27 +1,27 @@
 [
   {
     "id": 1,
-    "scenario": "典型场景：全面安全审计",
+    "scenario": "全面安全审计 — PREFLIGHT + 零依赖TIER1内核",
     "prompt": "audit security of the campus backend — check for secrets, vulnerabilities, and misconfigurations",
     "assert": {
-      "mustContain": ["gitleaks", "semgrep", "Secret Scan", "SAST", "Endpoint Audit", "Overall Verdict"],
+      "mustContain": ["TIER1", "Secret Scan", "SAST", "Endpoint Audit", "Overall Verdict", "CAPABILITY"],
       "mustNotContain": ["might", "could consider", "maybe", "possibly", "I think"],
       "lengthMin": 500,
       "lengthMax": 8000
     },
-    "expect": "skill 应触发完整审计流程：Step1 gitleaks → Step2 semgrep → Step3 endpoint audit → 输出分类报告（CRITICAL/HIGH/MEDIUM/LOW/SUSPECT），标注误报，含 Passes/Status/TRUNCATED AT 头"
+    "expect": "skill 先跑 PREFLIGHT 检测工具 → TIER1(Select-String)扫描 → TIER2(gitleaks/semgrep)可选升级 → 输出报告含 Capability 矩阵 + 每步标注来源层级"
   },
   {
     "id": 2,
-    "scenario": "单点检查：硬编码密钥",
+    "scenario": "单点检查：硬编码密钥 — TIER1零依赖",
     "prompt": "check if there are any hardcoded secrets in the Go backend code",
     "assert": {
-      "mustContain": ["gitleaks", "rg -nE", "hardcoded"],
+      "mustContain": ["Select-String", "hardcoded", "TIER1"],
       "mustNotContain": ["might be a secret", "could be"],
       "lengthMin": 100,
       "lengthMax": 3000
     },
-    "expect": "skill 应运行 gitleaks detect 或 fallback rg，检查 campus_go/ 目录，标记任何 JWT secret/DB密码/API key，区分合法 allowlist 项和真实泄露"
+    "expect": "skill 跑 Step 1+4。TIER1: PowerShell Select-String 扫密钥。TIER2: gitleaks（如可用）。标注来源层级。区分 allowlist 和真实泄露"
   },
   {
     "id": 3,
@@ -33,7 +33,7 @@
       "lengthMin": 50,
       "lengthMax": 1000
     },
-    "expect": "skill 应读 .gitleaks.toml allowlist，确认 pet_config.json 是已验证的误报 → 报告 'FALSE POSITIVE (verified by allowlist)'，不标记为漏洞"
+    "expect": "skill 读 .gitleaks.toml allowlist → pet_config.json 已验证误报 → 报告 FALSE POSITIVE"
   },
   {
     "id": 4,
@@ -45,18 +45,18 @@
       "lengthMin": 50,
       "lengthMax": 3000
     },
-    "expect": "skill 应识别 'quick audit' 触发词 → quick 模式：只跑 Step 1+2+4，跳 Step 6(nuclei)+Step 7(pg-ops)，1 pass 跳 convergence"
+    "expect": "quick audit → Step 1+2+4 only。跳 Step 6(nuclei)+Step 7(DB)。1 pass 跳 convergence"
   },
   {
     "id": 5,
-    "scenario": "边界：无工具可用时的 fallback",
+    "scenario": "TIER1 fallback — 外部工具不可用时零依赖内核仍工作",
     "prompt": "audit the Python backend but gitleaks and semgrep are not installed",
     "assert": {
-      "mustContain": ["PARTIAL", "fallback", "rg -nE", "rg -n"],
+      "mustContain": ["PARTIAL", "TIER1", "Select-String"],
       "mustNotContain": ["all clean", "no issues found", "100% secure", "perfect score"],
       "lengthMin": 200,
       "lengthMax": 5000
     },
-    "expect": "skill 应检测工具不可用 → 使用 rg fallback → 报告头标记 Status: PARTIAL，说明哪些工具不可用及使用的替代方案"
+    "expect": "PREFLIGHT 检测到无外部工具 → 全部步骤跑 TIER1(Select-String) → 报告标记 PARTIAL + 每步标注 TIER1来源。零依赖内核永远能跑"
   }
 ]
