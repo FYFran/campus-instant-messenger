@@ -174,9 +174,11 @@ const profile = await agent(
   { schema: PROFILE_SCHEMA },
 )
 const dims = dimensionsOverride
-  ? dimensionsOverride.map((k) => ({ key: k, why: 'user-specified' }))
-  : profile.dimensions.slice(0, maxDims)
-log(`Phase 1/7 complete: "${(profile.statedPurpose ?? 'project').slice(0, 60)}" (${profile.maturity ?? 'unknown'}). Auditing ${dims.length} dims: ${dims.map((d) => d.key).join(', ')}`)
+  ? dimensionsOverride.map((k) => ({ key: typeof k === 'string' ? k : String(k), why: 'user-specified' }))
+  : (profile?.dimensions ?? []).slice(0, maxDims)
+const projectPurpose = profile?.statedPurpose ?? 'project'
+const projectMaturity = profile?.maturity ?? 'unknown'
+log(`Phase 1/7 complete: "${projectPurpose.slice(0, 60)}" (${projectMaturity}). Auditing ${dims.length} dims: ${dims.map((d) => d.key).join(', ')}`)
 
 // ---- Phases 2+3: PROBE each dimension, then CONFIRM each gap adversarially (pipelined) ----
 // pantheon-gap-custom: the adversarial-confirm step runs on a USER-SELECTABLE model (`verifier` arg).
@@ -289,12 +291,13 @@ log(`Phase 2/7: Probe — ${currentDims.length} dimensions, ${V} verifiers each`
 while (passes < MAX_PASSES) {
   passes++
   const reviewed = await pipeline(
-  dims,
+  currentDims,
   // Stage 1 — probe one dimension for concrete, evidence-backed gaps
   (d) =>
     agent(
       `You are GAP-PROBE for the "${d.key}" dimension in a Pantheon gap-analysis harness. Target project: ${target}\n` +
-        `Project purpose: ${profile.statedPurpose}\nWhy this dimension matters here: ${d.why}\n\n` +
+        `Project purpose: ${projectPurpose}\nWhy this dimension matters here: ${d.why}\n` +
+        (currentSeed.length > 0 ? `Seed evidence from prior analysis:\n${currentSeed.join('\n')}\n\n` : '') +
         `Hunt for concrete GAPS — things that are MISSING, incomplete, or weak in this dimension. ` +
         `For each gap give a short title, a severity, EVIDENCE (cite a file:line or a concrete observation — read the actual code, do NOT speculate), the impact, and a concrete suggestion. ` +
         `Prefer 3-8 real, high-signal gaps over a long noisy list. If this dimension is genuinely solid, return an empty gaps array.`,
@@ -320,8 +323,8 @@ while (passes < MAX_PASSES) {
         ).then((vs) => {
           const verdicts = vs.filter(Boolean)
           const validVerdicts = verdicts.filter((v) => v.valid)
-          // Gotcha #5: weak dismissals (empty steelman or no codeReference) → weight 0.5
-          const weightedVotes = validVerdicts.reduce((sum, v) => sum + ((!v.steelman || v.steelman.length < 10 || (v.valid === false && !v.codeReference)) ? 0.5 : 1), 0)
+          // Gotcha #5: weak verdicts (empty steelman or no codeReference) → weight 0.5
+          const weightedVotes = verdicts.reduce((sum, v) => sum + ((!v.steelman || v.steelman.length < 10 || (v.valid === false && !v.codeReference)) ? 0.5 : 1), 0)
           const kept = weightedVotes >= Math.ceil(V / 2)
           // Confidence calibration (RAE/DSO-Agent pattern): avg confidence across valid verdicts; <0.8 → SUSPECT
           const avgConf = validVerdicts.length > 0
@@ -377,11 +380,17 @@ log(`Phase 4/7: Synthesize — dedup + prioritize ${confirmed.length} confirmed 
 if (!confirmed.length && !suspects.length) {
   return {
     target,
-    profile: { purpose: profile.statedPurpose, stack: profile.stack, maturity: profile.maturity, dimensions: dims.map((d) => d.key), passes: 1 },
+    profile: { purpose: projectPurpose, stack: profile?.stack ?? [], maturity: projectMaturity, dimensions: dims.map((d) => d.key), passes },
+    probed: dims.map((d) => d.key),
     gapsFound: allGaps.length,
     gapsConfirmed: 0,
     gapsSuspect: 0,
     avgConfidence: 0,
+    lensCoverage: LENSES.slice(0, V),
+    criticPassed: true,
+    criticIssues: [],
+    artifactPath: null,
+    truncated: null,
     report: {
       summary: 'No high-confidence gaps survived adversarial review across the audited dimensions.',
       highestLeverage: 'Nothing critical surfaced. Widen the dimension set or deepen the probe if you want more coverage.',
@@ -394,7 +403,7 @@ if (!confirmed.length && !suspects.length) {
 
 const priorityLabel = (s) => s === 'critical' ? '🔴P0' : s === 'high' ? '🟠P1' : s === 'medium' ? '🟡P2' : '🔵P3'
 const report = await agent(
-  `You are the JUDGE/SYNTHESIZER in a Pantheon gap-analysis harness for project ${target} (purpose: ${profile.statedPurpose}). ` +
+  `You are the JUDGE/SYNTHESIZER in a Pantheon gap-analysis harness for project ${target} (purpose: ${projectPurpose}). ` +
     `Here are the gaps that SURVIVED adversarial review:\n` +
     confirmed
       .map((g, i) => `${i + 1}. [${g.dimension} | ${priorityLabel(g.adjustedSeverity)} | conf:${g.avgConfidence ?? '?'}] ${g.title} — ${g.impact ?? ''} (evidence: ${g.evidence}; fix: ${g.suggestion})`)
@@ -431,7 +440,7 @@ while (!criticPassed && criticFixAttempts < 2) {
       (suspects.length > 0 ? `\n\nSUSPECT gaps:\n` + suspects.map((g, i) => `${i + 1}. [${g.dimension} | ${g.adjustedSeverity} | conf:${g.avgConfidence}] ${g.title}`).join('\n') : ''),
     { schema: REPORT_SCHEMA, phase: 'Critic', label: `critic-fix-${criticFixAttempts}` },
   )
-  if (fixedReport) Object.assign(report, fixedReport)
+  if (fixedReport && report) Object.assign(report, fixedReport)
   // Re-run critic on fixed report
   const reCritic = await agent(
     `Re-verify this FIXED report:\n${JSON.stringify(report, null, 2)}\n\nSame 5-point checklist. Return { passed, issues }.`,
@@ -446,10 +455,11 @@ else log('CRITIC: passed' + (criticFixAttempts > 0 ? ` (fixed in ${criticFixAtte
 // ---- Phase 6: WRITE ARTIFACT — persist report to .gaps/ ----
 phase('Write')
 log(`Phase 6/7: Write — saving report to ${target}/.gaps/...`)
-const scope = focus ? focus.replace(/\s+/g, '-') : 'full'
-const artifactPath = `${target}/.gaps/${scope}-${new Date().toISOString().slice(0,16).replace(/[T:]/g,'')}.md`
+const safeScope = focus ? focus.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/\.\./g, '').slice(0, 64) : 'full'  // prevent path traversal
+const ts = (() => { try { return new Date().toISOString().slice(0,16).replace(/[T:]/g,'') } catch(_) { return 'unknown' } })()  // Date fallback for sandbox
+const artifactPath = `${target}/.gaps/${safeScope}-${ts}.md`
 await agent(
-  `Run: mkdir -p ${target}/.gaps && cat > ${artifactPath} << 'REPORT_EOF'\n${JSON.stringify({ target, profile: profile.statedPurpose, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence, criticPassed, criticIssues, report }, null, 2)}\nREPORT_EOF\n` +
+  `Run: mkdir -p ${target}/.gaps && cat > ${artifactPath} << 'REPORT_EOF'\n${JSON.stringify({ target, profile: projectPurpose, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence: avgConfAll, criticPassed, criticIssues, report }, null, 2)}\nREPORT_EOF\n` +
     `Then verify: wc -l ${artifactPath} shows >0 lines.`,
   { phase: 'Write', label: 'write-artifact' },
 )
@@ -467,7 +477,7 @@ return {
   criticPassed,
   criticIssues,
   target,
-  profile: { purpose: profile.statedPurpose, stack: profile.stack, maturity: profile.maturity, dimensions: dims.map((d) => d.key), passes },
+  profile: { purpose: projectPurpose, stack: profile?.stack ?? [], maturity: projectMaturity, dimensions: dims.map((d) => d.key), passes },
   probed: dims.map((d) => d.key),
   gapsFound: allGaps.length,
   gapsConfirmed: confirmed.length,
