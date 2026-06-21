@@ -180,6 +180,15 @@ Agent(
 # 单个 judge 置信度 < 50% → 该 judge 投票降权为 0.5
 # 最终 score = (判 B 的加权票数 / 总加权票数) × 10
 
+# Judge 评分校准（给 judge prompt 的标准评分指南）：
+# 10: 零问题。每个 Phase/Mode/平台/边界完全一致。工具链完整。Gate 全。
+# 9.5: 至多 1 个 trivial（如措辞偏好、不影响执行的格式）。Ship immediately。
+# 9.0: 1-2 个 minor（如 gate table 缺行、某个工具回退链不完整）。Ship with note。
+# 8.5: 多个 minor 或 1 个 medium（如跨平台缺口、mode 行为未定义）。Fix then ship。
+# 8.0: 实质性缺口（如缺 Phase、无错误恢复）。Don't ship。
+# "Trivial" = 不改也不影响 agent 正确执行。"Minor" = 可能导致某些边界下执行偏差。
+# Judge 必须引用 file:line 作为问题证据。无代码引用的问题=无效。
+
 # Critic 强制挑刺（super-fix 模式）：
 # 每个 judge 必须至少指出 1 个改进空间。"两个版本都好"/"没问题"= 无效评估，重跑。
 # 这防止 judge 偷懒给 B 满分——强制找出差异点。
@@ -275,6 +284,25 @@ for each skill in 优化范围 (按基线分数从低到高排序):
       编辑 SKILL.md
       git add + commit（message: "skill-lab: {skill} round{round} {改进摘要}"）
       检查 150% 体积上限（行数：`wc -l`，新文件行数 > 旧文件 × 1.5 → 拒绝提交，精简后重试）
+
+    Step 3.5 — 🔴 Pre-Judge Lint（新增：防吹牛逼门禁）：
+      **必须跑完以下检查清单才能进 Step 4。跳过=自评分=吹牛逼。**
+      
+      | # | 检查项 | 来源 |
+      |---|--------|------|
+      | L1 | 跨平台一致性：Win/Linux 命令是否都有等价实现？ | J4,J7,J9 |
+      | L2 | Gate table 完整性：每 Phase 🔴 gate 是否在门控表有对应行？ | J10,J11 |
+      | L3 | 变量定义：所有 `{var}` / `$VAR` 模板变量是否已定义？ | J2,J8 |
+      | L4 | 断言对齐：test-prompts 的 mustContain/regex 是否匹配 skill text 实际措辞？ | J12 |
+      | L5 | Mode 一致性：QuickRef mode 描述 ↔ per-phase table ↔ 各 Phase 内 prose 三方一致？ | J1,J5,J10 |
+      | L6 | 工具回退链：TIER2 失败→TIER1 回退是否在每个 Phase 都写明？ | J3,J6 |
+      | L7 | Gotcha 覆盖：每个 `禁止`/`别做` 是否有对应 Gotcha 条目？每个 Gotcha 是否与正文细节一致？ | J7 |
+      | L8 | 终端升级路径：最坏情况（所有工具都不可用）是否有明确的 BLOCK/MANUAL 出口？ | J3 |
+      | L9 | test-prompts 覆盖：每个 T-Type / Phase / Mode 是否有至少 1 个 test prompt？ | J12 |
+      | L10 | 生产安全：print()/写操作是否区分 dev/prod？ | J13,J15 |
+
+      任一 FAIL → 修 → 重跑该检查。全 PASS → 进 Step 4。
+      此清单随 judge 新发现持续增长（Growability 模式）。
 
     Step 4 — 重新评估：
       维度 1-4：主 agent 重新打分
