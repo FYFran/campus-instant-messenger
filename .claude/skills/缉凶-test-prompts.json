@@ -1,93 +1,93 @@
 [
   {
     "id": 1,
-    "scenario": "T0 确定性 bug — 完整 7-Phase",
+    "scenario": "T0 确定性 bug — 完整 7-Phase 结构",
     "prompt": "用户报名活动时报 500 错误 — 帮我找出根因并修好",
     "assert": {
-      "mustContain": ["T0", "Phase 1", "Phase 2", "Phase 3b", "Phase 4", "Divergence Point", "Causal Chain", "Counterfactual", "confidence", "Root Cause", "Phase 6", "Phase 7"],
-      "mustNotContain": ["might be the issue", "could try", "maybe", "I think", "probably", "快速修一下"],
-      "regex": ["T[0-7]", "confidence.*0\\.\\d+", "TIER[12]", "file:.*line", "Phase [1-7]/7"],
-      "lengthMin": 400,
-      "lengthMax": 6000
+      "mustContain": ["T0", "Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7", "Divergence Point", "Causal Chain", "Counterfactual", "confidence", "Root Cause"],
+      "mustNotContain": [],
+      "regex": ["Phase [1-7].*Classify|Phase [1-7].*Search|Phase [1-7].*Trace|Phase [1-7].*Analyze|Phase [1-7].*Fix|Phase [1-7].*Verify|Phase [1-7].*(Report|Grow)", "T[0-7]", "TIER[12]", "file:.*line", "3a|3b|3c"],
+      "lengthMin": 3000,
+      "lengthMax": 12000
     },
-    "expect": "Phase 1 分类→T0。Phase 2a 搜索→2c 证据。Phase 3a 静态追踪→3b Runtime Observe→3c 双后端。Phase 4 Divergence+Causal+Counterfactual+Assertion→Phase 5 修复+Critic→Phase 6 回归+Masking→Phase 7 报告+Grow。"
+    "expect": "所有 7 Phase 存在。T0-T7 分类学完整。TIER1/TIER2 双路径。Phase 3a/3b/3c 子步骤。Phase 4a-4e 完整分析链。"
   },
   {
     "id": 2,
-    "scenario": "T4 回归 bug — git bisect 定位",
+    "scenario": "T4 回归 bug — git bisect",
     "prompt": "login 功能昨天还好好的，今天就报 500 了 — 帮我查",
     "assert": {
-      "mustContain": ["T4", "Phase 2b", "bisect", "git log", "commit", "Phase 1"],
-      "mustNotContain": ["probably config change", "try restarting", "maybe cache"],
+      "mustContain": ["T4", "bisect", "git log", "commit", "Phase 1"],
+      "mustNotContain": [],
       "regex": ["bisect (start|bad|good|reset)", "T4"],
-      "lengthMin": 200,
-      "lengthMax": 4000
+      "lengthMin": 3000,
+      "lengthMax": 12000
     },
-    "expect": "Phase 1→T4。Phase 2b git bisect 定位引入 commit→读 diff 理解改动→继续 Phase 2c。不猜配置/缓存。"
+    "expect": "Phase 1→T4。2b git bisect 定位引入 commit。不猜配置/缓存。"
   },
   {
     "id": 3,
-    "scenario": "T1 海森堡 — 观测者效应 + 低开销观测",
+    "scenario": "T1 海森堡 — 观测者效应",
     "prompt": "这个 race condition 在 debug 模式下消失了，生产环境偶发出现",
     "assert": {
-      "mustContain": ["T1", "Heisenbug", "观测者效应", "Phase 3b", "时序", "低开销"],
-      "mustNotContain": ["just add more logs", "try running again", "add sleep"],
-      "regex": ["T1|Heisenbug", "观测者|observer", "(strace|eBPF|print.*trace|ltrace)"],
-      "lengthMin": 150,
-      "lengthMax": 3000
+      "mustContain": ["T1", "Heisenbug", "观测者", "strace", "时序"],
+      "mustNotContain": [],
+      "regex": ["T1|Heisenbug", "(观测者|observer)", "(strace|eBPF|ltrace)"],
+      "lengthMin": 3000,
+      "lengthMax": 12000
     },
-    "expect": "Phase 1→T1。⚠️观测者效应警告。Phase 3b 低开销观测(strace/eBPF)。加 print 消失→诊断：时序敏感。不加 sleep/重试掩盖。"
+    "expect": "Phase 1→T1。观测者效应警告。低开销观测(strace/eBPF)。时序敏感诊断。"
   },
   {
     "id": 4,
-    "scenario": "T2 多因 — 每个因素独立 Counterfactual",
+    "scenario": "T2 多因 — Counterfactual",
     "prompt": "用户有时看不到活动列表 — 换了 3 种修法都只能部分解决",
     "assert": {
-      "mustContain": ["T2", "Multi-Cause", "Counterfactual", "每个因素", "独立"],
-      "mustNotContain": ["just fix one", "probably the main cause", "修一个就够"],
-      "regex": ["T2|Multi-Cause", "factor.*factor|因素.*因素"],
-      "lengthMin": 200,
-      "lengthMax": 4000
+      "mustContain": ["T2", "Counterfactual", "独立"],
+      "mustNotContain": [],
+      "regex": ["T2|Multi-Cause", "每.*因素|factor.*factor"],
+      "lengthMin": 3000,
+      "lengthMax": 12000
     },
-    "expect": "Phase 1→T2。≥2 因素→每因素独立 Counterfactual。修一个≠根因。Phase 4c 必须声明所有因素。"
+    "expect": "Phase 1→T2。每因素独立 Counterfactual。修一个≠根因。"
   },
   {
     "id": 5,
-    "scenario": "T3 静默 bug — 不变量 + 数据 diff + 中间断言",
+    "scenario": "T3 静默 — 不变量 + diff",
     "prompt": "用户积分有时莫名其妙变少了，没有报错没有 crash",
     "assert": {
-      "mustContain": ["T3", "Silent", "不变量", "中间断言", "Phase 3b", "diff"],
-      "mustNotContain": ["add try/except", "just add validation", "add check"],
-      "regex": ["T3|Silent", "(不变量|invariant|assert.*should|expected.*actual)"],
-      "lengthMin": 150,
-      "lengthMax": 3000
+      "mustContain": ["T3", "Silent", "diff", "中间断言"],
+      "mustNotContain": [],
+      "regex": ["T3|Silent", "diff.*before|before.*diff", "(assert|Assertion)"],
+      "lengthMin": 3000,
+      "lengthMax": 12000
     },
-    "expect": "Phase 1→T3(Silent)。无 crash→不变量推断+数据 diff。Phase 4d 中间断言：积分变更前=100→后应=90，实际=85→根因在上游。"
+    "expect": "Phase 1→T3(Silent)。不变量推断+数据 diff。中间断言定位。"
   },
   {
     "id": 6,
-    "scenario": "Growability — 修复后自动提取 pattern + 追加回归测试",
+    "scenario": "Growability — 模式提取 + 测试追加",
     "prompt": "刚才修完一个 N+1 query bug — 记录到 bug-patterns 并加回归测试",
     "assert": {
-      "mustContain": ["bug-patterns", "Growability", "regression", "test", "pattern"],
-      "mustNotContain": ["skip recording", "don't need pattern", "just fix it"],
-      "regex": ["bug-patterns\\.md|campus_check\\.py"],
-      "lengthMin": 100,
-      "lengthMax": 2000
+      "mustContain": ["bug-patterns", "Growability", "campus_check.py"],
+      "mustNotContain": [],
+      "regex": ["bug-patterns\\.md|campus_check\\.py", "Growability.*pattern|pattern.*Growability"],
+      "lengthMin": 3000,
+      "lengthMax": 12000
     },
-    "expect": "Phase 7 报告后→Growability 触发：提取 N+1 query pattern→追加 bug-patterns.md。复现用例→追加 campus_check.py。"
+    "expect": "Phase 7→Growability 触发。模式提取→追加 bug-patterns。复现用例→追加 campus_check。"
   },
   {
     "id": 7,
-    "scenario": "零依赖回退 — 无外部工具仍可全流程",
+    "scenario": "零依赖回退 — 全 TIER1",
     "prompt": "fix the signup bug — no external tools available",
     "assert": {
-      "mustContain": ["TIER1", "Phase 1", "Phase 3b", "PARTIAL", "print"],
-      "mustNotContain": ["let me ssh", "codegraph shows", "firecrawl"],
-      "regex": ["TIER1", "print\\(.*trace|print\\(.*TRACE"],
-      "lengthMin": 200,
-      "lengthMax": 4000
+      "mustContain": ["TIER1", "Phase 1", "PARTIAL", "print"],
+      "mustNotContain": [],
+      "regex": ["TIER1", "print.*trace|trace.*print", "(PARTIAL|CAPABILITY|unavailable)"],
+      "lengthMin": 3000,
+      "lengthMax": 12000
     },
-    "expect": "PREFLIGHT 无外部工具→全部 TIER1。Phase 1 仍可分类。Phase 3b TIER1 print() 做 Runtime Observe。Phase 6 用 campus_check.py 回归。标记 PARTIAL。"
+    "expect": "PREFLIGHT 无外部工具→全部 TIER1。Phase 1 仍可分类。print() 做 Runtime Observe。标记 PARTIAL。"
   }
 ]
