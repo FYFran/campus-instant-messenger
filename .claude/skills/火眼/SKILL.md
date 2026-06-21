@@ -39,12 +39,11 @@ Claude-tier（opus/sonnet/haiku）通过 `agent({model})` 切换。
 
 **3.** 🔴 确定目标路径。无路径 → BLOCK，追问。路径不存在 → BLOCK。必须是绝对路径。
 
-**4.** 决定参数：target（绝对路径）、focus（可选重点维度）、maxDimensions（默认 6）、verifiers（默认 2）、verifier（确认模型）。
+**4.** 🔴 决定参数并确认：target（绝对路径）、focus、maxDimensions（默认6, quick模式3）、verifiers（默认2, quick模式0）、verifier。参数不完整 → BLOCK，追问。
 
 **5.** 🔴 Pre-Workflow Gate：确认 target/maxDimensions/verifier/预期成本后启动。
 
-**6.** MODE=engine：读 `pantheon-gap-class.js` → `Workflow({script, args})` → 等完成 → 按 Output Spec 格式输出。
-MODE=single：agent 直接执行 PreScan（Select-String grep）+ Map（读 README/结构）+ Probe（每维度手动检查）→ 按 Output Spec 格式输出。
+**6.** 🔴 按 MODE 执行：MODE=engine → 读 `pantheon-gap-class.js` → `Workflow({script, args})`。MODE=single → agent 直接 PreScan+Map+Probe。两种模式均按 Output Spec 格式输出。Workflow 失败 → 降级到 single 重试。
 
 **7.** 报告含：确认模型、Passes、Lenses覆盖、Confirmed Gaps（P0-P3+Evidence+Confidence+Fix）、SUSPECT Gaps（conf<0.8）、Quick Wins、Highest-Leverage Fix。标注模式（engine/single）。
 

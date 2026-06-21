@@ -4,9 +4,9 @@
     "scenario": "典型：用 DeepSeek 确认 → agent Output Spec 格式",
     "prompt": "火眼 f:/ClaudeFiles verify with deepseek — focus on security",
     "assert": {
-      "mustContain": ["## Gap Analysis", "Confirm model", "DeepSeek", "### Summary", "### Confirmed Gaps", "### Quick Wins", "### Highest-Leverage Fix", "Evidence", "Confidence", "Fix"],
-      "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you"],
-      "regex": ["(P0|P1|P2|P3).*\\|.*\\|.*\\|", "confidence.*0\\.[0-9]+", "Passes.*[1-9]"],
+      "mustContain": ["## Gap Analysis", "Confirm model", "DeepSeek", "### Summary", "### Confirmed Gaps", "### Quick Wins", "### Highest-Leverage Fix", "Evidence", "Confidence", "Fix", "Mode:"],
+      "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you", "probably"],
+      "regex": ["(P0|P1|P2|P3).*\\|.*\\|.*\\|.*\\|.*\\|", "Confidence.*0\\.[0-9]+", "Passes.*[1-9]", "Mode: (engine|single)", "\\*\\*Confirm model:.*\\*\\*"],
       "lengthMin": 300,
       "lengthMax": 10000
     },

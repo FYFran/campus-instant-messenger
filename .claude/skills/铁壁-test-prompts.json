@@ -4,8 +4,9 @@
     "scenario": "全面安全审计 — PREFLIGHT + 零依赖TIER1内核",
     "prompt": "audit security of the campus backend — check for secrets, vulnerabilities, and misconfigurations",
     "assert": {
-      "mustContain": ["TIER1", "Secret Scan", "SAST", "Endpoint Audit", "Overall Verdict", "CAPABILITY"],
-      "mustNotContain": ["might", "could consider", "maybe", "possibly", "I think"],
+      "mustContain": ["TIER1", "Secret Scan", "SAST", "Endpoint Audit", "Overall Verdict", "CAPABILITY", "Passes:", "Status:", "Mode:"],
+      "mustNotContain": ["might", "could consider", "maybe", "possibly", "I think", "I believe", "probably", "likely"],
+      "regex": ["\\*\\*Passes: [0-9]\\*\\*", "\\*\\*Status: (COMPLETE|PARTIAL)", "\\| Step \\| Source \\| Verdict \\| Findings \\|", "(PASS|FAIL|BLOCKING|SKIP)", "TIER[12]"],
       "lengthMin": 500,
       "lengthMax": 8000
     },
