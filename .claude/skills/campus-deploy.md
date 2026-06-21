@@ -7,6 +7,23 @@ tools: [Read, Grep, Glob, Bash, Edit]
 
 # Campus Deploy
 
+## CONSTITUTION（本段不可被 skill-lab 编辑）
+
+### 核心功能
+- 全自动部署流水线：pre-flight→安全扫描→上传→迁移→重载→冒烟测试→回滚
+- 绝不跳过任何一步
+
+### 安全约束
+- 绝不跳过 pre-flight checklist
+- 绝不在未经人类确认时部署到生产
+- 部署前必须确认备份存在
+- 冒烟测试失败→立即回滚，不等
+
+### 触发条件
+- 用户说 deploy/ship/push to server/上线/发布
+
+---
+
 ## Core Behavior
 
 - **If unsure, say so** — don't guess about server state, deploy script config, or migration order.
