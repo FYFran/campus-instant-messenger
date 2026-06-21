@@ -355,6 +355,11 @@ for each skill in 优化范围 (按基线分数从低到高排序):
       | L13 | 测试断言跨平台：assert 中的工具名/命令是否在所有平台都有效？（如 strace 仅 Linux） | J16 |
       | L14 | 环境配置抽象：是否有硬编码 IP/端口/路径？至少标注说明 | J18 |
       | L15 | 重复内容一致性：同一规则/法律出现多次时措辞完全一致？标注权威版本 | J16,J17 |
+      | L16 | Gate 语义正确性：gate 表动作(BLOCK/回 Phase N/STOP)与 Phase prose 实际指令一致？(不只是存在，而是正确) | M11 |
+      | L17 | 错误路径测试覆盖：每个 Error Recovery 类别是否有 ≥1 test prompt？ | M12 |
+      | L18 | 控制流清晰度：条件分支(only/skip/非T4)的进入/退出条件是否显式？无歧义重排风险 | M13 |
+      | L19 | 否定断言覆盖：STOP/SKIP gate 的 test prompt 是否验证下游 Phase 不出现？ | M14 |
+      | L20 | 升级可执行性：BLOCK/上报动作是否指定通道(console/file/git issue)？不只是说"上报" | M15 |
 
       任一 FAIL → 修 → 重跑该检查。全 PASS → 进 Step 4。
       此清单随 judge 新发现持续增长（Growability 模式）。

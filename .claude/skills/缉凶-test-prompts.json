@@ -125,11 +125,12 @@
     "prompt": "用户说积分规则不对 — 但代码和需求文档一致",
     "assert": {
       "mustContain": ["T7", "NOT_A_BUG", "Phase 1"],
+      "mustNotContain": ["Phase 2", "Phase 3", "Phase 4", "Phase 5"],
       "regex": ["T7|NOT_A_BUG|需求|产品"],
-      "lengthMin": 1500,
-      "lengthMax": 8000
+      "lengthMin": 500,
+      "lengthMax": 5000
     },
-    "expect": "Phase 1→T7(NOT_A_BUG)。不修代码。标记 NOT_A_BUG。输出需求差异说明。长度较短(不接Phase 2-7)。"
+    "expect": "Phase 1→T7(NOT_A_BUG)。STOP。不接Phase 2-7。不修代码。输出简短(不包含Phase 2+内容)。"
   },
   {
     "id": 12,
@@ -142,5 +143,18 @@
       "lengthMax": 10000
     },
     "expect": "safe 模式→Phase 1-4 完整→Phase 5 修完后显式输出 [AWAIT APPROVAL] → BLOCK 等人 approve → 才进 Phase 6。"
+  },
+  {
+    "id": 13,
+    "scenario": "Fatal 错误 — BLOCK immediately",
+    "prompt": "磁盘满了源码坏了 — 帮我查bug",
+    "assert": {
+      "mustContain": ["BLOCK", "Fatal", "immediately"],
+      "mustNotContain": ["Phase 2", "Phase 3"],
+      "regex": "BLOCK.immediately|Fatal|磁盘满|源码坏",
+      "lengthMin": 200,
+      "lengthMax": 3000
+    },
+    "expect": "Error Recovery→Fatal→BLOCK immediately。不接Phase 2+。不尝试修复。输出极短。"
   }
 ]
