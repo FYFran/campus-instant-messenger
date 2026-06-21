@@ -104,7 +104,8 @@ description: >-
 ### 子 Agent 生成机制（维度 5 执行验证的核心）
 
 ```
-用 Agent 工具生成独立评估者。关键：新会话、无编辑记忆、盲评。
+用环境中实际存在的 Agent 工具（Tool: Agent）生成独立评估者。
+关键：新会话、无编辑记忆、盲评。
 
 # 单个测试（基线评估时）
 Agent(
@@ -120,7 +121,6 @@ Agent(
 )
 
 # 盲评对比（优化后验证时）— 防止"我刚改的肯定更好"偏差
-# 子 agent 不知道哪个是旧版、哪个是新版。只看到两段输出，判断哪段更好。
 Agent(
   subagent_type: "general-purpose", 
   description: "Blind-compare {skill_name} versions",
@@ -132,9 +132,19 @@ Agent(
   '''
 )
 
-# 双 judge 共识（至少 2 个独立子 agent，取多数）
-# 如果 2 个 judge 都判 "B" → 保留。都判 "A" → 回滚。分歧 → 第 3 个 judge 打破平局。
+# 双 judge 共识 + 死锁处理
+# 2 judge 都判 B → 保留。都判 A → 回滚。
+# 分歧（A vs B）→ 第 3 judge 打破平局。
+# 2 judge 都低置信（<50%）→ 标记 SUSPECT，不自动决策，交给人类判断。
 # dry_run 比例 > 30% → 评估失效警告（来自 darwin-skill controlled study）
+```
+
+### 收敛循环定义
+
+```
+收敛 = 连续 2 次 re-sweep 后总分提升 < 1 分（Δ < 1.0），且无新增维度评分下降。
+"零新发现" = re-sweep 过程中未出现新的 FAIL 项或评分退化。
+收敛即停。最多 3 个 re-sweep pass（预算保护）。
 ```
 
 ### Phase 0: 初始化
@@ -143,7 +153,8 @@ Agent(
 1. 确认目标 skill：
    - 用户指定名字 → 直接定位 .claude/skills/{name}/SKILL.md
    - 用户说"全部"/"所有"/"all" → Glob(".claude/skills/*/SKILL.md") + Glob(".claude/skills/*.md")
-   - 用户没给名字 → 追问："哪个 skill？还是全部扫描？列出当前可用的 skill？"
+   - 用户说"这个"/"它"/"那个" → 扫描当前对话上下文，找最近提到的 skill 名；找到→确认，找不到→追问
+   - 用户没给名字 → 追问："哪个 skill？还是全部扫描？以下是当前可用的：[Glob 扫描结果]"
 2. 展示找到的 skill 列表，等用户确认范围
 3. 检查 git 仓库状态
 4. 创建分支 skill-lab/YYYYMMDD-HHMM
@@ -156,7 +167,9 @@ Agent(
 for each skill in 范围:
   1. 读 SKILL.md，理解 skill 功能
   2. 生成 2-3 个测试 prompt（覆盖 happy path + 边界 + 歧义场景）
-  3. 保存到 {skill目录}/test-prompts.json
+  3. 如果用户说"不要改"/"只评估"/"只看不改" → 🔴 CHECKPOINT: "需要写入 test-prompts.json 才能评估。可以吗？"
+     用户同意 → 保存。用户拒绝 → 跳过该 skill，标记 dry_run，维度 5 使用干跑模拟打分。
+  4. 如果用户未限制修改 → 保存到 {skill目录}/test-prompts.json
 展示所有测试 prompt 给用户，确认后再进入 Phase 1。
 如果 test-prompts.json 已存在 → 展示 + 问"复用 / 重写 / 追加"三选一。
 ```
@@ -206,7 +219,7 @@ for each skill in 优化范围 (按基线分数从低到高排序):
     Step 3 — 执行改进：
       编辑 SKILL.md
       git add + commit（message: "skill-lab: {skill} round{round} {改进摘要}"）
-      检查 150% 体积上限
+      检查 150% 体积上限（行数：`wc -l`，新文件行数 > 旧文件 × 1.5 → 拒绝提交，精简后重试）
 
     Step 4 — 重新评估（盲评 + 双 judge）：
       维度 1-4：主 agent 重新打分
