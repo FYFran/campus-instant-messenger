@@ -1,0 +1,19 @@
+timestamp	commit	skill	old_score	new_score	status	dimension	note
+2026-06-21T14:20	baseline	campus-code-review	-	59.5	baseline	-	初始评估 | 静态52.0 + 实测7.5 | 短板:dim2失败模式(5/10) dim4检查点(4/10) dim5实测触发词bug
+2026-06-21T14:20	0e94de0	campus-code-review	59.5	80.0	keep	失败模式编码	R1: +Constitution +触发词fix +歧义追问 +工具fallback
+2026-06-21T14:20	1c40ff7	campus-code-review	80.0	88.5	keep	检查点设计	R2: +严重级别 +diff优先 +Step2审查后指导 +多文件处理
+2026-06-21T14:20	b8da095	campus-code-review	88.5	98.5	keep	方法论重构	R3: +三级门控 +半形式推理 +source→sink +review artifacts
+2026-06-21T14:20	c5ffc59	campus-code-review	98.5	97.0	keep	操作层修复	R4: +校准 +预算 +工具指南 +目标检测 +安全边界
+2026-06-21T14:20	0fb61b8	campus-code-review	97.0	98.5	keep	收敛+质量	R5 FINAL: +收敛循环 +置信过滤 +no-hedging +TRUNCATED AT +8残余全修
+2026-06-21T14:20	baseline	skill-lab	-	68.0	baseline	-	初始评估 | 致命:子agent未定义/批处理缺失/歧义未编码
+2026-06-21T14:20	25ee95f	skill-lab	68.0	83.5	keep	机制+批处理	R1: +Agent工具调用 +Glob扫描 +歧义规则 +收敛+盲评+CHECKPOINT
+2026-06-21T14:20	cec6bcf	skill-lab	83.5	91.0	keep	操作层修复	R2: +Agent绑定 +收敛Δ<1 +Phase0.5冲突 +死锁 +代词 +150%单位
+2026-06-21T14:20	1131068	skill-lab	91.0	91.0	keep	确定性断言	R3 FINAL: +6维评估(5a确定性+5b三judge) +assert格式 +噪声±2
+2026-06-21T14:20	0d784bc	skill-lab	91.0	97.1	keep	结构+检查点	R4: +Table of Contents +Quick Reference +Phase0/3 CHECKPOINT. dim3→10 dim4→10
+2026-06-21T14:20	08038b6	skill-lab	97.1	97.1	keep	失败模式	R5 FINAL: pronoun+vague两步分解. dim2→10. 全部4静态维度天花板
+2026-06-21T15:30	baseline	铁壁	-	63.2	baseline	-	初始评估 | dim1:8(20.0) dim2:5(12.5) dim3:7(14.0) dim4:3(4.5) dim5a:10(8.0) dim5b:6(4.2) | 短板:dim4检查点 dim2失败模式
+2026-06-21T15:45	3042f02	铁壁	63.2	75.3	keep	检查点设计	R1: +4 CHECKPOINT gates (Step1 CRITICAL→BLOCK, Step2 ERROR→flag, Step6 user-confirm, Step7 pre-report verify). dim4:3→7
+2026-06-21T15:45	75f2f0e	铁壁	75.3	77.8	keep	失败模式编码	R2: +3 tool fallback paths (gitleaks→rg, semgrep→rg, pip-audit→safety). dim2:5→7
+2026-06-21T15:48	9a73bb2	铁壁	77.8	89.85	keep	质量规则+推理+严重度	R3: +Quality Rules(convergence+no-hedging+confidence+TRUNCATED) +semi-formal reasoning +severity guide. dim1:8.5→9.5 dim2:7→9 dim3:8→9 dim4:7→8
+2026-06-21T15:49	651da94	铁壁	89.85	93.95	keep	门控+黑名单+报告头	R4: +gate enforcement +Post-Audit Protocol +Target detection +反例黑名单(10项) +report header(Passes/Status/TRUNCATED). dim2:9→9.5 dim3:9→9.5 dim4:8→9 dim5b:8→8.5. 收敛(2×re-sweep Δ=0). 体积141%
+2026-06-21T15:52	a6c4599	铁壁	93.95	99.25	keep	速查+分级+assert+归档	R5 FINAL: +Quick Reference +分级执行(quick/safe/full) +test-prompts(5 assert cases→5a real) +Audit Artifacts(.audits/+escalation). dim1:9.5→10 dim2:9.5→10 dim3:9.5→10 dim4:9→10 dim5a:auto→9.5 dim5b:8.5→9.5. 体积283行(148%). ALL 6维度≥9.5

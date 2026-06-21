@@ -279,7 +279,7 @@ After delivering the review:
 ## References
 - `f:\ClaudeFiles\docs\CODE_REVIEW.md` — full checklist with code examples
 - `f:\ClaudeFiles\docs\SECURITY_KB.md` — 15 vulnerability categories with exploit paths
-- `f:\ClaudeFiles\.claude\skills\campus-security-audit.md` — deeper security checks
+- `f:\ClaudeFiles\.claude\skills\铁壁.md` — 铁壁（Iron Wall），更深层安全审计（8步门控+半形式推理+convergence loop）
 - `f:\ClaudeFiles\.semgrep\python.yml` — automated SAST rules that catch common antipatterns
 
 ## Anti-patterns
