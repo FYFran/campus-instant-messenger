@@ -58,6 +58,19 @@ When user says: "audit security", "check security", "find vulnerabilities", "is 
 
 ## Process
 
+**Gate rule: CRITICAL in earlier steps blocks later steps.** If Step 1 finds a real CRITICAL secret → skip Steps 2-7, go directly to Step 8 report. If Step 2 finds ERROR → flag report BLOCKING but continue (endpoint audit may reveal related issues). Step 6 (nuclei) requires explicit user confirmation before running against production.
+
+**Post-Audit Protocol:** After delivering report:
+- **BLOCKING** → explain which CRITICAL finding. Suggest immediate remediation. Escalate to human.
+- **REVIEW NEEDED** → list actionable fixes for each HIGH/MEDIUM finding. Ask: "Apply fixes or handle manually?"
+- **PASS** → done. Suggest next audit date (weekly recommended).
+
+**Target detection:** Before starting, detect what changed:
+- `.py` or `.go` files changed → full Step 1-7
+- `.dart` only → Step 1 (secrets) + Step 4 (hardcoded) + Step 5 (dependencies)
+- Config files only (`.yaml`, `.toml`) → Step 1 (secrets) + Step 4 (hardcoded)
+- No code changed, user wants full audit → all steps
+
 ### Step 1 — Gitleaks Secret Scan
 ```powershell
 # Run from f:/ClaudeFiles
@@ -177,6 +190,7 @@ Use `pg-ops slow-queries` to check for slow SQL, `pg-ops locks` for active locks
 ### Step 8 — Report Generation
 ```
 ## Security Audit Report — {date}
+**Passes: N (converged / budget-exhausted)** | **Status: {COMPLETE / PARTIAL — n/7 steps}** | **TRUNCATED AT: {step or "N/A"}**
 
 ### Secret Scan: {PASS|FAIL}
 - {n} gitleaks findings, {n} confirmed secrets
@@ -218,10 +232,19 @@ Use `pg-ops slow-queries` to check for slow SQL, `pg-ops locks` for active locks
 - `f:\ClaudeFiles\docs\SECURITY_ARCHITECTURE.md` — architecture-level security design
 - `f:\ClaudeFiles\.claude\agents\red-team-wolf.md` — 13 attack vectors detail
 
-## Anti-patterns
-- DO NOT skip gitleaks because "nothing changed" — secrets can be in new commits
-- DO NOT run semgrep on files outside `.semgrep/` rules without `--config auto`
-- DO NOT report false positives without checking allowlist first
-- DO NOT ignore WARNING-level semgrep findings — they mask real bugs
-- DO NOT check only Python — Dart, Go, YAML, and Shell files also contain secrets
-- DO NOT skip the Go backend just because it's not deployed — it will be
+## 反例黑名单（审计时绝对不要做的事）
+
+这些是真实踩过的坑。每轮审计前对照一次。任一命中 → 修正审计流程。
+
+| # | 反模式 | 为什么不要做 | 替代做法 |
+|---|--------|-------------|---------|
+| 1 | **跳过 gitleaks** | 新 commit 可能含密钥，"nothing changed" 是错觉 | 每轮必跑 gitleaks detect |
+| 2 | **凭记忆审 allowlist** | `.gitleaks.toml` 和 `.semgrep/python.yml` 会更新 | 先读 allowlist 再报 finding |
+| 3 | **忽略 WARNING 级** | semgrep WARNING 常掩盖真实 bug（SELECT \*, http://） | WARNING 也列入报告，标注 "review recommended" |
+| 4 | **只看 Python** | Dart/Go/YAML/Shell 同样含密钥和漏洞 | Step 1+4 扫全部文件类型 |
+| 5 | **跳过 Go 后端** | 未部署 ≠ 无 bug。将来 ship 时漏洞已存在 | Go 后端和 Python 后端同步审计 |
+| 6 | **制造 finding 凑数** | 低置信度 finding 稀释报告可信度 | 用 >80% 置信度过滤，不确定 → SUSPECT |
+| 7 | **hedging 措辞** | "might/could/possibly" 让报告不可执行 | 每条 finding 必须有 file:line + concrete fix |
+| 8 | **跳过 convergence** | 第一轮扫完可能有遗漏，不 re-sweep = 残缺报告 | 至少 1 次 re-sweep，直到零新发现 |
+| 9 | **不经确认跑 nuclei** | 生产服务器打 ~100 请求，可能触发 WAF/告警 | Step 6 前必须用户确认 |
+| 10 | **静默跳过工具失败** | gitleaks/semgrep 挂了不吭声 = 假 PASS | 标记 `Status: PARTIAL` + 说明哪个工具不可用 |
