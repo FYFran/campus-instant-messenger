@@ -21,7 +21,7 @@
 | 改代码(1-2文件) | 修/fix/patch | caveman:builder + code-reviewer + security-auditor |
 | 改代码(3+文件) | 重构/refactor | refactor-master |
 | 安全审计 | 铁壁/安全/漏洞/audit/security audit | 铁壁 (7步门控: gitleaks→semgrep→端点审计→密钥→CVE→nuclei→DB) |
-| Bug排查 | bug/报错/不工作 | codegraph_context → debugger |
+| Bug排查 | bug/报错/不工作/fix/error/crash | 缉凶 (7步门控: PREFLIGHT→三源搜索→证据→CodeGraph追踪→双后端→半形式推理→Critic→回归验证→报告) |
 | 读代码 | 怎么实现的/在哪 | codegraph_context → codegraph_explore |
 | 部署 | deploy/上线 | deploy-captain |
 | 测试 | test/check | test-generator + api-tester |
