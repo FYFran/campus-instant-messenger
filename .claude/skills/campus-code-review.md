@@ -34,12 +34,38 @@ tools: [Read, Grep, Glob, codegraph_search, codegraph_callers, codegraph_context
 - **If no files specified → ask** — don't blindly scan. Ask: "Which files/changes should I review? Python backend, Go backend, or both?"
 - **If tool missing → fallback** — gitleaks/semgrep not installed? Use Grep as fallback, note it in report.
 
+### Tool Selection Guide
+| Scenario | Use | Why |
+|----------|-----|-----|
+| Find where a function is defined | `codegraph_search` / `codegraph_node` | Structured, sub-ms |
+| Trace call paths (X→Y) | `codegraph_trace` | Follows dynamic dispatch |
+| Find patterns in code (secrets, SQL) | `rg -n` (Grep) | Regex flexibility |
+| List files in a directory | `codegraph_files` | Faster than Glob |
+| Read actual file contents | `Read` | Always verify before judging |
+
+### Review Budget & Progressive Disclosure
+**Default budget: 4000 tokens per review stage.** If a stage would exceed budget:
+1. **Stage 1 first** → deliver findings + verdict immediately
+2. **Ask user:** "Stage 1 complete. Continue to Stage 2 (Code Quality)?"
+3. Large file (>1000 lines): focus on changed sections only (use `git diff`), read full file only for security-sensitive areas
+4. **10+ findings?** → group by category, report top 5 by severity first, ask before expanding
+
+### "Security-Related" Boundary (for auto-fix rule)
+| Security-related (never auto-fix) | Not security-related (can offer to fix) |
+|-----------------------------------|----------------------------------------|
+| Auth, RBAC, SQL queries, secrets, crypto, input validation, CSP, rate limits | Code style, variable naming, docstrings, import order, type annotations, CSS styling |
+
 ## Trigger
 When user says: "review this", "review", "code review", "is this correct", "check my code", "check this", "check out", "check", before committing code
 
 ## Process — Three-Stage Gated Protocol
 
 **Gate rule: failure in an earlier stage blocks later stages.** Stage 1 must PASS before Stage 2 runs.
+
+**Target detection:** Before starting, detect what changed:
+- `.py` or `.go` files → run Stage 1 (security) + Stage 2 (quality) + Stage 3 (cross-backend)
+- `.dart` files only → Stage 1: check secrets + dependency CVEs only, then go directly to Stage 3 Flutter section
+- Mixed `.py`/`.go` + `.dart` → full Stage 1-3 for backend, Stage 3 Flutter section for frontend
 
 ### Stage 1: Security & Correctness 🔴 CHECKPOINT
 **Goal: catch things that break production or leak data. Must PASS.**
@@ -50,9 +76,11 @@ For each security-significant code path, fill this logical certificate BEFORE re
 Premise: [What does this code assume? e.g., "user['id'] comes from a valid JWT"]
 Trace:  [Follow input from entry to sink. e.g., "request → get_current_user → JWT decode → user['id'] → SQL query"]
 Check:  [Verify at each hop. JWT verified? user['id'] type-checked? parameterized?]
-Conclusion: [SAFE if all hops verified. VULNERABLE if any hop breaks.]
+Conclusion: [SAFE if all hops verified. VULNERABLE if any hop breaks. SUSPECT if uncertain — see calibration below.]
 ```
 If any hop cannot be verified → report as CRITICAL. This is Meta's 93% accuracy technique.
+
+**Calibration rule (防止门控误报):** If you cannot definitively conclude SAFE or VULNERABLE → mark as 🟡 SUSPECT, not 🔴 CRITICAL. SUSPECT findings do NOT block Stage 2. They escalate to security-auditor for deeper review. This prevents a single uncertain finding from blocking all downstream quality checks.
 
 #### 1.2 Security Categories (source→sink trace required)
 For each finding, trace the complete input→output path. Do NOT just pattern-match.
@@ -105,7 +133,7 @@ For each finding, trace the complete input→output path. Do NOT just pattern-ma
 - [ ] Regex patterns: no nested quantifiers (ReDoS)?
 
 **Error Handling:**
-- [ ] No bare `except: pass` or `except: pass` anywhere?
+- [ ] No bare `except: pass` or `except Exception: pass` anywhere?
 - [ ] Validation errors → generic message (not Pydantic field internals)?
 - [ ] 404 for missing, 403 for forbidden, 429 for rate-limited, "system busy" for DB errors?
 - [ ] Every catch block logs or propagates?
@@ -146,6 +174,8 @@ For each finding, trace the complete input→output path. Do NOT just pattern-ma
 - [ ] `dart analyze` 0 errors
 
 ## Review Artifacts
+
+**Before writing: `mkdir -p f:/ClaudeFiles/.reviews` if the directory does not exist.**
 
 **Every review writes to `.reviews/{filename}-{YYMMDD-HHMM}.md`** — survives context compaction, enables escalation tracking.
 
