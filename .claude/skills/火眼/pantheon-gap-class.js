@@ -102,10 +102,13 @@ const REPORT_SCHEMA = {
           title: { type: 'string' },
           dimension: { type: 'string' },
           severity: { type: 'string' },
+          priority: { type: 'string', enum: ['P0', 'P1', 'P2', 'P3'] },
+          evidence: { type: 'string', description: 'Concrete file:line reference' },
+          confidence: { type: 'number', minimum: 0, maximum: 1 },
           impact: { type: 'string' },
           suggestion: { type: 'string' },
         },
-        required: ['title', 'severity', 'suggestion'],
+        required: ['title', 'severity', 'suggestion', 'evidence'],
       },
     },
     quickWins: { type: 'array', items: { type: 'string' }, description: 'Cheap, high-value fixes' },
@@ -245,7 +248,7 @@ function resolveVerifier(v, crossLegacy) {
   if (providers[provId] && providers[provId].baseUrl) return httpDesc(provId, null)
   return { mode: 'codex', codexArgs: ['-m', raw], who: raw }
 }
-const verifierArg = A.verifier ?? A.defaultVerifier  // Gotcha #6: config.json schema compat
+const verifierArg = claudeOnly ? 'claude' : (A.verifier ?? A.defaultVerifier)  // Gotcha #6: safe mode forces Claude
 const VR = resolveVerifier(verifierArg, crossVerify)
 log(`Adversarial confirm model: ${VR.who}`)
 // One skeptic's agent() promise, routed to the chosen model. `meta` = { phase, label }.
@@ -463,14 +466,17 @@ const safeScope = focus ? focus.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/\.\./g,
 const ts = (() => { try { return new Date().toISOString().slice(0,16).replace(/[T:]/g,'') } catch(_) { return 'unknown' } })()  // Date fallback for sandbox
 const artifactPath = `${target}/.gaps/${safeScope}-${ts}.json`
 await agent(
-  `Run: New-Item -ItemType Directory -Force "${target}/.gaps" > $null; Set-Content -Path "${artifactPath}" -Value '${JSON.stringify({ target, profile: projectPurpose, mode, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence: avgConfAll, criticPassed, criticIssues, truncated, report }, null, 2).replace(/'/g, "''")}' -Encoding UTF8\n` +
-    `Then verify: wc -l ${artifactPath} shows >0 lines.`,
+  `Write the gap analysis report to ${artifactPath}:\n` +
+    `1. Create directory: if on Windows use "New-Item -ItemType Directory -Force '${target}/.gaps' > \$null", else use "mkdir -p ${target}/.gaps"\n` +
+    `2. Write file with content below (use Python for cross-platform safety):\n` +
+    `   python3 -c "import json,pathlib; pathlib.Path('${target}/.gaps').mkdir(parents=True,exist_ok=True); pathlib.Path('${artifactPath}').write_text('''${JSON.stringify({ target, profile: projectPurpose, mode, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence: avgConfAll, criticPassed, criticIssues, truncated, report }, null, 2)}''')"\n` +
+    `3. Verify: check file exists and >0 bytes`,
   { phase: 'Write', label: 'write-artifact' },
 )
 log(`Report written to ${artifactPath}`)
 
 // TRUNCATED AT safety net: if context exhausted mid-pipeline, mark partial
-const truncated = confirmed.length < allGaps.length * 0.5 ? `TRUNCATED AT: ${passes < MAX_PASSES ? 'Probe pass ' + passes : 'Synthesize'} — ${confirmed.length}/${allGaps.length} gaps confirmed` : null
+const truncated = (allGaps.length > 0 && confirmed.length === 0 && suspects.length === 0) ? `TRUNCATED AT: ${passes < MAX_PASSES ? 'Probe pass ' + passes : 'Synthesize'} — 0/${allGaps.length} gaps confirmed (possible context exhaustion)` : null
 if (truncated) log(truncated)
 
 const skippedDims = dims.filter((d) => !allGaps.some((g) => g.dimension === d.key)).map((d) => d.key)

@@ -224,7 +224,7 @@ After delivering the gap report:
 
 **Before writing: `mkdir -p {target}/.gaps` if the directory does not exist.**
 
-Every gap analysis writes to `{target}/.gaps/{scope}-{YYMMDD-HHMM}.md` — survives context compaction, enables trend tracking.
+Every gap analysis writes to `{target}/.gaps/{scope}-{YYMMDD-HHMM}.json` — survives context compaction, enables trend tracking. Structured JSON for machine readability.
 
 ```
 .gaps/
@@ -235,7 +235,7 @@ Every gap analysis writes to `{target}/.gaps/{scope}-{YYMMDD-HHMM}.md` — survi
 
 **Escalation rule:** If same gap appears in 2+ consecutive analyses of the same project → auto-escalate severity one level (LOW→MEDIUM→HIGH→CRITICAL) and flag in `ESCALATIONS.md`.
 
-**Cleanup:** Keep last 20 gap files per directory. Delete older than 90 days. `.gaps/` should be in `.gitignore`.
+**Cleanup:** Keep last 20 `.json` gap files per directory. Delete older than 90 days. `.gaps/` should be in `.gitignore`.
 
 ## Notes
 - **Not a resident process.** One-shot per call, then exits — zero cost when idle.

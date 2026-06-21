@@ -58,7 +58,7 @@
     "assert": {
       "mustContain": ["### Confirmed Gaps", "### Quick Wins", "### Highest-Leverage Fix", "Confirm model", "Qwen", "Passes", ".gaps/"],
       "mustNotContain": ["\"criticPassed\":", "\"criticIssues\":", "\"avgConfidence\":", "\"artifactPath\":"],
-      "regex": ["Passes.*[1-9]", "P0.*\\|.*Evidence.*\\|.*Confidence", ".gaps/.*\\.md"],
+      "regex": ["Passes.*[1-9]", "P0.*\\|.*Evidence.*\\|.*Confidence", ".gaps/.*\\.json"],
       "lengthMin": 500,
       "lengthMax": 12000
     },
