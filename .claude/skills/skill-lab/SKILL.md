@@ -101,43 +101,106 @@ description: >-
 
 ## 核心循环
 
+### 子 Agent 生成机制（维度 5 执行验证的核心）
+
 ```
-Phase 0: 初始化
-  ├─ 确认目标 skill（单个 / 列表）
-  ├─ 检查 git 仓库状态
-  ├─ 创建分支 skill-lab/YYYYMMDD-HHMM
-  └─ 初始化 results.tsv（如不存在）
+用 Agent 工具生成独立评估者。关键：新会话、无编辑记忆、盲评。
 
-Phase 0.5: 测试 Prompt 设计
-  ├─ 读 SKILL.md，理解 skill 功能
-  ├─ 生成 2-3 个测试 prompt（覆盖 happy path + 边界 + 歧义场景）
-  ├─ 展示给用户确认
-  └─ 保存到 {skill目录}/test-prompts.json
+# 单个测试（基线评估时）
+Agent(
+  subagent_type: "general-purpose",
+  description: "Evaluate {skill_name} on prompt {id}",
+  prompt: '''
+    Read {skill_path}/SKILL.md.
+    Then read {skill_path}/test-prompts.json prompt #{id}.
+    Execute the prompt as if you were the skill's target agent.
+    Compare: with-skill output vs what a generic agent would do without the skill.
+    Return ONLY: {"quality_score": 1-10, "notes": "why this score"}
+  '''
+)
 
-Phase 1: 基线评估
-  ├─ 维度 1-4：主 agent 静态分析打分
-  ├─ 维度 5：spawn 独立子 agent 跑测试 prompt
-  │   ├─ with_skill: 带 skill 执行
-  │   └─ baseline: 不带 skill 执行（或对比旧版 skill）
-  ├─ 计算加权总分
-  ├─ 识别最低维度
-  └─ 记录基线到 results.tsv
-  🔴 CHECKPOINT · 🛑 STOP：展示基线评分 + 最低维度，等用户确认
+# 盲评对比（优化后验证时）— 防止"我刚改的肯定更好"偏差
+# 子 agent 不知道哪个是旧版、哪个是新版。只看到两段输出，判断哪段更好。
+Agent(
+  subagent_type: "general-purpose", 
+  description: "Blind-compare {skill_name} versions",
+  prompt: '''
+    Version A output: {old_output}
+    Version B output: {new_output}
+    Which better fulfills the intent described in {skill_path}/test-prompts.json prompt #{id}?
+    Return ONLY: {"winner": "A" or "B" or "tie", "confidence": 0-100, "reasoning": "one sentence"}
+  '''
+)
 
-Phase 2: 优化循环
+# 双 judge 共识（至少 2 个独立子 agent，取多数）
+# 如果 2 个 judge 都判 "B" → 保留。都判 "A" → 回滚。分歧 → 第 3 个 judge 打破平局。
+# dry_run 比例 > 30% → 评估失效警告（来自 darwin-skill controlled study）
+```
+
+### Phase 0: 初始化
+
+```
+1. 确认目标 skill：
+   - 用户指定名字 → 直接定位 .claude/skills/{name}/SKILL.md
+   - 用户说"全部"/"所有"/"all" → Glob(".claude/skills/*/SKILL.md") + Glob(".claude/skills/*.md")
+   - 用户没给名字 → 追问："哪个 skill？还是全部扫描？列出当前可用的 skill？"
+2. 展示找到的 skill 列表，等用户确认范围
+3. 检查 git 仓库状态
+4. 创建分支 skill-lab/YYYYMMDD-HHMM
+5. 初始化 results.tsv（如不存在）
+```
+
+### Phase 0.5: 测试 Prompt 设计 🔴 CHECKPOINT
+
+```
+for each skill in 范围:
+  1. 读 SKILL.md，理解 skill 功能
+  2. 生成 2-3 个测试 prompt（覆盖 happy path + 边界 + 歧义场景）
+  3. 保存到 {skill目录}/test-prompts.json
+展示所有测试 prompt 给用户，确认后再进入 Phase 1。
+如果 test-prompts.json 已存在 → 展示 + 问"复用 / 重写 / 追加"三选一。
+```
+
+### Phase 1: 基线评估
+
+```
+for each skill in 范围:
+  # 静态分析（主 agent）
+  1. 读 SKILL.md 全文
+  2. 按维度 1-4 逐项打分（附简短理由）
+
+  # 效果验证（独立子 agent — 见"子 Agent 生成机制"）
+  3. 对每个测试 prompt，spawn 独立子 agent：
+     - 用 Agent(subagent_type="general-purpose") 执行测试
+     - 子 agent 只看到: SKILL.md + test-prompts.json prompt #N
+     - 子 agent 返回: {"quality_score": 1-10, "notes": "..."}
+  4. 取 2 个独立子 agent 的平均分作为维度 5 得分
+
+  # 汇总
+  5. 计算加权总分
+  6. 记录基线到 results.tsv
+
+🔴 CHECKPOINT · 🛑 STOP：展示所有 skill 的基线评分排名表 + 各 skill 最低维度
+| Skill | Score | 最低维度 | 是否需要优化 |
+|-------|-------|---------|-------------|
+等用户确认优化范围，再进入 Phase 2。
+```
+
+### Phase 2: 优化循环
+
+```
+for each skill in 优化范围 (按基线分数从低到高排序):
   round = 0
   while round < MAX_ROUNDS (默认 3):
     round += 1
 
     Step 1 — 诊断：
+      🔴 CHECKPOINT：展示本轮目标维度 + 改进方案，等用户确认
       找出得分最低的 1 个维度作为本轮目标
-      （注意：维度 2/3 是相关簇，修一个时常带动另一个）
+      （注意：维度 2/3/4 是相关簇，修一个时常带动另一个）
 
     Step 2 — 提出改进：
-      针对目标维度，生成 1 个具体改进方案：
-        - 改什么（具体段落/行）
-        - 为什么改（对应哪个评估维度）
-        - 预期提升多少分
+      生成 1 个具体改进方案（改什么 + 为什么 + 预期提升）
       约束：每次 ≤4 处修改，不碰 CONSTITUTION 段
 
     Step 3 — 执行改进：
@@ -145,38 +208,54 @@ Phase 2: 优化循环
       git add + commit（message: "skill-lab: {skill} round{round} {改进摘要}"）
       检查 150% 体积上限
 
-    Step 4 — 重新评估：
+    Step 4 — 重新评估（盲评 + 双 judge）：
       维度 1-4：主 agent 重新打分
-      维度 5：spawn 新独立子 agent 重跑测试（关键！不能复用旧结果）
+      维度 5：spawn 2 个新独立子 agent，盲评对比（见"子 Agent 生成机制"）
+             关键：子 agent 不知道哪个是旧版、哪个是新版
 
     Step 5 — 决策：
       if 新总分 > 旧总分:
-        status = "keep"
-        更新旧总分
+        status = "keep"，更新旧总分
         if 连续 2 轮 Δ < 2 分:
-          print("触顶信号：连续 2 轮边际收益 < 2 分，停止优化")
+          print("触顶信号：连续 2 轮边际收益 < 2 分，避免过度优化")
           break
       else:
         status = "revert"
-        git revert HEAD（创建新 commit 回滚，不用 reset --hard）
+        git revert HEAD（创建新 commit，保留追溯链）
         记录失败原因到 rejected buffer
-        break  # 该 skill 到瓶颈
+        break
 
-    Step 6 — 日志：
-      results.tsv 追加行
+    Step 6 — 日志：results.tsv 追加行
 
-  🔴 CHECKPOINT · 每个 skill 优化完后强制暂停
-  展示：
-    - git diff（改前 vs 改后）
-    - 分数变化（哪些维度提升/下降）
-    - 测试 prompt 输出对比
+    # 收敛循环（production-audit 模式）：
+    如果本轮 KEEP → 再跑一遍 Step 4 作为验证 pass
+    验证 pass 扫出新问题 → 回到 Step 1 继续
+    验证 pass 零新发现 → 该 skill 收敛，退出循环
+
+  🔴 CHECKPOINT · 🛑 STOP：每个 skill 优化完后强制暂停
+  展示：git diff + 分数变化 + 测试输出对比
   等用户确认 OK 再继续下一个 skill。
+```
 
-Phase 3: 汇总
-  ├─ 优化 skills 数 / 总实验次数 / 保留率 / 回滚次数
-  ├─ 分数变化表（Before / After / Δ）
-  └─ 主要改进摘要
-  → 写入 memory MCP（skill-lab-{date}）
+### Phase 3: 汇总报告
+
+```
+## Skill Lab 优化报告
+### 总览
+- 优化 skills 数：N / 总实验次数：M
+- 保留改进：X（Y%）/ 回滚：Z
+- 实测验证：A 完整测试 / B 干跑
+
+### 分数变化
+| Skill | Before | After | Δ | Rounds |
+|-------|--------|-------|---|--------|
+| {name} | 68 | 85 | +17 | 2 |
+
+### 主要改进
+1. [skill-A] {改进摘要} — +{Δ} 分
+
+→ 写入 memory MCP（skill-lab-{date}）
+```
 ```
 
 ---
@@ -220,20 +299,41 @@ timestamp	commit	skill	old_score	new_score	status	dimension	note
 
 ---
 
-## 使用方式
+## 使用方式 + 歧义处理
 
 ```
-用户："优化 caveman skill"
+用户："优化 {skill名}" 或 "{skill名} skill评分"
 → Phase 0-3 完整流程，单个 skill
 
-用户："评估所有 skill 的质量"
-→ 只跑 Phase 0.5-1（设计测试 + 基线），不进入优化
+用户："优化全部" / "优化所有" / "全部skill"
+→ Phase 0: Glob(".claude/skills/*/SKILL.md") + Glob(".claude/skills/*.md")
+→ 展示找到的 skill 列表，确认范围 → Phase 0.5-3
+
+用户："评估所有 skill 的质量" / "skill评分" / "skill质量"
+→ 只跑 Phase 0-1（扫描 + 基线），不进入 Phase 2
+
+用户：没说具体 skill 名（"优化skill" / "帮我看下skill" / "{模糊}"）
+→ 回问："哪个 skill？还是全部扫描？以下是当前可用的 skill 列表：[扫描结果]"
+→ 绝不默认假设某个 skill 或盲目进入优化
 
 用户："看看 skill 优化历史"
 → 读取 results.tsv 展示
 
 用户："优化所有 🟢 skill"
-→ 扫描全部 skill，自动优化 🟢 tier，跳过 🟡🔴
+→ Glob 扫描 → 筛选 🟢 tier → 自动优化，跳过 🟡🔴
+```
+
+### 批处理机制
+
+```
+当范围 = 多个 skill 时：
+1. Glob 扫描 .claude/skills/：
+   - 目录型: .claude/skills/{name}/SKILL.md
+   - 文件型: .claude/skills/{name}.md
+2. 读取每个 skill 的 frontmatter（name + description）→ 列出清单
+3. 确认范围后，逐个处理（串行，非并行 — git 分支冲突风险）
+4. 每个 skill 结果记录到同一 results.tsv
+5. Phase 3 汇总报告聚合所有 skill 数据
 ```
 
 ---
