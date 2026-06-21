@@ -35,6 +35,19 @@ description: >-
 
 ---
 
+## 反例黑名单（每轮执行前必查 — 最高信号内容）
+
+| # | 反模式 | 为什么不要做 | 替代做法 |
+|---|--------|-------------|---------|
+| 1 | **跳过 confirm 直接报** | 没有 adversarial review 的 gap 含大量误报 | 每个 gap 必须经 V 个 skeptic 确认 |
+| 2 | **外部模型挂了静默用 Claude 替** | 丢失跨模型独立性，回到 same-model bias | 标记 "unconfirmed — external model unavailable" |
+| 3 | **编造 file:line 证据** | 假证据比没证据更危险 | evidence 必须来自实际读到的代码 |
+| 4 | **Confirm 模型不检查可用性** | codex 未装/key 未设/model 未 pull → 浪费一轮 pipeline | Step 2 先 sanity-check |
+| 5 | **不改 config 每次手动指定** | 重复劳动，容易打错模型名 | 用 `/pantheon-model` 设默认 |
+| 6 | **单 dimension 扫描当全面报告** | gap scan 覆盖度取决于 dimension 选择 | 标注 "Partial — {n}/{total} dimensions probed" |
+
+---
+
 ## Quick Reference（速查）
 
 | 想做什么 | 怎么做 |
@@ -56,22 +69,20 @@ description: >-
 | **quick** | `quick gap scan {path}` | map→probe(3 dim)→skip confirm→synthesize，1 pass |
 | **safe** | `safe gap scan {path}` | full pipeline 但 confirm 只用 Claude（不调外部模型） |
 
+## Gap Priority Framework（P0-P3）
+
+| Priority | Criteria | Examples | Requires |
+|----------|----------|----------|----------|
+| 🔴 **P0 — BLOCKING** | Core missing: auth bypass, data loss, security hole, missing critical feature | No auth on admin endpoint, SQL injection, unsigned tokens | 2+ verifier confirm + file:line evidence mandatory |
+| 🟠 **P1 — HIGH** | Important incomplete: rate limiting, input validation, error handling, race condition | Missing rate limit on login, no input sanitization, bare except:pass | 1+ verifier confirm + evidence |
+| 🟡 **P2 — MEDIUM** | Quality gap: missing tests, undocumented API, code duplication, missing logging | No test coverage on new handler, SELECT *, missing docstring | Evidence recommended |
+| 🔵 **P3 — LOW** | Enhancement: performance optimization, UX polish, refactor opportunity, dependency update | N+1 query, outdated dep, inconsistent naming | Brief note sufficient |
+
+**Confidence scoring:** Every gap gets a 0.0–1.0 confidence score. <0.8 → mark `SUSPECT`, don't block. ≥0.8 + majority confirm → confirmed gap.
+
 ---
 
-Same `map → probe (×N dimensions) → adversarial confirm → synthesize` pipeline as the `pantheon-gap`
-base, but **the user picks which AI model runs the adversarial-confirm step per run** instead of it
-being fixed. `pantheon-gap` always confirms with Claude; `pantheon-gap-x` always confirms with GPT-5.5.
-This skill lets you point the skeptic at **any model the `codex` CLI can reach** — DeepSeek, Qwen, Kimi,
-a local Ollama/LM Studio model, or your own configured provider — as well as the Claude tiers.
-
-Anthropic's Workflow `agent()` can only run a Claude model or an installed plugin agent, so a true
-"pick any vendor" dropdown isn't built in. This skill bridges that by driving **`codex exec`** (codex is
-a multi-provider router) from a thin driver agent: the external model does the judging, Claude only
-relays its verdict. The confirm step is read-only — it never writes into the reviewed repo.
-
-Configure the model once with **`/pantheon-model`** (it saves your pick to `~/.pantheon/config.json`,
-OpenClaw-style, and handles API keys), or name one inline per run. The confirm model is selected with
-the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a friendly alias:
+User picks confirm model per run via `verifier` arg. External models driven through `codex exec` (multi-provider router); Claude only transports verdict. Confirm step is read-only. Set default with `/pantheon-model` (saves `~/.pantheon/config.json`). Formats: `provider/model-id` or alias:
 
 | `verifier` value | adversarial confirm runs on | setup needed |
 |------------------|-----------------------------|--------------|
@@ -162,6 +173,17 @@ the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a fri
    did the confirming** (the script logs it).
 
 ## Pipeline (what the script does)
+
+**Phase 0 — Static Pre-Scan (deterministic, no LLM):** Before Map phase, quick grep for objective code smells. These become seed evidence for dimension probes:
+```
+rg -n "TODO|FIXME|HACK|XXX" --type-add 'code:*.{py,go,js,ts,dart}' -t code          # unfinished logic
+rg -n "except\s*(Exception)?\s*:\s*pass" --type py                                      # swallowed errors
+rg -n "catch\s*\(.*\)\s*\{\s*\}" --type ts --type js                                     # empty catch blocks
+rg -nE '(password|secret|key|token)\s*=\s*["\x27][^"\x27]{8,}' --type-add 'code:*.{py,go,js,ts,dart,yaml,toml}' -t code  # potential hardcoded secrets
+rg -n "return\s+(Ok|None|null)\s*;" --type-add 'code:*.{rs,go}' -t code                  # premature returns (Sniff)
+```
+Findings tagged `[PRE-SCAN]` — lower confidence than LLM-probed gaps, but high precision. Feed to dimension probes as seed evidence.
+
 - **Map** — one scout reads the README/structure/manifests/tests/CI, names the project's stated purpose
   and maturity, and picks the dimensions worth auditing for THIS project.
 - **Probe** — one Claude agent per dimension hunts for gaps (missing/incomplete/weak), each citing
@@ -182,7 +204,11 @@ the **`verifier`** argument, in OpenClaw-style `provider/model-id` form or a fri
 
 **TRUNCATED AT:** Context exhausted mid-pipeline → mark `TRUNCATED AT: {phase}`. Deliver partial findings, ask: "Continue from {phase}?"
 
-**Progressive disclosure:** >8 gaps or >3000 lines → CRITICAL/HIGH first, ask before expanding. CRITICAL: full evidence trace. HIGH: evidence + suggestion. MEDIUM: brief summary. LOW: dimension + fix only.
+**Steelman before dismiss (adversarial verification):** Every verifier MUST first argue FOR the gap — "under what conditions would this be a real problem?" — BEFORE attempting to dismiss. This prevents knee-jerk dismissal. Each dismissal needs ≥1 specific code-level reason (not "seems fine" or "not needed"). Verdicts without steelman preamble are invalid.
+
+**Bias-aware verification:** Verifier prompts explicitly strip source attribution (no "Claude found…" / "agent X reported…"). Gap presented as bare claim + evidence. This prevents same-model deference and authority bias. Each verifier sees: dimension, title, severity, evidence, suggestion — no agent name.
+
+**Progressive disclosure:** >8 gaps or >3000 lines → P0/P1 first, ask before expanding. P0: full evidence trace + steelman. P1: evidence + suggestion. P2: brief summary. P3: dimension + fix only.
 
 ## Post-Report Protocol 🔴 CHECKPOINT
 
@@ -207,17 +233,6 @@ Every gap analysis writes to `{target}/.gaps/{scope}-{YYMMDD-HHMM}.md` — survi
 **Escalation rule:** If same gap appears in 2+ consecutive analyses of the same project → auto-escalate severity one level (LOW→MEDIUM→HIGH→CRITICAL) and flag in `ESCALATIONS.md`.
 
 **Cleanup:** Keep last 20 gap files per directory. Delete older than 90 days. `.gaps/` should be in `.gitignore`.
-
-## 反例黑名单（运行时绝对不要做的事）
-
-| # | 反模式 | 为什么不要做 | 替代做法 |
-|---|--------|-------------|---------|
-| 1 | **跳过 confirm 直接报** | 没有 adversarial review 的 gap 含大量误报 | 每个 gap 必须经 V 个 skeptic 确认 |
-| 2 | **外部模型挂了静默用 Claude 替** | 丢失跨模型独立性，回到 same-model bias | 标记 "unconfirmed — external model unavailable" |
-| 3 | **编造 file:line 证据** | 假证据比没证据更危险 | evidence 必须来自实际读到的代码 |
-| 4 | **Confirm 模型不检查可用性** | codex 未装/key 未设/model 未 pull → 浪费一轮 pipeline | Step 2 先 sanity-check |
-| 5 | **不改 config 每次手动指定** | 重复劳动，容易打错模型名 | 用 `/pantheon-model` 设默认 |
-| 6 | **单 dimension 扫描当全面报告** | gap scan 覆盖度取决于 dimension 选择 | 标注 "Partial — {n}/{total} dimensions probed" |
 
 ## Notes
 - **Not a resident process.** One-shot per call, then exits — zero cost when idle.
