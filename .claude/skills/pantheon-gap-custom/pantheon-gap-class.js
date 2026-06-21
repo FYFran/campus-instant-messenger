@@ -110,6 +110,29 @@ const REPORT_SCHEMA = {
   required: ['summary', 'highestLeverage', 'topGaps'],
 }
 
+// ---- Agent reliability wrapper (cc-recovery pattern: categorize → retry/skip/escalate) ----
+// Error categories: transient (network/timeout → retry with backoff), recoverable (null result → retry once), fatal (schema violation → skip)
+async function safeAgent(promptCore, opts, category = 'recoverable') {
+  const MAX_RETRIES = category === 'transient' ? 3 : category === 'recoverable' ? 1 : 0
+  const BACKOFF_MS = [1000, 4000, 16000] // exponential: 1s → 4s → 16s
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await agent(promptCore, opts)
+      if (result !== null) return result
+      if (attempt < MAX_RETRIES) {
+        log(`⚠ ${opts.label || 'agent'}: null result, retry ${attempt + 1}/${MAX_RETRIES}...`)
+        await new Promise((r) => { /* sleep via busy-wait approximation — Workflow sandbox has no setTimeout */ let x = 0; while (x < BACKOFF_MS[attempt] * 1000) x++ })
+      }
+    } catch (_) {
+      if (attempt < MAX_RETRIES) {
+        log(`⚠ ${opts.label || 'agent'}: error, retry ${attempt + 1}/${MAX_RETRIES}...`)
+      }
+    }
+  }
+  log(`✗ ${opts.label || 'agent'}: FAILED after ${MAX_RETRIES + 1} attempt(s) — ${category === 'fatal' ? 'ESCALATE' : 'SKIPPED'}`)
+  return null
+}
+
 // ---- Phase 0: PRE-SCAN — deterministic grep for code smells (no LLM judgment, seed evidence for probes) ----
 const PRE_SCAN_FINDINGS = { type: 'object', properties: { findings: { type: 'array', items: { type: 'object', properties: { pattern: { type: 'string' }, file: { type: 'string' }, line: { type: 'number' }, snippet: { type: 'string' } }, required: ['pattern', 'file', 'line'] } } }, required: ['findings'] }
 phase('PreScan')
@@ -123,10 +146,12 @@ const preScan = await agent(
   { schema: PRE_SCAN_FINDINGS, phase: 'PreScan', label: 'prescan' },
 )
 const seedEvidence = (preScan?.findings ?? []).map((f) => `[PRE-SCAN] ${f.pattern}: ${f.file} — ${(f.snippet ?? '').slice(0, 80)}`)
-if (seedEvidence.length > 0) log(`Pre-scan: ${seedEvidence.length} code smells → seed evidence for probes`)
+if (seedEvidence.length > 0) log(`Phase 0/7 complete: ${seedEvidence.length} code smells → seed evidence`)
+else log('Phase 0/7 complete: no code smells found')
 
 // ---- Phase 1: MAP — scout the project and choose the dimensions worth auditing ----
 phase('Map')
+log(`Phase 1/7: Map — scouting ${target}...`)
 const profile = await agent(
   `You are the SCOUT in a Pantheon gap-analysis harness. Target project: ${target}\n\n` +
     `Survey it: read the README/docs, the directory structure, package manifests, entry points, tests, and CI config. ` +
@@ -140,7 +165,7 @@ const profile = await agent(
 const dims = dimensionsOverride
   ? dimensionsOverride.map((k) => ({ key: k, why: 'user-specified' }))
   : profile.dimensions.slice(0, maxDims)
-log(`Scouted (${profile.maturity ?? 'unknown'}): "${(profile.statedPurpose ?? 'project').slice(0, 60)}". Auditing ${dims.length}: ${dims.map((d) => d.key).join(', ')}`)
+log(`Phase 1/7 complete: "${(profile.statedPurpose ?? 'project').slice(0, 60)}" (${profile.maturity ?? 'unknown'}). Auditing ${dims.length} dims: ${dims.map((d) => d.key).join(', ')}`)
 
 // ---- Phases 2+3: PROBE each dimension, then CONFIRM each gap adversarially (pipelined) ----
 // pantheon-gap-custom: the adversarial-confirm step runs on a USER-SELECTABLE model (`verifier` arg).
@@ -248,6 +273,7 @@ function verifierAgent(promptCore, meta) {
 // Convergence loop: if CRITICAL gaps survive, re-probe with shifted angles (max 3 total passes)
 let allReviewed = []; let finalConfirmed = []; let finalSuspects = []; let passes = 0; const MAX_PASSES = 3
 let currentDims = dims; let currentSeed = seedEvidence
+log(`Phase 2/7: Probe — ${currentDims.length} dimensions, ${V} verifiers each`)
 while (passes < MAX_PASSES) {
   passes++
   const reviewed = await pipeline(
@@ -328,6 +354,7 @@ log(`Final: ${confirmed.length}/${allGaps.length} gaps confirmed (avg confidence
 
 // ---- Phase 4: SYNTHESIZE — dedup, prioritize, write the feedback report ----
 phase('Synthesize')
+log(`Phase 4/7: Synthesize — dedup + prioritize ${confirmed.length} confirmed + ${suspects.length} SUSPECT gaps`)
 if (!confirmed.length && !suspects.length) {
   return {
     target,
@@ -361,6 +388,7 @@ const report = await agent(
 
 // ---- Phase 5: CRITIC — self-verify the report before shipping ----
 phase('Critic')
+log('Phase 5/7: Critic — self-verifying report (evidence, hedging, duplicates, confidence, fixes)')
 const CRITIC_SCHEMA = { type: 'object', properties: { passed: { type: 'boolean' }, issues: { type: 'array', items: { type: 'object', properties: { severity: { type: 'string', enum: ['blocking', 'warning'] }, type: { type: 'string', enum: ['missing_evidence', 'hedging', 'duplicate', 'confidence_mismatch', 'missing_fix'] }, detail: { type: 'string' } }, required: ['severity', 'type', 'detail'] } } }, required: ['passed', 'issues'] }
 const critic = await agent(
   `You are the CRITIC. Verify this gap report before shipping:\n` +
@@ -375,6 +403,7 @@ if (!criticPassed) log(`CRITIC: ${criticIssues.filter((i) => i.severity === 'blo
 
 // ---- Phase 6: WRITE ARTIFACT — persist report to .gaps/ ----
 phase('Write')
+log(`Phase 6/7: Write — saving report to ${target}/.gaps/...`)
 const scope = focus ? focus.replace(/\s+/g, '-') : 'full'
 const artifactPath = `${target}/.gaps/${scope}-${new Date().toISOString().slice(0,16).replace(/[T:]/g,'')}.md`
 await agent(
@@ -387,6 +416,10 @@ log(`Report written to ${artifactPath}`)
 // TRUNCATED AT safety net: if context exhausted mid-pipeline, mark partial
 const truncated = confirmed.length < allGaps.length * 0.5 ? `TRUNCATED AT: ${passes < MAX_PASSES ? 'Probe pass ' + passes : 'Synthesize'} — ${confirmed.length}/${allGaps.length} gaps confirmed` : null
 if (truncated) log(truncated)
+
+const skippedDims = dims.filter((d) => !allGaps.some((g) => g.dimension === d.key)).map((d) => d.key)
+const skippedLog = skippedDims.length > 0 ? ` | ${skippedDims.length} dims SKIPPED (${skippedDims.join(', ')})` : ''
+log(`Phase 7/7 complete: ${confirmed.length} confirmed (avg conf ${avgConfAll}), ${suspects.length} SUSPECT, ${passes} passes${skippedLog}${truncated ? ', TRUNCATED' : ''}${!criticPassed ? ', CRITIC flagged' : ''}`)
 
 return {
   criticPassed,
