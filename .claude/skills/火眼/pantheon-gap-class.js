@@ -462,23 +462,22 @@ else log('CRITIC: passed' + (criticFixAttempts > 0 ? ` (fixed in ${criticFixAtte
 // ---- Phase 6: WRITE ARTIFACT — persist report to .gaps/ ----
 phase('Write')
 log(`Phase 6/7: Write — saving report to ${target}/.gaps/...`)
-const safeScope = focus ? focus.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/\.\./g, '').slice(0, 64) : 'full'  // prevent path traversal
-const ts = (() => { try { return new Date().toISOString().slice(0,16).replace(/[T:]/g,'') } catch(_) { return 'unknown' } })()  // Date fallback for sandbox
+// TRUNCATED AT safety net: if context exhausted mid-pipeline, mark partial
+const truncated = (allGaps.length > 0 && confirmed.length === 0 && suspects.length === 0) ? `TRUNCATED AT: ${passes < MAX_PASSES ? 'Probe pass ' + passes : 'Synthesize'} — 0/${allGaps.length} gaps confirmed (possible context exhaustion)` : null
+if (truncated) log(truncated)
+
+const safeScope = focus ? focus.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/\.\./g, '').slice(0, 64) : 'full'
+const ts = (() => { try { return new Date().toISOString().slice(0,16).replace(/[T:]/g,'') } catch(_) { return 'unknown' } })()
 const artifactPath = `${target}/.gaps/${safeScope}-${ts}.json`
 await agent(
   `Write the gap analysis report to ${artifactPath}:\n` +
     `1. mkdir -p ${target}/.gaps 2>/dev/null || New-Item -ItemType Directory -Force "${target}/.gaps" > \$null\n` +
-    `2. Write JSON report: use the FILE_CONTENT below to write ${artifactPath}. The content is safe JSON — just write it to the file.\n` +
+    `2. Write JSON report: use the FILE_CONTENT below to write ${artifactPath}.\n` +
     `   FILE_CONTENT: ` + JSON.stringify({ target, profile: projectPurpose, mode, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence: avgConfAll, criticPassed, criticIssues, truncated, report }, null, 2) + `\n` +
     `3. Verify: check file exists and >0 bytes`,
   { phase: 'Write', label: 'write-artifact' },
-  { phase: 'Write', label: 'write-artifact' },
 )
 log(`Report written to ${artifactPath}`)
-
-// TRUNCATED AT safety net: if context exhausted mid-pipeline, mark partial
-const truncated = (allGaps.length > 0 && confirmed.length === 0 && suspects.length === 0) ? `TRUNCATED AT: ${passes < MAX_PASSES ? 'Probe pass ' + passes : 'Synthesize'} — 0/${allGaps.length} gaps confirmed (possible context exhaustion)` : null
-if (truncated) log(truncated)
 
 const skippedDims = dims.filter((d) => !allGaps.some((g) => g.dimension === d.key)).map((d) => d.key)
 const skippedLog = skippedDims.length > 0 ? ` | ${skippedDims.length} dims SKIPPED (${skippedDims.join(', ')})` : ''
