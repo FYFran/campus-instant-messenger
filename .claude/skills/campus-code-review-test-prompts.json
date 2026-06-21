@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "scenario": "典型场景：提交前代码审查",
+    "prompt": "review the changes in campus_app/server/main_remote.py — I just added a new endpoint for student activity registration",
+    "assert": {
+      "mustContain": ["Stage 1", "Security", "file:line"],
+      "mustNotContain": ["might", "could", "consider suggest", "possibly maybe", "happy to"],
+      "regex": ["(PASS|FAIL|CHANGES NEEDED|APPROVED|BLOCKED)", "(AUTH|RBAC|SQL|rate.limit|race|XSS)"],
+      "lengthMin": 200,
+      "lengthMax": 4000
+    },
+    "expect": "skill 应触发 13 类审查：读文件 → 逐类检查 AUTH/RBAC/InputValidation/SQL/rate-limit/race/XSS → 输出 PASS/FAIL 清单 → 给出 CHANGES NEEDED 或 APPROVED 结论"
+  },
+  {
+    "id": 2,
+    "scenario": "小改动场景",
+    "prompt": "check this one-line fix in campus_go/middleware/auth.go — I changed the token expiry check from < to <=",
+    "assert": {
+      "mustContain": ["auth", "JWT", "token"],
+      "mustNotContain": ["skip", "trivial", "happy to"],
+      "regex": ["(verify|check|validate).*(alg|none|algorithm)", "file:line"],
+      "lengthMin": 150,
+      "lengthMax": 3000
+    },
+    "expect": "skill 不应跳过小改动。应读实际文件，检查 auth 逻辑（JWT 验证、alg:none 拒绝、role 从 DB 查），标记影响范围"
+  },
+  {
+    "id": 3,
+    "scenario": "歧义场景：没说review什么",
+    "prompt": "review my code please",
+    "assert": {
+      "mustContain": ["which files", "which changes"],
+      "mustNotContain": ["PASS", "FAIL", "APPROVED", "BLOCKED"],
+      "regex": ["(?i)(which|what).*(file|change|backend|review)"],
+      "lengthMin": 30,
+      "lengthMax": 500
+    },
+    "expect": "skill 应追问：审查哪些文件？是新功能还是改动？在哪个后端（Python/Go/两者）？不应盲目扫描全部文件"
+  }
+]
