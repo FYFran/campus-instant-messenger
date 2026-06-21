@@ -12,16 +12,19 @@ rules:
     languages: [python]
     severity: ERROR
 
-  # Dict access without .get() — can cause KeyError
+  # Dict bracket access on external/request data — can cause KeyError
   - id: campus-dict-bracket-access
     pattern-either:
       - pattern: |
           $REQ["$KEY"]
       - pattern: |
           $REQ['$KEY']
+    metavariable-regex:
+      metavariable: $REQ
+      regex: '.*(request|req|body|params|query|form|json|data|headers|cookies|args|kwargs|payload|input).*'
     message: >-
-      Use .get("$KEY") instead of ["$KEY"] to avoid KeyError
-      on missing keys. Pattern: req.get("key") or req.get("key", default).
+      Use .get("$KEY") instead of ["$KEY"] on request/external data to avoid KeyError.
+      Pattern: data.get("key") or data.get("key", default).
     languages: [python]
     severity: WARNING
 

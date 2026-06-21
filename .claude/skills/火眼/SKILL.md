@@ -199,7 +199,7 @@ Findings tagged `[PRE-SCAN]` — lower confidence than LLM-probed gaps, but high
 
 ## Quality Rules（production-audit 模式）
 
-**Convergence loop:** If gap report is critical (pre-launch/pre-production), re-run probe phase with different dimension angles. Two consecutive passes with zero new gaps → DONE. Max 2 re-probes (budget protection). Mark: `Passes: N (converged / budget-exhausted)`.
+**Convergence loop:** When CRITICAL gaps survive confirm, re-probe with complementary dimensions (security↔correctness, performance↔architecture, testing↔completeness). Max 3 total passes. Mark: `Passes: N (converged / budget-exhausted)`. If no CRITICAL gaps → single pass, DONE.
 
 **Confidence filter:** Report only gaps with >80% confidence they are real. Uncertain → mark `SUSPECT`, do not block action. Never manufacture gaps to fill the report.
 
@@ -228,8 +228,8 @@ Every gap analysis writes to `{target}/.gaps/{scope}-{YYMMDD-HHMM}.md` — survi
 
 ```
 .gaps/
-├── full-20260621-1430.md     ← this analysis
-├── security-20260620-0900.md ← previous focused scan
+├── full-20260621-1430.json   ← this analysis
+├── security-20260620-0900.json ← previous focused scan
 └── ESCALATIONS.md             ← recurring gap tracker
 ```
 

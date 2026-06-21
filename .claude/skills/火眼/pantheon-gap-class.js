@@ -20,10 +20,13 @@ else if (args && typeof args === 'object') { A = args }
 
 const target = A.target ?? A.workdir ?? '.'         // absolute path to the project being reviewed
 const focus = A.focus ?? null                       // optional: dimension/area to emphasize
-const maxDims = A.maxDimensions ?? 6                // how many dimensions to probe
-const V = A.verifiers ?? 2                          // skeptical reviewers per candidate gap
-const crossVerify = A.crossModelVerify ?? false    // true => Codex/GPT-5.5 runs the confirm step
+const mode = A.mode ?? 'full'                       // 'full' | 'quick' (skip confirm) | 'safe' (Claude-only confirm)
+const maxDims = A.maxDimensions ?? (mode === 'quick' ? 3 : 6)  // fewer dims in quick mode
+const V = A.verifiers ?? (mode === 'quick' ? 0 : 2)  // skip verifiers in quick mode
+const crossVerify = A.crossModelVerify ?? false
 const dimensionsOverride = Array.isArray(A.dimensions) ? A.dimensions : null
+const skipConfirm = mode === 'quick'
+const claudeOnly = mode === 'safe'
 
 const PROFILE_SCHEMA = {
   type: 'object',
@@ -112,22 +115,15 @@ const REPORT_SCHEMA = {
 }
 
 // ---- Agent reliability wrapper (cc-recovery pattern: categorize → retry/skip/escalate) ----
-// Error categories: transient (network/timeout → retry with backoff), recoverable (null result → retry once), fatal (schema violation → skip)
 async function safeAgent(promptCore, opts, category = 'recoverable') {
   const MAX_RETRIES = category === 'transient' ? 3 : category === 'recoverable' ? 1 : 0
-  const BACKOFF_MS = [1000, 4000, 16000] // exponential: 1s → 4s → 16s
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const result = await agent(promptCore, opts)
       if (result !== null) return result
-      if (attempt < MAX_RETRIES) {
-        log(`⚠ ${opts.label || 'agent'}: null result, retry ${attempt + 1}/${MAX_RETRIES}...`)
-        await new Promise((r) => { /* sleep via busy-wait approximation — Workflow sandbox has no setTimeout */ let x = 0; while (x < BACKOFF_MS[attempt] * 1000) x++ })
-      }
+      if (attempt < MAX_RETRIES) log(`⚠ ${opts.label || 'agent'}: null, retry ${attempt + 1}/${MAX_RETRIES}`)
     } catch (_) {
-      if (attempt < MAX_RETRIES) {
-        log(`⚠ ${opts.label || 'agent'}: error, retry ${attempt + 1}/${MAX_RETRIES}...`)
-      }
+      if (attempt < MAX_RETRIES) log(`⚠ ${opts.label || 'agent'}: error, retry ${attempt + 1}/${MAX_RETRIES}`)
     }
   }
   log(`✗ ${opts.label || 'agent'}: FAILED after ${MAX_RETRIES + 1} attempt(s) — ${category === 'fatal' ? 'ESCALATE' : 'SKIPPED'}`)
@@ -143,16 +139,16 @@ const preScan = await agent(
     `1. rg -n "TODO|FIXME|HACK|XXX|WORKAROUND" --type-add 'code:*.{py,go,js,ts,dart,rs,java,swift,kt}' -t code\n` +
     `2. rg -nE '(password|secret|key|token|api_key|API_KEY)\\s*=\\s*["\\x27][^"\\x27]{6,}' --type-add 'code:*.{py,go,js,ts,dart,yaml,toml,env,sh}' -t code\n\n` +
     `PYTHON-SPECIFIC:\n` +
-    `3. rg -n "except\\s*(Exception)?\\s*:\\s*pass" --type py && rg -n "except\\s*:" --type py\n` +
+    `3. rg -n "except\\s*(Exception)?\\s*:\\s*pass" --type py; rg -n "except\\s*:" --type py; rg -n "except\\s*Exception\\s*as\\s*\\w*\\s*:\\s*pass" --type py\n` +
     `4. rg -n "assert\\s+(True|False|None|\\d+)\\s*$" --type py\n\n` +
     `GO-SPECIFIC:\n` +
-    `5. rg -n "if\\s+err\\s*!=\\s*nil\\s*\\{\\s*return\\s+nil" --type go && rg -n '_\\s*=\\s*' --type go\n\n` +
+    `5. rg -n "if\\s+err\\s*!=\\s*nil\\s*\\{\\s*return\\s+nil" --type go; rg -n '_\\s*=\\s*' --type go; rg -n "panic\\(" --type go\n\n` +
     `JS/TS-SPECIFIC:\n` +
-    `6. rg -n "catch\\s*\\(.*\\)\\s*\\{\\s*\\}" --type ts --type js && rg -n "\\.then\\(.*\\)\\.catch\\(.*\\)" --type ts --type js\n\n` +
+    `6. rg -n "catch\\s*\\(.*\\)\\s*\\{\\s*\\}" --type ts --type js; rg -n "\\.then\\(.*\\)\\.catch\\(.*\\)" --type ts --type js; rg -n "console\\.(log|error|warn)\\(" --type ts --type js\n\n` +
     `RUST-SPECIFIC:\n` +
-    `7. rg -n "unwrap\\(\\)" --type rs && rg -n "expect\\(\\)" --type rs\n\n` +
+    `7. rg -n "unwrap\\(\\)" --type rs; rg -n "expect\\(\\)" --type rs; rg -n "unsafe\\s*\\{" --type rs\n\n` +
     `DART-SPECIFIC:\n` +
-    `8. rg -n "catch\\s*\\(.*\\)\\s*\\{" --type dart && rg -n "// ignore:" --type dart\n\n` +
+    `8. rg -n "catch\\s*\\(.*\\)\\s*\\{" --type dart; rg -n "// ignore:" --type dart; rg -n "print\\(" --type dart\n\n` +
     `Return { findings: [{ pattern: "TODO|FIXME|..." (the grep pattern name), file: "path:line", line: N, snippet: "matched line (first 120 chars)" }] }. Empty array if no matches. Include ALL matches.`,
   { schema: PRE_SCAN_FINDINGS, phase: 'PreScan', label: 'prescan' },
 )
@@ -287,25 +283,30 @@ function verifierAgent(promptCore, meta) {
 // Convergence loop: if CRITICAL gaps survive, re-probe with shifted angles (max 3 total passes)
 let allReviewed = []; let finalConfirmed = []; let finalSuspects = []; let passes = 0; const MAX_PASSES = 3
 let currentDims = dims; let currentSeed = seedEvidence
-log(`Phase 2/7: Probe — ${currentDims.length} dimensions, ${V} verifiers each`)
+if (skipConfirm) log(`Phase 2/7: Probe — ${currentDims.length} dimensions, quick mode (skip confirm)`)
+else log(`Phase 2/7: Probe — ${currentDims.length} dimensions, ${V} verifiers each${claudeOnly ? ' (Claude-only safe mode)' : ''}`)
 while (passes < MAX_PASSES) {
   passes++
   const reviewed = await pipeline(
   currentDims,
   // Stage 1 — probe one dimension for concrete, evidence-backed gaps
   (d) =>
-    agent(
+    safeAgent(
       `You are GAP-PROBE for the "${d.key}" dimension in a Pantheon gap-analysis harness. Target project: ${target}\n` +
         `Project purpose: ${projectPurpose}\nWhy this dimension matters here: ${d.why}\n` +
         (currentSeed.length > 0 ? `Seed evidence from prior analysis:\n${currentSeed.join('\n')}\n\n` : '') +
         `Hunt for concrete GAPS — things that are MISSING, incomplete, or weak in this dimension. ` +
         `For each gap give a short title, a severity, EVIDENCE (cite a file:line or a concrete observation — read the actual code, do NOT speculate), the impact, and a concrete suggestion. ` +
         `Prefer 3-8 real, high-signal gaps over a long noisy list. If this dimension is genuinely solid, return an empty gaps array.`,
-      { schema: FINDINGS_SCHEMA, phase: 'Probe', label: `probe:${d.key}` },
+      { schema: FINDINGS_SCHEMA, phase: 'Probe', label: `probe:${d.key}` }, 'recoverable',
     ),
-  // Stage 2 — for each gap, V skeptical reviewers try to DISMISS it
-  (review) =>
-    parallel(
+  // Stage 2 — for each gap, V skeptical reviewers try to DISMISS it (skipped in quick mode)
+  (review) => {
+    if (skipConfirm || V === 0) {
+      // Quick mode: skip adversarial confirm, mark all gaps as UNCONFIRMED
+      return (review?.gaps ?? []).map((g) => ({ ...g, dimension: review.dimension, kept: true, suspect: true, verdicts: 0, validVotes: 0, weightedVotes: 0, avgConfidence: 0.3, adjustedSeverity: g.severity, lensBreakdown: {}, unconfirmed: true }))
+    }
+    return parallel(
       (review?.gaps ?? []).map((g) => () =>
         parallel(
           Array.from({ length: V }, (_, k) => () => {
@@ -338,7 +339,7 @@ while (passes < MAX_PASSES) {
         }),
       ),
     ),
-)
+  )}  // end Stage 2 arrow function body
 
   const allGaps = reviewed.filter(Boolean).flat().filter(Boolean)
   const confirmed = allGaps.filter((g) => g.kept && !g.suspect)
@@ -460,9 +461,9 @@ phase('Write')
 log(`Phase 6/7: Write — saving report to ${target}/.gaps/...`)
 const safeScope = focus ? focus.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/\.\./g, '').slice(0, 64) : 'full'  // prevent path traversal
 const ts = (() => { try { return new Date().toISOString().slice(0,16).replace(/[T:]/g,'') } catch(_) { return 'unknown' } })()  // Date fallback for sandbox
-const artifactPath = `${target}/.gaps/${safeScope}-${ts}.md`
+const artifactPath = `${target}/.gaps/${safeScope}-${ts}.json`
 await agent(
-  `Run: mkdir -p ${target}/.gaps && cat > ${artifactPath} << 'REPORT_EOF'\n${JSON.stringify({ target, profile: projectPurpose, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence: avgConfAll, criticPassed, criticIssues, report }, null, 2)}\nREPORT_EOF\n` +
+  `Run: New-Item -ItemType Directory -Force "${target}/.gaps" > $null; Set-Content -Path "${artifactPath}" -Value '${JSON.stringify({ target, profile: projectPurpose, mode, passes, confirmed: confirmed.length, suspects: suspects.length, avgConfidence: avgConfAll, criticPassed, criticIssues, truncated, report }, null, 2).replace(/'/g, "''")}' -Encoding UTF8\n` +
     `Then verify: wc -l ${artifactPath} shows >0 lines.`,
   { phase: 'Write', label: 'write-artifact' },
 )
