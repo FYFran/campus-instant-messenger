@@ -246,7 +246,8 @@ function resolveVerifier(v, crossLegacy) {
   if (providers[provId] && providers[provId].baseUrl) return httpDesc(provId, null)
   return { mode: 'codex', codexArgs: ['-m', raw], who: raw }
 }
-const VR = resolveVerifier(A.verifier, crossVerify)
+const verifierArg = A.verifier ?? A.defaultVerifier  // Gotcha #6: config.json schema compat
+const VR = resolveVerifier(verifierArg, crossVerify)
 log(`Adversarial confirm model: ${VR.who}`)
 // One skeptic's agent() promise, routed to the chosen model. `meta` = { phase, label }.
 function verifierAgent(promptCore, meta) {
@@ -318,7 +319,9 @@ while (passes < MAX_PASSES) {
         ).then((vs) => {
           const verdicts = vs.filter(Boolean)
           const validVerdicts = verdicts.filter((v) => v.valid)
-          const kept = validVerdicts.length >= Math.ceil(V / 2)
+          // Gotcha #5: weak dismissals (empty steelman or no codeReference) → weight 0.5
+          const weightedVotes = validVerdicts.reduce((sum, v) => sum + ((!v.steelman || v.steelman.length < 10 || (v.valid === false && !v.codeReference)) ? 0.5 : 1), 0)
+          const kept = weightedVotes >= Math.ceil(V / 2)
           // Confidence calibration (RAE/DSO-Agent pattern): avg confidence across valid verdicts; <0.8 → SUSPECT
           const avgConf = validVerdicts.length > 0
             ? validVerdicts.reduce((s, v) => s + (v.confidence ?? 0.5), 0) / validVerdicts.length
@@ -327,7 +330,7 @@ while (passes < MAX_PASSES) {
           const sev = validVerdicts.filter((v) => v.adjustedSeverity).map((v) => v.adjustedSeverity)[0]
           const lensBreakdown = {}
           verdicts.forEach((v) => { if (v.lens) { lensBreakdown[v.lens] = (lensBreakdown[v.lens] || 0) + (v.valid ? 1 : 0) } })
-          return { ...g, dimension: review.dimension, kept, suspect, verdicts: verdicts.length, validVotes: validVerdicts.length, avgConfidence: Math.round(avgConf * 100) / 100, adjustedSeverity: sev ?? g.severity, lensBreakdown }
+          return { ...g, dimension: review.dimension, kept, suspect, verdicts: verdicts.length, validVotes: validVerdicts.length, weightedVotes, avgConfidence: Math.round(avgConf * 100) / 100, adjustedSeverity: sev ?? g.severity, lensBreakdown }
         }),
       ),
     ),

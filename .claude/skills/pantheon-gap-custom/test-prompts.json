@@ -1,80 +1,80 @@
 [
   {
     "id": 1,
-    "scenario": "完整7 Phase引擎 + Smart convergence + Critic auto-fix",
+    "scenario": "典型场景：用 DeepSeek 确认的差距分析 → agent Output Spec 格式",
     "prompt": "pantheon gap custom f:/ClaudeFiles verify with deepseek — focus on security",
     "assert": {
-      "mustContain": ["Phase 0/7", "Phase 1/7", "Phase 2/7", "Phase 5/7", "Phase 6/7", "Phase 7/7", "PreScan", "seed evidence", "DeepSeek", "confirmed", "SUSPECT", "confidence", "criticPassed", "artifactPath", ".gaps/", ".md"],
-      "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you", "seems fine", "Phase 0/7 complete: no code smells found (this is fine but must contain PreScan log)", "\"passes\": 0", "\"criticPassed\": false"],
-      "regex": ["Phase [0-7]/7.*(complete|Probe|Map|Critic|Write|PreScan|Confirm|Synthesize)", "confirmed.*[0-9]+.*SUSPECT.*[0-9]+.*passes", "avg[Cc]onfidence.*0\\.[0-9]+", "artifactPath.*\\.gaps/.*\\.md", "steelman.*(exploit|condition|affected|real|worst)"],
-      "lengthMin": 600,
-      "lengthMax": 10000
+      "mustContain": ["## Gap Analysis", "Confirm model", "DeepSeek", "### Summary", "### Confirmed Gaps", "### Quick Wins", "### Highest-Leverage Fix", "P0", "P1", "evidence", "confidence"],
+      "mustNotContain": ["might want to", "could consider", "possibly maybe", "happy to help", "I suggest you", "\"confidence\": 0", "\"passes\": 0"],
+      "regex": ["(P0|P1|P2|P3).*\\|.*\\|.*\\|", "confidence.*0\\.[0-9]+", "file:line|`.+`:\\d+", "Passes.*[1-9]"],
+      "lengthMin": 300,
+      "lengthMax": 6000
     },
-    "expect": "全7 Phase流程: PreScan(语言感知grep) → Map → Probe → Confirm(smart convergence互补维度) → Synthesize → Critic(auto-fix blocking issues) → Write(.gaps/ artifact) → Phase 7/7 completion log"
+    "expect": "Agent 按 Output Spec 输出: Gap Analysis标题 → Confirm model标注DeepSeek → Summary → Confirmed Gaps表格(P0-P3+evidence+confidence) → Quick Wins → Highest-Leverage Fix"
   },
   {
     "id": 2,
-    "scenario": "边界：verifier未配置 → BLOCK gate",
+    "scenario": "边界：verifier未配置 → BLOCK gate → 追问",
     "prompt": "pantheon gap custom f:/ClaudeFiles — I haven't run /pantheon-model yet",
     "assert": {
       "mustContain": ["/pantheon-model", "config", "Claude", "default"],
-      "mustNotContain": ["Workflow({", "pipeline", "Phase 0/7", "PreScan", "map→probe"],
-      "regex": ["(?i)(run|setup|configure).*(pantheon.model|config)", "BLOCK|default.*Claude"],
+      "mustNotContain": ["## Gap Analysis", "### Confirmed Gaps", "### Summary"],
+      "regex": ["(?i)(run|setup|configure).*(pantheon.model|config)", "BLOCK|default.*Claude|proceed.*default"],
       "lengthMin": 80,
       "lengthMax": 800
     },
-    "expect": "检测无config → BLOCK gate触发 → 告知/pantheon-model或Claude default → 不启动Workflow"
+    "expect": "Agent检测无config → BLOCK gate触发 → 输出/pantheon-model指引或Claude default选项 → 不输出Gap Analysis报告(不启动Workflow)"
   },
   {
     "id": 3,
-    "scenario": "歧义：无路径无模型 → 追问",
+    "scenario": "歧义：无路径无模型 → 追问两个信息",
     "prompt": "do a gap analysis on my project",
     "assert": {
       "mustContain": ["which project", "which model", "?"],
-      "mustNotContain": ["Workflow({", "map", "probe", "confirm", "Phase"],
+      "mustNotContain": ["## Gap Analysis", "### Confirmed Gaps", "Confirm model", "P0"],
       "regex": ["(?i)(which|what).*(project|path|repo|model|verifier)"],
       "lengthMin": 50,
       "lengthMax": 600
     },
-    "expect": "追问两个信息：项目路径 + 确认模型 → 不启动任何pipeline"
+    "expect": "Agent追问两个信息: 项目路径 + 确认模型 → 不输出Gap Analysis报告"
   },
   {
     "id": 4,
-    "scenario": "引擎验证：steelman + lens diversity + SUSPECT + smart convergence",
+    "scenario": "引擎验证：steelman + lens + SUSPECT + confidence过滤",
     "prompt": "pantheon gap custom f:/ClaudeFiles verify with claude — dimensions security,testing",
     "assert": {
-      "mustContain": ["steelman", "confidence", "lens", "lensBreakdown", "correctness", "security", "SUSPECT", "avgConfidence", "passes"],
-      "mustNotContain": ["\"steelman\": \"\"", "\"confidence\": 0", "\"passes\": 0", "\"validVotes\": 0"],
-      "regex": ["steelman.*(exploit|condition|affected|real|scenario)", "confidence.*0\\.[0-9]+", "lens.*(correctness|security|performance|completeness|architecture)", "validVotes.*[1-9]"],
+      "mustContain": ["### Confirmed Gaps", "### SUSPECT Gaps", "confidence", "lens", "steelman", "weightedVotes", "P0", "P1"],
+      "mustNotContain": ["\"steelman\": \"\"", "\"weightedVotes\": 0"],
+      "regex": ["steelman.*(exploit|condition|affected|scenario|worst)", "SUSPECT.*avg confidence.*<.*0\\.8|SUSPECT.*low confidence", "(lens|Lens).*(correctness|security|performance|completeness|architecture)", "weightedVotes.*[0-9\\.]+"],
       "lengthMin": 400,
       "lengthMax": 8000
     },
-    "expect": "每个verdict含steelman(非空)+confidence(0.0-1.0)+lens标签 → SUSPECT分离(conf<0.8) → smart convergence(互补维度选择) → validVotes≥1"
+    "expect": "Confirmed Gaps: 每个含steelman(非空)+confidence(0.0-1.0)+lens标签+weightedVotes → SUSPECT Gaps: conf<0.8分离 → P0-P3优先级标注"
   },
   {
     "id": 5,
-    "scenario": "可靠性：safeAgent重试 + Critic auto-fix + SKIP tracking + TRUNCATED",
+    "scenario": "可靠性：Critic auto-fix + SKIP tracking + TRUNCATED检测",
     "prompt": "full gap analysis on f:/ClaudeFiles with qwen verifier",
     "assert": {
-      "mustContain": ["Phase 0/7", "Phase 1/7", "Phase 2/7", "Phase 5/7", "Phase 6/7", "Phase 7/7", "criticPassed", "criticIssues", "artifactPath", ".gaps/", "passes", "avgConfidence"],
-      "mustNotContain": ["\"passes\": 0", "\"artifactPath\": \"\"", "\"criticPassed\": false"],
-      "regex": ["(SKIPPED|skipped).*(dimension|dim)", "TRUNCATED|(partial|incomplete).*(report|analysis)", "safeAgent.*(retry|FAILED|SKIPPED)", "CRITIC.*(passed|auto-fix|fixed in)", "Phase 7/7 complete.*confirmed.*SUSPECT.*passes"],
-      "lengthMin": 600,
-      "lengthMax": 12000
+      "mustContain": ["### Confirmed Gaps", "### SUSPECT Gaps", "criticPassed", "criticIssues", ".gaps/", ".md", "passes", "avgConfidence", "Confirm model", "Qwen"],
+      "mustNotContain": ["\"passes\": 0", "\"criticPassed\": false"],
+      "regex": ["CRITIC.*(passed|auto-fix|fixed in [12])", "SKIPPED.*(dimension|dim)", "TRUNCATED|(partial|incomplete).*(report|analysis)", "Passes.*[1-9]"],
+      "lengthMin": 500,
+      "lengthMax": 10000
     },
-    "expect": "全流程: PreScan(语言感知) → Map → Probe → Confirm(smart convergence) → Synthesize → Critic(auto-fix blocking→recheck) → Write → 7/7 log(含SKIP count + TRUNCATED检测) → safeAgent处理agent失败"
+    "expect": "Agent报告含: Critic验证结果(passed/auto-fix) + SKIP维度追踪 + TRUNCATED检测 + artifact路径(.gaps/.md) + passes≥1 + Qwen confirm标注"
   },
   {
     "id": 6,
-    "scenario": "完美性：全语言PreScan + complement维度 + auto-fix 2次上限",
+    "scenario": "完美性：互补维度 + 降权投票 + config兼容 + 语言感知",
     "prompt": "pantheon gap custom f:/ClaudeFiles verify with sonnet — maxDimensions 5",
     "assert": {
-      "mustContain": ["PreScan", "Phase 0/7", "Phase 1/7", "Phase 7/7", "confirmed", "passes", "COMPLEMENT", "SKIPPED", "CRITIC"],
-      "mustNotContain": ["\"passes\": 0", "busy-wait", "setTimeout"],
-      "regex": ["Phase [0-7]/7.*(complete|Probe|Map|Critic|Write|PreScan|Confirm|Synthesize)", "(re-prob|complement).*(security|correctness|performance|architecture)", "CRITIC.*(passed|fixed in [12]|auto-fix [12]/2)", "Python|Go|Rust|Dart|TypeScript"],
-      "lengthMin": 600,
-      "lengthMax": 12000
+      "mustContain": ["### Confirmed Gaps", "weightedVotes", "lensBreakdown", "complement", "artifactPath", ".gaps/"],
+      "mustNotContain": ["\"weightedVotes\": 0", "verdicts\": 0"],
+      "regex": ["(complement|re-prob).*(security|correctness|performance|architecture|testing|completeness)", "weightedVotes.*[0-9\\.]+.*validVotes.*[1-9]", "(Python|Go|Rust|Dart|TypeScript|JavaScript).*(pattern|matched|found)", "CRITIC.*(passed|auto-fix|fixed)"],
+      "lengthMin": 500,
+      "lengthMax": 10000
     },
-    "expect": "语言感知PreScan(覆盖py/go/rs/dart/js/ts) → smart convergence(complement维度) → Critic auto-fix(max 2次) → Phase 7/7总结(SKIP tracking + passes计数)"
+    "expect": "Agent报告验证: 1)互补维度(smart convergence) 2)降权投票(weak dismissal→0.5) 3)config schema兼容(verifier??defaultVerifier) 4)语言感知PreScan(多语言pattern) 5)Critic auto-fix 6)artifact持久化"
   }
 ]
