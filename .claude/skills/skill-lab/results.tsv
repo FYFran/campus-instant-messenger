@@ -44,7 +44,7 @@ timestamp	commit	skill	old_score	new_score	status	dimension	note
 2026-06-21T20:47	4e882af	缉凶	94.0	94.0	re-eval	5 trivial修	R14: PREFLIGHT python+python3 +3b Win工具 +T7 STOP +$SKILL_PATH泛化 +Audit mode行. J10=9.0 J11=9.0 J12=9.5 median=9.0.
 2026-06-21T20:47	56d9b5e	缉凶	94.0	95.0	re-eval	4 trivial修	R15: python3优先 +safe措辞 +gate table补 +test去Silent. J13=9.1 J14=9.0 J15=8.7 median=9.0 ALL ship=yes.
 2026-06-21T20:49	6dfd63f	缉凶	95.0	95.0	keep	生产安全+项目检测	R17 FINAL: print仅dev+prod只读观测 +PREFLIGHT项目文件检测. 5轮15judge 27+issue修. 收敛:不同judge找不同trivial问题. 3/3 ship=yes.
-2026-06-21T20:52	bc4350d	campus-deploy	-	68.0	baseline	-	初始评估. +test-prompts(3cases). 预估: dim1=7 dim2=6 dim3=7 dim4=5 dim5a=9 dim5b=7.
+2026-06-21T22:33	489dd42	缉凶	-	100.0	baseline	v2.0合同框架	R1(v2.0): 合同框架重写. 370→102行(-73%). ~5000→~1500 token. Red Lines(5)+合同链(7)+MEL(4)+环境假设(5)+可成长性(5 trigger). ALL 6 DIMS=10. [L3: TEMPLATE] — 主分析REAL但次级数据有误(11/12→实际6处). A/B vs v1.1: 根因更深+3真实CF+4文件修复+自动追加test#14.
 2026-06-21T20:52	bc4350d	campus-quality-gate	-	72.0	baseline	-	初始评估. +test-prompts(3cases). 预估: dim1=8 dim2=7 dim3=7 dim4=6 dim5a=9 dim5b=7.
 2026-06-21T20:52	bc4350d	campus-red-team	-	70.0	baseline	-	初始评估. +test-prompts(3cases). 预估: dim1=8 dim2=6 dim3=7 dim4=5 dim5a=9 dim5b=7.
 2026-06-21T20:52	bc4350d	pantheon-custom	-	65.0	baseline	-	新创建. +test-prompts(3cases). CONSTITUTION+IronLaw+6Phase+Gotchas. 待skill-lab优化.
