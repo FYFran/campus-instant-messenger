@@ -52,7 +52,7 @@ rules:
 
   # http:// URLs — should be https://
   - id: campus-http-url
-    pattern-regex: 'https?://[a-zA-Z0-9]'
+    pattern-regex: 'http://[a-zA-Z0-9]'
     message: >-
       Use HTTPS instead of HTTP. http:// is insecure for production.
       Exception: localhost/127.0.0.1 only.
