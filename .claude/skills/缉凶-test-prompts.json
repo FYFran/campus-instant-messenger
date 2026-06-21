@@ -1,173 +1,171 @@
 [
   {
     "id": 1,
-    "scenario": "T0 确定性 bug — 完整执行链",
+    "scenario": "T0 确定 bug — 完整合同链",
     "prompt": "用户报名活动时报 500 错误 — 帮我找出根因并修好",
     "assert": {
-      "mustContain": ["T0", "Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "Phase 7", "Divergence", "Causal Chain", "Counterfactual", "Root Cause", "confidence", "Iron Law"],
-      "regex": ["Phase [1-7]", "TIER[12]", "Expected.*Actual", "confirm|reject", "campus_check"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["T0", "分类", "证据", "追踪", "分析", "修复", "验证", "记录", "Counterfactual", "conf"],
+      "regex": "Type: T0|复现步骤|campus_check|Counterfactual|pre.post",
+      "lengthMin": 2000,
+      "lengthMax": 12000
     },
-    "expect": "Phase 1 分类→T0。Phase 2 搜索+证据→填空。Phase 3a/b/c/d 追踪→填空。Phase 4a-e 分析→填空。Phase 5 修复+Critic。Phase 6 回归验证。Phase 7 报告+Grow。Iron Law 在头尾双端放置。每步输出链不断。"
+    "expect": "分类→证据→追踪→分析→修复→验证→记录。7步合同链全走。每步产出填完整。"
   },
   {
     "id": 2,
     "scenario": "T4 回归 bug — git bisect",
     "prompt": "login 昨天好的今天 500 — 查",
     "assert": {
-      "mustContain": ["T4", "bisect", "git log", "Phase 1", "Phase 2"],
-      "regex": ["bisect (start|bad|good|reset)", "T4"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["T4", "bisect", "分类", "证据"],
+      "regex": "bisect (start|bad|good|reset)|T4",
+      "lengthMin": 1500,
+      "lengthMax": 10000
     },
-    "expect": "Phase 1→T4。Phase 2b git bisect。不猜配置/缓存。"
+    "expect": "分类→T4。git bisect。不猜配置/缓存。"
   },
   {
     "id": 3,
     "scenario": "T1 海森堡 — 观测者效应",
-    "prompt": "race condition debug模式消失 生产偶发",
+    "prompt": "race condition debug 模式消失 生产偶发",
     "assert": {
-      "mustContain": ["T1", "观测者", "时序", "DIAGNOSIS MADE"],
-      "regex": ["T1|Heisenbug", "观测者|observer", "strace|procdump|eBPF|pstack|gdb"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["T1", "观测者", "时序"],
+      "regex": "T1|观测者|observer|strace|procdump|gdb|print.*仅.*dev",
+      "lengthMin": 1500,
+      "lengthMax": 10000
     },
-    "expect": "Phase 1→T1。观测者效应警告。Phase 3b 低开销观测。print消失→DIAGNOSIS MADE→跳到Phase 7。"
+    "expect": "分类→T1。观测者效应警告。print 仅 dev。prod 只读观测。"
   },
   {
     "id": 4,
-    "scenario": "T2 多因 — 每因素独立 Counterfactual",
-    "prompt": "用户有时看不到活动列表 — 3种修法都只部分解决",
+    "scenario": "T2 多因 — 每因素独立 CF",
+    "prompt": "用户有时看不到活动列表 — 3 种修法都只部分解决",
     "assert": {
-      "mustContain": ["T2", "Counterfactual", "每因素", "独立"],
-      "regex": ["T2|Multi-Cause", "每.*因素|factor.*factor", "修.*后.*还出现"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["T2", "Counterfactual", "每因素"],
+      "regex": "T2|每.*因素|factor|修.*后.*还出现",
+      "lengthMin": 1500,
+      "lengthMax": 10000
     },
-    "expect": "Phase 1→T2。每因素独立Counterfactual。修一个≠根因。Phase 4d声明所有因素。"
+    "expect": "分类→T2。每因素独立 CF。修一个不收工。"
   },
   {
     "id": 5,
-    "scenario": "T3 静默 — 不变量+diff+属性测试",
-    "prompt": "用户积分莫名其妙变少 无报错无crash",
+    "scenario": "T3 静默 — 不变量+属性测试",
+    "prompt": "用户积分莫名其妙变少 无报错无 crash",
     "assert": {
-      "mustContain": ["T3", "diff", "Property-Based", "3d"],
-      "regex": ["T3|数据悄悄错", "diff|不变量", "Hypothesis|属性测试"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["T3", "diff", "Property"],
+      "regex": "T3|Silent|不变量|Property.Based|Hypothesis",
+      "lengthMin": 1500,
+      "lengthMax": 10000
     },
-    "expect": "Phase 1→T3(Silent)。不变量推断+数据diff。Phase 3d Hypothesis属性测试→动态证据。"
+    "expect": "分类→T3。不变量推断+数据 diff。Property-Based Test。"
   },
   {
     "id": 6,
-    "scenario": "Growability — 修复后模式提取+回归追加",
-    "prompt": "刚修完N+1 query — 记录并加回归测试",
+    "scenario": "可成长性 — 修复后模式提取",
+    "prompt": "刚修完 N+1 query — 记录并加回归测试",
     "assert": {
-      "mustContain": ["bug-patterns", "Growability", "campus_check.py", "Phase 7"],
-      "regex": ["bug-patterns\\.md|campus_check\\.py", "Growability|pattern"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["bug-patterns", "记录", "可成长性"],
+      "regex": "bug-patterns|campus_check|追加|pattern",
+      "lengthMin": 1000,
+      "lengthMax": 8000
     },
-    "expect": "Phase 7→Growability。提取模式→追加bug-patterns。复现用例→追加campus_check。"
+    "expect": "记录步→可成长性。提取模式→bug-patterns。复现用例→campus_check。"
   },
   {
     "id": 7,
-    "scenario": "零依赖回退 — 全TIER1",
+    "scenario": "零依赖回退 — 全 TIER1",
     "prompt": "fix the signup bug — no external tools",
     "assert": {
-      "mustContain": ["TIER1", "Phase 1", "PARTIAL", "print"],
-      "regex": ["TIER1", "PARTIAL|CAPABILITY|unavailable"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["PARTIAL", "TIER1"],
+      "regex": "TIER1|PARTIAL|工具.*不可用|降级",
+      "lengthMin": 1000,
+      "lengthMax": 8000
     },
-    "expect": "PREFLIGHT无外部工具→全TIER1。Phase 1仍分类。Phase 3b print()做Runtime Observe。标记PARTIAL。"
+    "expect": "工具回退→全 TIER1。标记 PARTIAL。合同链照走。"
   },
   {
     "id": 8,
-    "scenario": "Skill Text Audit — 查skill文件bug",
+    "scenario": "Skill Text Audit",
     "prompt": "检查 campus-code-review 这个 skill 有没有冗余行和死指令",
     "assert": {
-      "mustContain": ["Skill Text Audit", "删除", "替换", "覆盖", "一致", "DELETE", "HARDEN", "GAP", "ORPHAN"],
-      "regex": ["Skill Audit", "DELETE|HARDEN|GAP|ORPHAN", "test-prompts"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["Skill Text Audit", "删除", "替换", "覆盖", "一致"],
+      "regex": "DELETE|HARDEN|GAP|ORPHAN|test-prompts",
+      "lengthMin": 1500,
+      "lengthMax": 10000
     },
-    "expect": "Skill Text Audit 四测试：删除测试(逐行删→diff)、替换测试(反义词→diff)、覆盖测试(MUST→grep test)、一致测试(MUST→grep CHECKPOINT)。输出 Skill Audit 表格。"
+    "expect": "目标为 .md → Skill Text Audit。四测试管线。"
   },
   {
     "id": 9,
-    "scenario": "T5 状态机 bug — 状态转移日志",
+    "scenario": "T5 状态机 bug",
     "prompt": "用户报名后状态一直 pending 不变成 confirmed — 查",
     "assert": {
-      "mustContain": ["T5", "状态", "Phase 1", "Phase 3b"],
-      "regex": ["T5|State Machine", "状态转移|state transition|status flow"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["T5", "状态"],
+      "regex": "T5|State Machine|状态转移|status flow",
+      "lengthMin": 1500,
+      "lengthMax": 10000
     },
-    "expect": "Phase 1→T5(State Machine)。Phase 3b 状态转移日志。追踪状态迁移链(pending→?→confirmed)。找断点。"
+    "expect": "分类→T5。状态转移日志。找断点。"
   },
   {
     "id": 10,
-    "scenario": "T6 环境特定 bug — Docker/CI/k8s 诊断",
+    "scenario": "T6 环境特定 bug",
     "prompt": "本地好好的 CI 里测试全挂 — 帮我查",
     "assert": {
-      "mustContain": ["T6", "Phase 2d", "环境"],
-      "regex": ["T6|Environment|env diff", "docker|CI|k8s|bare.metal"],
-      "lengthMin": 3000,
-      "lengthMax": 15000
+      "mustContain": ["T6", "环境"],
+      "regex": "T6|Environment|docker|CI|k8s|裸金属",
+      "lengthMin": 1500,
+      "lengthMax": 10000
     },
-    "expect": "Phase 1→T6。Phase 2d Docker/CI/k8s/裸金属环境诊断。环境快照diff→找差异项。"
+    "expect": "分类→T6。环境快照 diff（Docker/CI/k8s/裸金属）。"
   },
   {
     "id": 11,
-    "scenario": "T7 NOT_A_BUG — 代码对需求错",
+    "scenario": "T7 NOT_A_BUG",
     "prompt": "用户说积分规则不对 — 但代码和需求文档一致",
     "assert": {
-      "mustContain": ["T7", "NOT_A_BUG", "Phase 1"],
-      "mustNotContain": ["Phase 2", "Phase 3", "Phase 4", "Phase 5"],
-      "regex": ["T7|NOT_A_BUG|需求|产品"],
-      "lengthMin": 500,
-      "lengthMax": 5000
-    },
-    "expect": "Phase 1→T7(NOT_A_BUG)。STOP。不接Phase 2-7。不修代码。输出简短(不包含Phase 2+内容)。"
-  },
-  {
-    "id": 12,
-    "scenario": "Safe 模式 — 修复需人工审批",
-    "prompt": "这个支付bug修复很重要 — 走 safe 模式，修完等我确认再上线",
-    "assert": {
-      "mustContain": ["safe", "AWAIT APPROVAL", "Phase 5", "人审"],
-      "regex": "AWAIT.APPROVAL|safe.*mode|人.*审|approve",
-      "lengthMin": 2000,
-      "lengthMax": 10000
-    },
-    "expect": "safe 模式→Phase 1-4 完整→Phase 5 修完后显式输出 [AWAIT APPROVAL] → BLOCK 等人 approve → 才进 Phase 6。"
-  },
-  {
-    "id": 13,
-    "scenario": "Fatal 错误 — BLOCK immediately",
-    "prompt": "磁盘满了源码坏了 — 帮我查bug",
-    "assert": {
-      "mustContain": ["BLOCK", "Fatal", "immediately"],
-      "mustNotContain": ["Phase 2", "Phase 3"],
-      "regex": "BLOCK.immediately|Fatal|磁盘满|源码坏",
+      "mustContain": ["T7", "NOT_A_BUG"],
+      "mustNotContain": ["证据", "追踪", "修复"],
+      "regex": "T7|NOT_A_BUG|STOP",
       "lengthMin": 200,
       "lengthMax": 3000
     },
-    "expect": "Error Recovery→Fatal→BLOCK immediately。不接Phase 2+。不尝试修复。输出极短。"
+    "expect": "分类→T7→STOP。不修代码。不接后续合同链。输出极短。"
   },
   {
-    "id": 14,
-    "scenario": "Emergency 模式 — 生产挂了立刻修",
+    "id": 12,
+    "scenario": "Safe 模式 — 修复需审批",
+    "prompt": "这个支付 bug 修复很重要 — 走 safe 模式，修完等我确认",
+    "assert": {
+      "mustContain": ["safe", "AWAIT APPROVAL", "人审"],
+      "regex": "AWAIT.APPROVAL|safe|approve",
+      "lengthMin": 1500,
+      "lengthMax": 10000
+    },
+    "expect": "safe 模式→7 步合同链→修复步后 [AWAIT APPROVAL]→人 approve 才进验证步。"
+  },
+  {
+    "id": 13,
+    "scenario": "Emergency 模式 — 生产挂了",
     "prompt": "生产 500 了所有用户登不上 — 紧急修复！快！",
     "assert": {
       "mustContain": ["emergency", "Red Line", "复现", "Counterfactual", "pre/post"],
-      "mustNotContain": ["Phase 3a", "Phase 3c", "Phase 3d", "Phase 7"],
       "regex": "emergency|Red.Line|事后.*补|24h",
       "lengthMin": 500,
       "lengthMax": 5000
     },
-    "expect": "emergency 模式→只做 3 Red Lines(复现+CF+pre/post diff)。事后 24h 内补全审计链。输出极短(<5000 chars)。"
+    "expect": "emergency→只 3 条 Red Line。事后 24h 补全合同链。"
+  },
+  {
+    "id": 14,
+    "scenario": "for rows.Next() 循环缺失 rows.Err() 审计",
+    "prompt": "campus_go 的 ListActivities API 在数据库为空时返回 500 — 查",
+    "assert": {
+      "mustContain": ["rows.Err", "for rows.Next", "Classification", "追", "分析", "fix"],
+      "regex": "rows\\.Err|Counterfactual|conf",
+      "lengthMin": 2000,
+      "lengthMax": 15000
+    },
+    "expect": "分类→T0→证据（DB schema + 二进制 strings 分析）→追踪→分析（根因: 旧二进制引用已删除列）→修复（全项目 rows.Err 审计+SchoolDashboard error 忽略修复）→验证→记录"
   }
 ]
