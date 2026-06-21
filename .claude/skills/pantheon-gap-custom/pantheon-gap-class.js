@@ -137,12 +137,22 @@ async function safeAgent(promptCore, opts, category = 'recoverable') {
 const PRE_SCAN_FINDINGS = { type: 'object', properties: { findings: { type: 'array', items: { type: 'object', properties: { pattern: { type: 'string' }, file: { type: 'string' }, line: { type: 'number' }, snippet: { type: 'string' } }, required: ['pattern', 'file', 'line'] } } }, required: ['findings'] }
 phase('PreScan')
 const preScan = await agent(
-  `Run these grep commands in ${target} and return EVERY match as a structured finding (no filtering, no judgment — grep is deterministic):\n` +
-    `1. rg -n "TODO|FIXME|HACK|XXX" --type-add 'code:*.{py,go,js,ts,dart,rs}' -t code\n` +
-    `2. rg -n "except\\s*(Exception)?\\s*:\\s*pass" --type py\n` +
-    `3. rg -n "catch\\s*\\(.*\\)\\s*\\{\\s*\\}" --type ts --type js\n` +
-    `4. rg -nE '(password|secret|key|token)\\s*=\\s*["\\x27][^"\\x27]{8,}' --type-add 'code:*.{py,go,js,ts,dart,yaml,toml}' -t code\n` +
-    `Return { findings: [{ pattern: "TODO|FIXME|...", file: "path:line", line: N, snippet: "matched line" }] }. Empty array if no matches.`,
+  `Run these grep commands in ${target}. Return EVERY match — no filtering, no judgment, grep is deterministic.\n\n` +
+    `UNIVERSAL:\n` +
+    `1. rg -n "TODO|FIXME|HACK|XXX|WORKAROUND" --type-add 'code:*.{py,go,js,ts,dart,rs,java,swift,kt}' -t code\n` +
+    `2. rg -nE '(password|secret|key|token|api_key|API_KEY)\\s*=\\s*["\\x27][^"\\x27]{6,}' --type-add 'code:*.{py,go,js,ts,dart,yaml,toml,env,sh}' -t code\n\n` +
+    `PYTHON-SPECIFIC:\n` +
+    `3. rg -n "except\\s*(Exception)?\\s*:\\s*pass" --type py && rg -n "except\\s*:" --type py\n` +
+    `4. rg -n "assert\\s+(True|False|None|\\d+)\\s*$" --type py\n\n` +
+    `GO-SPECIFIC:\n` +
+    `5. rg -n "if\\s+err\\s*!=\\s*nil\\s*\\{\\s*return\\s+nil" --type go && rg -n '_\\s*=\\s*' --type go\n\n` +
+    `JS/TS-SPECIFIC:\n` +
+    `6. rg -n "catch\\s*\\(.*\\)\\s*\\{\\s*\\}" --type ts --type js && rg -n "\\.then\\(.*\\)\\.catch\\(.*\\)" --type ts --type js\n\n` +
+    `RUST-SPECIFIC:\n` +
+    `7. rg -n "unwrap\\(\\)" --type rs && rg -n "expect\\(\\)" --type rs\n\n` +
+    `DART-SPECIFIC:\n` +
+    `8. rg -n "catch\\s*\\(.*\\)\\s*\\{" --type dart && rg -n "// ignore:" --type dart\n\n` +
+    `Return { findings: [{ pattern: "TODO|FIXME|..." (the grep pattern name), file: "path:line", line: N, snippet: "matched line (first 120 chars)" }] }. Empty array if no matches. Include ALL matches.`,
   { schema: PRE_SCAN_FINDINGS, phase: 'PreScan', label: 'prescan' },
 )
 const seedEvidence = (preScan?.findings ?? []).map((f) => `[PRE-SCAN] ${f.pattern}: ${f.file} — ${(f.snippet ?? '').slice(0, 80)}`)
@@ -338,9 +348,14 @@ while (passes < MAX_PASSES) {
   }
   const hasCritical = confirmed.some((g) => g.adjustedSeverity === 'critical')
   if (hasCritical && passes < MAX_PASSES) {
-    log(`Pass ${passes}: ${confirmed.length} confirmed (CRITICAL found) → re-probing with angle shift`)
-    // Shift dimension order to get fresh angles (rotate + swap adjacent)
-    currentDims = [...currentDims.slice(1), currentDims[0]]
+    // Smart convergence: pick complementary dimensions (not just rotate)
+    // Complementary pairs: security↔correctness, performance↔architecture, testing↔completeness
+    const COMPLEMENTS = { security: 'correctness', correctness: 'security', performance: 'architecture', architecture: 'performance', testing: 'completeness', completeness: 'testing' }
+    const critDims = [...new Set(confirmed.filter((g) => g.adjustedSeverity === 'critical').map((g) => g.dimension))]
+    const complementDims = critDims.map((d) => COMPLEMENTS[d] || d).filter((d) => !critDims.includes(d))
+    // Merge: critical dims first, then complements, then original rotation for coverage
+    currentDims = [...new Set([...critDims, ...complementDims, ...currentDims.slice(1), currentDims[0]])].slice(0, maxDims)
+    log(`Pass ${passes}: ${confirmed.length} confirmed (CRITICAL in ${critDims.join(',')}) → re-probing: ${currentDims.map((d) => d.key || d).join(', ')}`)
     currentSeed = confirmed.filter((g) => g.adjustedSeverity === 'critical').map((g) => `[RE-PROBE seed] ${g.dimension}: ${g.title} — ${g.evidence}`)
   } else {
     log(`Pass ${passes}: ${confirmed.length} confirmed, ${suspects.length} SUSPECT → ${hasCritical ? 'max passes' : 'converged'}`)
@@ -397,9 +412,32 @@ const critic = await agent(
     `Return { passed, issues: [{ severity: "blocking"|"warning", type: "missing_evidence"|"hedging"|"duplicate"|"confidence_mismatch"|"missing_fix", detail }] }. Ship if passed.`,
   { schema: CRITIC_SCHEMA, phase: 'Critic', label: 'critic' },
 )
-const criticIssues = critic?.issues ?? []
-const criticPassed = critic?.passed ?? true
-if (!criticPassed) log(`CRITIC: ${criticIssues.filter((i) => i.severity === 'blocking').length} blocking, ${criticIssues.filter((i) => i.severity === 'warning').length} warnings`)
+let criticIssues = critic?.issues ?? []
+let criticPassed = critic?.passed ?? true
+let criticFixAttempts = 0
+while (!criticPassed && criticFixAttempts < 2) {
+  criticFixAttempts++
+  const blockingList = criticIssues.filter((i) => i.severity === 'blocking').map((i) => `- ${i.type}: ${i.detail}`).join('\n')
+  log(`CRITIC auto-fix ${criticFixAttempts}/2: fixing ${criticIssues.filter((i) => i.severity === 'blocking').length} blocking issues...`)
+  // Re-synthesize with critic feedback baked into the prompt
+  const fixedReport = await agent(
+    `You are the JUDGE/SYNTHESIZER. Your previous report had these CRITIC issues:\n${blockingList}\n\n` +
+      `Fix EVERY blocking issue and regenerate the report. Original data:\n` +
+      confirmed.map((g, i) => `${i + 1}. [${g.dimension} | ${priorityLabel(g.adjustedSeverity)} | conf:${g.avgConfidence ?? '?'}] ${g.title} — ${g.impact ?? ''} (evidence: ${g.evidence}; fix: ${g.suggestion})`).join('\n') +
+      (suspects.length > 0 ? `\n\nSUSPECT gaps:\n` + suspects.map((g, i) => `${i + 1}. [${g.dimension} | ${g.adjustedSeverity} | conf:${g.avgConfidence}] ${g.title}`).join('\n') : ''),
+    { schema: REPORT_SCHEMA, phase: 'Critic', label: `critic-fix-${criticFixAttempts}` },
+  )
+  if (fixedReport) Object.assign(report, fixedReport)
+  // Re-run critic on fixed report
+  const reCritic = await agent(
+    `Re-verify this FIXED report:\n${JSON.stringify(report, null, 2)}\n\nSame 5-point checklist. Return { passed, issues }.`,
+    { schema: CRITIC_SCHEMA, phase: 'Critic', label: `critic-recheck-${criticFixAttempts}` },
+  )
+  criticIssues = reCritic?.issues ?? []
+  criticPassed = reCritic?.passed ?? true
+}
+if (!criticPassed) log(`CRITIC: ${criticIssues.filter((i) => i.severity === 'blocking').length} blocking, ${criticIssues.filter((i) => i.severity === 'warning').length} warnings (after ${criticFixAttempts} fix attempt(s))`)
+else log('CRITIC: passed' + (criticFixAttempts > 0 ? ` (fixed in ${criticFixAttempts} attempt(s))` : ''))
 
 // ---- Phase 6: WRITE ARTIFACT — persist report to .gaps/ ----
 phase('Write')
