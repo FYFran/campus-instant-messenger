@@ -40,12 +40,16 @@ When user says: "review this", "review", "code review", "is this correct", "chec
 ## Process
 
 ### Step 0 — Scope Confirmation 🔴 CHECKPOINT
-- If user specified files → confirm path exists, proceed to Step 1
+- If user specified files → confirm paths exist, proceed to Step 1
 - If user did NOT specify files → ASK: "Which files or changes should I review? (Python backend / Go backend / both / specific file)"
 - If user responds with vague scope ("the backend") → ask for specific file paths
+- **Multiple files?** → review each file separately, then cross-check for consistency between them
+- **User says what changed (not which file)?** → use `git diff` to identify changed files, confirm scope with user
 
-### Step 1 — Read & Review
-Run through ALL 13 categories below. If ANY category fails, the review verdict is CHANGES NEEDED.
+### Step 1 — Read & Review 🔴 CHECKPOINT
+- **Prefer git diff for targeted changes** — if user mentions a specific change/commit, `git diff HEAD~1` first to isolate changed lines, then read surrounding context. For new files, read the full file.
+- **For full-file review** — read the entire file, focusing review effort on changed sections
+Run through ALL 13 categories below. Each finding is severity-tagged.
 
 ### 1. Authentication (AUTH)
 - [ ] New endpoint has `user: dict = Depends(get_current_user)`?
@@ -145,6 +149,15 @@ Run through ALL 13 categories below. If ANY category fails, the review verdict i
 ```
 ## Code Review: {commit/feature name}
 
+### Findings
+| # | Severity | Category | Issue | Fix |
+|---|----------|----------|-------|-----|
+| 1 | 🔴 CRITICAL | Auth | ... | ... |
+| 2 | 🟠 HIGH | SQL Injection | ... | ... |
+| 3 | 🟡 MEDIUM | Rate Limit | ... | ... |
+| 4 | 🔵 LOW | Dependencies | ... | ... |
+
+### Category Summary
 Auth: {PASS|FAIL} — {details}
 AuthZ: {PASS|FAIL} — {details}
 Input: {PASS|FAIL} — {details}
@@ -156,7 +169,24 @@ Rate Limit: {PASS|FAIL} — {details}
 Race: {PASS|FAIL} — {details}
 
 Verdict: {APPROVED / CHANGES NEEDED / BLOCKED}
+  - BLOCKED if any 🔴CRITICAL finding
+  - CHANGES NEEDED if any 🟠HIGH or 🟡MEDIUM finding
+  - APPROVED if only 🔵LOW or no findings
 ```
+
+### Severity Guide
+| Level | Criteria | Example |
+|-------|----------|---------|
+| 🔴 CRITICAL | Auth bypass, data leak, SQL injection, hardcoded secret | Missing `Depends(get_current_user)` on write endpoint |
+| 🟠 HIGH | RBAC gap, race condition, XSS, missing rate limit | Missing `FOR UPDATE` on signup |
+| 🟡 MEDIUM | Missing validation, error handling gap, logging gap | Pydantic field missing `max_length` |
+| 🔵 LOW | Dependency update needed, code style, documentation | `go.mod` dependency has newer patch |
+
+### Step 2 — Post-Review 🔴 CHECKPOINT
+After delivering the review:
+- **APPROVED** → done. Suggest commit message if committing now.
+- **CHANGES NEEDED** → list actionable fixes for each finding. Ask user: "Should I apply these fixes now, or will you handle them?" Wait for response. Do NOT auto-apply fixes to security-related code.
+- **BLOCKED** → explain why (which CRITICAL finding). Suggest immediate remediation steps. Escalate to security-auditor if needed.
 
 ## References
 - `f:\ClaudeFiles\docs\CODE_REVIEW.md` — full checklist with code examples
