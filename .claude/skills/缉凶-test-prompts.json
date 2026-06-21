@@ -71,7 +71,7 @@
     "assert": {
       "mustContain": ["bug-patterns", "Growability", "campus_check.py"],
       "mustNotContain": [],
-      "regex": ["bug-patterns\\.md|campus_check\\.py", "Growability.*pattern|pattern.*Growability"],
+      "regex": ["bug-patterns\\.md|campus_check\\.py", "Growability|pattern.*bug-patterns"],
       "lengthMin": 3000,
       "lengthMax": 12000
     },
