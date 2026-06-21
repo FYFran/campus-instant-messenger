@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "scenario": "典型场景：全面安全审计",
+    "prompt": "audit security of the campus backend — check for secrets, vulnerabilities, and misconfigurations",
+    "assert": {
+      "mustContain": ["gitleaks", "semgrep", "Secret Scan", "SAST", "Endpoint Audit", "Overall Verdict"],
+      "mustNotContain": ["might", "could consider", "maybe", "possibly", "I think"],
+      "lengthMin": 500,
+      "lengthMax": 8000
+    },
+    "expect": "skill 应触发完整审计流程：Step1 gitleaks → Step2 semgrep → Step3 endpoint audit → 输出分类报告（CRITICAL/HIGH/MEDIUM/LOW/SUSPECT），标注误报，含 Passes/Status/TRUNCATED AT 头"
+  },
+  {
+    "id": 2,
+    "scenario": "单点检查：硬编码密钥",
+    "prompt": "check if there are any hardcoded secrets in the Go backend code",
+    "assert": {
+      "mustContain": ["gitleaks", "rg -nE", "hardcoded"],
+      "mustNotContain": ["might be a secret", "could be"],
+      "lengthMin": 100,
+      "lengthMax": 3000
+    },
+    "expect": "skill 应运行 gitleaks detect 或 fallback rg，检查 campus_go/ 目录，标记任何 JWT secret/DB密码/API key，区分合法 allowlist 项和真实泄露"
+  },
+  {
+    "id": 3,
+    "scenario": "误报处理：pet_config.json",
+    "prompt": "gitleaks found a secret in pet_config.json — is this a real security issue?",
+    "assert": {
+      "mustContain": ["allowlist", "FALSE POSITIVE", "verified"],
+      "mustNotContain": ["CRITICAL", "vulnerability", "exploit"],
+      "lengthMin": 50,
+      "lengthMax": 1000
+    },
+    "expect": "skill 应读 .gitleaks.toml allowlist，确认 pet_config.json 是已验证的误报 → 报告 'FALSE POSITIVE (verified by allowlist)'，不标记为漏洞"
+  },
+  {
+    "id": 4,
+    "scenario": "quick 模式触发",
+    "prompt": "quick audit — just check for secrets and SAST issues, skip the server scan",
+    "assert": {
+      "mustContain": ["Step 1", "Step 2", "Step 4", "quick"],
+      "mustNotContain": ["nuclei", "pg-ops", "Step 6", "Step 7"],
+      "lengthMin": 50,
+      "lengthMax": 3000
+    },
+    "expect": "skill 应识别 'quick audit' 触发词 → quick 模式：只跑 Step 1+2+4，跳 Step 6(nuclei)+Step 7(pg-ops)，1 pass 跳 convergence"
+  },
+  {
+    "id": 5,
+    "scenario": "边界：无工具可用时的 fallback",
+    "prompt": "audit the Python backend but gitleaks and semgrep are not installed",
+    "assert": {
+      "mustContain": ["PARTIAL", "fallback", "rg -nE", "rg -n"],
+      "mustNotContain": ["PASS", "clean"],
+      "lengthMin": 200,
+      "lengthMax": 5000
+    },
+    "expect": "skill 应检测工具不可用 → 使用 rg fallback → 报告头标记 Status: PARTIAL，说明哪些工具不可用及使用的替代方案"
+  }
+]

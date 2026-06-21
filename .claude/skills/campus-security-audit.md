@@ -23,6 +23,17 @@ tools: [Read, Grep, Glob, Bash, codegraph_search, codegraph_callers, codegraph_c
 
 ---
 
+## Quick Reference（速查）
+
+| 想做什么 | 怎么做 |
+|---------|--------|
+| 全面安全审计 | `audit security` → Step 1-8 全流程 |
+| 只查密钥泄露 | `check for hardcoded secrets` → Step 1 + Step 4 only |
+| 只查依赖漏洞 | `check dependencies` → Step 5 only |
+| 快速扫描（跳过 nuclei） | 说 `quick audit` → safe 模式，跳 Step 6-7 |
+| 生产全扫（含 nuclei） | 说 `full audit` → full 模式，Step 1-8 |
+| 规则速查 | 反例黑名单 10 项 · 8 步门控 · >80% 置信度 · CRITICAL→BLOCK 后续步骤 · 🔴 必须人审 nuclei |
+
 ## Attack Mindset（security-auditor-supreme精华）
 
 审查每条代码路径时，切换为攻击者思维：
@@ -46,15 +57,23 @@ When user says: "audit security", "check security", "find vulnerabilities", "is 
 
 ## Quality Rules（production-audit 模式）
 
-**Convergence rule:** After completing all applicable steps, re-sweep each step one more time. If second pass finds ZERO new findings → DONE. If it finds anything new → re-sweep. Continue until **two consecutive complete passes yield zero new findings** or budget exhausted (max 3 passes per step). Mark final pass count in report header: `Passes: N (converged / budget-exhausted)`.
+**Convergence:** Re-sweep each step. Two consecutive passes with zero new findings → DONE. Max 3 passes/step. Mark: `Passes: N (converged / budget-exhausted)`.
 
-**Confidence filter:** Report only findings with >80% confidence they are real problems. If uncertain → mark as `SUSPECT` and escalate to human. Do NOT manufacture findings to fill the report.
+**Confidence filter:** >80% confidence only. Uncertain → `SUSPECT`, escalate to human. Never manufacture findings.
 
-**No hedging:** Zero tolerance for "might/could/consider/suggest/maybe/possibly." Every finding has concrete evidence (`file:line`) + concrete fix. If you can't provide both → don't report it.
+**No hedging:** Zero "might/could/consider/suggest/maybe/possibly." Every finding: concrete `file:line` + concrete fix. Can't provide both → don't report.
 
-**TRUNCATED AT marker:** If context runs out before completing all steps → mark `TRUNCATED AT: {last_checked_step}` in report header. Never fake a complete audit. If budget exhausted → deliver partial findings immediately, ask user: "Continue from Step {N}?"
+**TRUNCATED AT:** Context exhausted → mark `TRUNCATED AT: {step}`. Deliver partial findings, ask: "Continue from Step {N}?"
 
-**Progressive disclosure:** >5 findings or >1000 lines changed → group by severity, report CRITICAL/HIGH first, ask before expanding. Reserve full semi-formal trace for CRITICAL/HIGH only. MEDIUM: brief source→sink summary. LOW: severity + category + fix only.
+**Progressive disclosure:** >5 findings or >1000 lines → CRITICAL/HIGH first, ask before expanding. Full semi-formal trace: CRITICAL/HIGH only. MEDIUM: brief summary. LOW: category + fix.
+
+## 分级执行（super-fix 模式）
+
+| 模式 | 触发 | 行为 |
+|------|------|------|
+| **full** | `audit security` (默认) | Step 1→8 全流程，convergence re-sweep，nuclei 需确认 |
+| **quick** | `quick audit` / `快速扫描` | Step 1 + 2 + 4 only (secrets + SAST + hardcoded)，1 pass，跳 convergence |
+| **safe** | `safe audit` / `安全扫描` | full 流程但不跑 nuclei（跳 Step 6），不跑 pg-ops（跳 Step 7） |
 
 ## Process
 
@@ -65,11 +84,7 @@ When user says: "audit security", "check security", "find vulnerabilities", "is 
 - **REVIEW NEEDED** → list actionable fixes for each HIGH/MEDIUM finding. Ask: "Apply fixes or handle manually?"
 - **PASS** → done. Suggest next audit date (weekly recommended).
 
-**Target detection:** Before starting, detect what changed:
-- `.py` or `.go` files changed → full Step 1-7
-- `.dart` only → Step 1 (secrets) + Step 4 (hardcoded) + Step 5 (dependencies)
-- Config files only (`.yaml`, `.toml`) → Step 1 (secrets) + Step 4 (hardcoded)
-- No code changed, user wants full audit → all steps
+**Target detection:** `.py`/`.go` → full Step 1-7. `.dart` only → Step 1+4+5. Config only → Step 1+4. No code changed → all steps.
 
 ### Step 1 — Gitleaks Secret Scan
 ```powershell
@@ -224,6 +239,23 @@ Use `pg-ops slow-queries` to check for slow SQL, `pg-ops locks` for active locks
 ### Overall Verdict: {PASS / REVIEW NEEDED / BLOCKING}
 ```
 
+## Audit Artifacts
+
+**Before writing: `mkdir -p {project_root}/.audits` if the directory does not exist.**
+
+Every audit writes to `{project_root}/.audits/{scope}-{YYMMDD-HHMM}.md` — survives context compaction, enables escalation tracking.
+
+```
+.audits/
+├── campus-full-20260621-1430.md    ← this audit
+├── campus-quick-20260620-0900.md   ← previous quick scan
+└── ESCALATIONS.md                   ← recurring vulnerability tracker
+```
+
+**Escalation rule:** If same vulnerability appears in 2+ consecutive audits → auto-escalate severity one level (LOW→MEDIUM→HIGH→CRITICAL) and flag in `ESCALATIONS.md`.
+
+**Cleanup:** Keep last 20 audit files per directory. Delete older than 90 days. `.audits/` should be in `.gitignore`.
+
 ## References
 - `f:\ClaudeFiles\docs\SECURITY_KB.md` — 15 vulnerability categories with mitigations
 - `f:\ClaudeFiles\.gitleaks.toml` — gitleaks config with custom campus patterns
@@ -231,6 +263,7 @@ Use `pg-ops slow-queries` to check for slow SQL, `pg-ops locks` for active locks
 - `f:\ClaudeFiles\scripts\full_security_scan.sh` — automated scan runner
 - `f:\ClaudeFiles\docs\SECURITY_ARCHITECTURE.md` — architecture-level security design
 - `f:\ClaudeFiles\.claude\agents\red-team-wolf.md` — 13 attack vectors detail
+- `f:\ClaudeFiles\.reviews\ESCALATIONS.md` — cross-audit escalation tracker
 
 ## 反例黑名单（审计时绝对不要做的事）
 
