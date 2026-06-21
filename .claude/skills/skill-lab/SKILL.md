@@ -239,6 +239,24 @@ skill-lab Phase 2 Step 3.5 之后追加：
 - **不再使用 3-judge blind consensus 做精细判别。** Judge 只用于：(a) 粗筛（明显 <90 的 skill 识别）(b) 发现新 lint 规则（L11, L12...）
 - 总分 = Σ(维度分 × 权重) / 10，满分 100
 
+**L3 定性标注（不进入分数，但必须随分数报告）：**
+
+> L3 是独立 agent 对执行质量的 spot-check。不参与定量评分——因为 L3 本身是 LLM agent，有天花板（和 dim5b 老问题一样）。但它作为"防骗标签"：100 分 + REAL ≠ 100 分 + TEMPLATE。
+
+| 标注 | 含义 | 对分数的解读 |
+|------|------|-------------|
+| **REAL** | spot-check 的 Phase 输出是真实分析，不是填模板 | 分数可信 |
+| **TEMPLATE** | 格式正确但内容空洞（如"修后 OK"无 pre/post 对比） | **分数虚高**—执行质量未达标 |
+| **WRONG** | spot-check 发现事实错误（如引用的代码行不存在） | **分数无意义**—skill 有功能缺陷 |
+| **NOT RUN** | L3 本轮未执行（每 3 轮跑 1 次，成本 ~100K token） | 分数待验证 |
+
+**报告格式：**
+```
+Score: 95.0 [L3: REAL]     ← 真 95
+Score: 100.0 [L3: TEMPLATE] ← 假 100
+Score: 92.0 [L3: NOT RUN]   ← 待验证
+```
+
 **为什么废弃 3-judge 精细评分：**
 - Kohli 2026: "9 个 judge 提供 ~2 个有效票的信息量"
 - Song 2026: "高质量输出 paradoxical 地收到最不一致的评估"
