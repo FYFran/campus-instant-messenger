@@ -173,6 +173,30 @@ For each finding, trace the complete input→output path. Do NOT just pattern-ma
 - [ ] Python and Go: same auth logic? same rate limits? same input validation rules?
 - [ ] `rg -n "def \w+" {python_file}` then `rg -n "func \w+" {go_file}` → compare signatures
 
+**Language-Specific Rules (code-review-authority精华):**
+
+*Go:*
+- [ ] Error wrapping with `fmt.Errorf("context: %w", err)`, not bare returns
+- [ ] Context propagation (`ctx context.Context`) through call chain
+- [ ] No naked returns in non-trivial functions
+- [ ] `gofmt`/`goimports` applied?
+
+*Python:*
+- [ ] Type hints on all function signatures (`def foo(x: int) -> str:`)
+- [ ] `pathlib` over `os.path`, f-strings over `.format()`
+- [ ] No bare `except:` or `except Exception: pass`
+- [ ] Pydantic models for all request/response boundaries
+
+*TypeScript/Flutter:*
+- [ ] Strict mode enabled, no `any` type
+- [ ] Proper `async`/`await`, no callback nesting >3 levels
+- [ ] `mounted` before `setState`, streams cancelled in `dispose`
+
+*SQL (all backends):*
+- [ ] Always parameterized (`$1, $2`), never concatenated
+- [ ] No `SELECT *` — columns explicit
+- [ ] Transactions for multi-statement writes
+
 **Dependencies:**
 - [ ] New Python dep? `pip-audit` for CVEs
 - [ ] New Go dep? `go list -u -m all` for updates
@@ -222,7 +246,21 @@ For each finding, trace the complete input→output path. Do NOT just pattern-ma
 - BLOCKED: Stage 1 FAIL (any 🔴CRITICAL — fix before merge)
 - CHANGES NEEDED: Stage 2/3 FAIL (🟠HIGH/🟡MEDIUM)
 - APPROVED: All stages PASS or only 🔵LOW
+
+### Score
+{score}/10 (was {previous_score}/10 before these changes)
+[Track improvement over time. Reference prior reviews in .reviews/ESCALATIONS.md]
 ```
+
+### Pre-Commit Integration (code-review-authority精华)
+
+Before EVERY commit, this skill should run automatically:
+1. `git diff --cached` → scan changed files
+2. Stage 1 security checks on all changed `.py`/`.go` files
+3. If any 🔴CRITICAL → BLOCK commit, report findings
+4. If 🟠HIGH → warn user, ask "commit anyway?"
+5. If clean → suggest commit message format: `type: description`
+6. Write review to `.reviews/pre-commit-{YYMMDD-HHMM}.md`
 
 ### Severity Guide
 | Level | Criteria | Requires |
