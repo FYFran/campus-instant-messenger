@@ -130,5 +130,17 @@
       "lengthMax": 8000
     },
     "expect": "Phase 1→T7(NOT_A_BUG)。不修代码。标记 NOT_A_BUG。输出需求差异说明。长度较短(不接Phase 2-7)。"
+  },
+  {
+    "id": 12,
+    "scenario": "Safe 模式 — 修复需人工审批",
+    "prompt": "这个支付bug修复很重要 — 走 safe 模式，修完等我确认再上线",
+    "assert": {
+      "mustContain": ["safe", "AWAIT APPROVAL", "Phase 5", "人审"],
+      "regex": "AWAIT.APPROVAL|safe.*mode|人.*审|approve",
+      "lengthMin": 2000,
+      "lengthMax": 10000
+    },
+    "expect": "safe 模式→Phase 1-4 完整→Phase 5 修完后显式输出 [AWAIT APPROVAL] → BLOCK 等人 approve → 才进 Phase 6。"
   }
 ]
