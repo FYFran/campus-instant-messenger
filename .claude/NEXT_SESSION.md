@@ -2,86 +2,88 @@
 
 你是皮特。读 `f:\ClaudeFiles\.claude\CLAUDE.md`。
 
-## 当前任务：试剑石 v2.5.1 验证 + 成长引擎驱动
+## 当前任务：试剑石 v2.5.1 验证 (Phase 1-3)
 
-### 背景
+### 上次完成 (2026-06-22 19:35)
 
-两天跑了 ~20 次 Workflow，$~20。缉凶 v2.5 封版 95.4±1.9pp。v2.6 GEPA 退化→回滚。当前 v2.5.1 = v2.5 + F6(T4配置检查)。
+**判定:** v2.6 GEPA R1=90% (-5.4pp) → 回滚 v2.5 → v2.5.1 = v2.5 + F6 only
 
-### 最终状态 (2026-06-22 19:20)
+**v2.5.1 改动 (3项,已自审修复3问题):**
+- 决策流 Q9: 症状可被配置差异解释**且近期有部署/重启** → T4
+- F6 致命误判: T4 配置检查通过前不许读源码
+- T4 强制 3 步 (含逃生舱: 3步全过无异常→门禁解除)
+- 3 个自审发现已修: Q9 触发过宽 / F6 死锁 / 配置检查范围窄
 
-**缉凶 Skill:**
-- **v2.5 = 95.4±1.9pp (n=3) — 封版基线**
-- v2.6 GEPA R1 = 90% — **退化 -5.4pp，已回滚**
-- **v2.5.1 (当前) = v2.5 + F6 only** — 待 T2 验证
-- Bare = 89.6±4.7pp (n=3) → skill lift +5.8pp
+**基础设施:**
+- `per_bug_results.tsv`: 恢复 10 bugs (B01-B10) 历史 per-bug 数据
+- `results.tsv`: 统一 8 列 summary 格式, 8 runs (v2.5×3 + v3.0×3 + bare×1 + v2.6×1)
+- `pete-skill-evolve.py`: encoding 修复 + R2/R3 用 per-bug 数据 + R4/R5 用 summary + append_per_bug()
+- `growth_engine.py`: T6_MINE=99 commits 触发, mine 发现 2 candidates
+- `VERIFICATION_PROTOCOL.md`: 5 Phase 验证协议, 总预算 $3.00
+- 2 commits 已 push
 
-**v2.6 退化根因:**
-- 合同链重排序 ([分类]→[证据] 改为 [证据]→[分类]) — 主退化源
-- F7 (断言前搜索) + F8 (跨bug RESET) — 过度约束
-- GEPA teacher 诊断准确，但 7 项改动全应用导致退化。应逐项验证
+### Per-Bug 失败分析 (v2.1 基线 10 bugs)
 
-**v2.5.1 改动 (仅 F6):**
-- 决策流 Q9: 症状可被配置差异(nginx/proxy_pass/port/env)解释 → T4
-- F6 致命误判: T4 专属配置检查通过前不许读源码
-- T4 强制 3 步: config diff / port check / startup log
+| Bug | Type | Score | 失败维度 | 根因 |
+|-----|------|-------|---------|------|
+| B01 | T0 | 7/8 | — | 完美命中 nil deref |
+| B02 | T1 | 7/8 | — | 完美命中 race condition |
+| **B03** | **T2** | **2/8** | class+root+cf+fix | 分类 T_AUTH(非T0-T7), 发现真bug但非GT |
+| **B04** | **T3** | **2/8** | class+root+cf+fix | 分类 T9, 发现真bug但非GT |
+| **B05** | **T4** | **3/8** | root+cf+fix | T4对但根因错(Login token vs nginx port) ⭐F6目标 |
+| B06 | T5 | 7/8 | — | 完美命中 state machine |
+| **B07** | **T6** | **6/8** | root(partial) | T6对, 根因方向对但不精确 |
+| B08 | T7 | 7/8 | — | 完美命中 NOT_A_BUG |
+| B09 | T1 | 7/8 | — | 完美命中 missing await |
+| B10 | T3 | 7/8 | — | 完美命中 N+1 query |
 
-**试剑石 Benchmark:**
-- 49 bugs: B01-B35 + B36-B38(trap) + M01-M08(git-mined) + T01-T03(TokenLine)
-- 8 T-Types, 5 languages, 2 projects
-- 4层管线: T0($0)→T1($0.03)→T2($0.50)→T3($5)
-- Hold-out: B16,B18,B25,B28,B31,B33,B36,B38,M05,T03 (10 hardest)
-- 预注入分支: `bughunt/bug-branch` (B02/B06/B10 pre-applied)
+**关键洞察:**
+1. B03/B04 失败模式 = agent 发现真正的 bug 但不是 GT 指定的 bug。**评分系统本身的问题** — agent 能力越强,越可能发现额外 bug 然后被判错。
+2. B05 = F6 精确目标。旧 agent: Login token 代码问题。GT: nginx proxy_pass 错端口。F6 强制先查配置 → 应解决。
+3. B07 = partial。T6 分类对但根因不精确。**非分类问题,是深层追踪问题。** 加 T6 专项 worked example 可能有用。
+4. v2.5 从 ~65% 提升到 95.4% — 说明 F1-F5 致命误判 + worked examples 解决了 B03/B04/B05/B07 的大部分问题。
 
-**Growth Engine:**
-- `pete-skill-evolve.py` v2 — 5环成长编排器 (已修: encoding + TSV格式)
-- `results.tsv` — 8次 run (v2.5×3, v3.0×3, bare×1, v2.6×1)
-- R1_MINE 触发: 98 fix commits → `python growth_engine.py mine`
-- R2/R3/R4/R5 需要 per-bug 数据格式 (当前 summary 格式不兼容)
-
-### 立即开始
+### 立即开始 (按验证协议执行)
 
 ```
-1. 跑 v2.5.1 T2 验证 (3 runs, $1.50) → 确认 ≥93%
-2. 跑 growth_engine.py mine → 从 98 fix commits 挖 5-10 新 bugs
-3. 人审新 bugs → 加入 bugset/ → 更新题库计数
-4. 如果 v2.5.1 ≥93%: 更新 leaderboard, 封版
-5. 如果 v2.5.1 <93%: 回滚 v2.5 (去掉 F6), 标记 F6 单独验证
-6. T3 cross-model 对比 (Opus vs Sonnet vs DeepSeek)
-7. 补 human baseline (凡哥手动做 3-5 bugs)
-8. evolve.py R2/R3/R4/R5 适配 per-bug 格式
+# Phase 1 (免费): 改 T2 脚本 → 输出 per-bug 数据
+1. 读 bughunt_t2.js → 加 per-bug 7维评分输出
+2. 跑一次 dry-run → 确认 per-bug 数据写入 per_bug_results.tsv
+
+# Phase 2 ($1.50): v2.5.1 T2 3-run
+3. python bughunt_t2.js --skill v2.5.1 --runs 3
+4. 计算 mean ± SD
+5. 判定: ≥93% → 继续 P3 / <93% → 走决策树
+
+# Phase 3 ($0.50): Hold-out gap
+6. python bughunt_t2.js --skill v2.5.1 --bugs holdout
+7. 计算 in-sample vs hold-out gap
+
+# 后续 (根据 P2/P3 结果)
+8. P4: Cross-model judge ($1.00) — 如果 P2 ≥93%
+9. P5: Human baseline ($0 + 凡哥时间) — 如果 hold-out gap ≥5pp
 ```
 
 ### 关键文件
 
 ```
-.claude/skills/缉凶.md                    → v2.5.1 (F6 patch, 当前)
+.claude/skills/缉凶.md                        → v2.5.1 (F6 patch, 当前)
 .claude/benchmarks/bughunt/
-  bughunt_t0.js / t1.js / t1_full.js     → T0/T1 脚本
-  bughunt_t2.js / t2_bare.js / t3.js     → T2/T3 脚本
-  bughunt_t1_v3.js                        → 49-bug 批次 T1 (最新)
-  bughunt_gepa.js                         → GEPA 反射优化器
-  bughunt_mine.js                         → Git 挖矿
-  MASTER_PLAN.md / LEADERBOARD.md         → 已更新
-  results.tsv                             → 已修 (8 run, summary格式)
-  bugset/B01-B38/ + M01-M08/ + T01-T03/  → 49 bugs
-  growth_engine.py                        → 6-trigger 引擎
-.claude/pete-skill-evolve.py              → 成长编排器 v2 (已修encoding)
+  VERIFICATION_PROTOCOL.md                     → 5-Phase 验证协议
+  MASTER_PLAN.md / LEADERBOARD.md             → 已更新
+  per_bug_results.tsv                          → 10 bugs per-bug 数据
+  results.tsv                                  → 8 runs summary
+  bughunt_t2.js / t2_bare.js / t3.js          → T2/T3 脚本
+  bughunt_t1_v3.js                             → 49-bug T1
+  growth_engine.py                             → 6-trigger 引擎
+.claude/pete-skill-evolve.py                   → 5环编排器 v2.1 (双文件+per-bug)
 ```
 
-### 上次对话关键教训
+### 上次教训
 
-1. **Skills reduce variance 2.5x**, not just raise ceiling
-2. **Worked examples are load-bearing** — 砍掉方差暴增 4x
-3. **Contract chain order matters** — 重排序导致 -5.4pp 退化
-4. **GEPA: diagnosis accurate, prescription dangerous** — 逐项验证,不全应用
-5. **Single F-rule safe, structural change dangerous** — v2.5.1 策略
-6. **Evolve.py R2/R3/R4/R5 need per-bug format** — 当前 summary TSV 不兼容,需修复
-7. **98 fix commits in 14 days** — 大量未挖掘 bug 素材
-8. **Human baseline + multi-model 是"顶级"的剩余缺口**
-
-### 已修基础设施
-
-- `results.tsv`: 统一为 8 列 summary 格式 (旧 per-bug 数据已替换)
-- `pete-skill-evolve.py`: 修复 subprocess encoding + emoji/Unicode print 错误
-- `缉凶.md`: v2.6 → 回滚 v2.5 + F6 → v2.5.1
+1. **GEPA teacher 诊断准确,处方危险** — 7 改动全应用→退化。逐项验证。
+2. **单 F-rule 安全,结构改动危险** — v2.5.1 策略 (F6 only)
+3. **合同链顺序是 load-bearing** — [分类]→[证据] 不能颠倒
+4. **B03/B04 失败 = 评分系统问题** — agent 找真 bug 被判错。考虑 "bonus for real bug discovery" 评分维度
+5. **Per-bug 数据是定向改进的前提** — 没有它只能猜
+6. **97% 分数 vs 95.4% 真实** — keywords fallback 虚高已修,现在 honest

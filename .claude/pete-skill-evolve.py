@@ -164,6 +164,20 @@ def append_from_workflow(skill_ver, score, ttype, c4_hits, total_bugs=10, model=
         for e in events:
             log(f"  [{e['ring']}] {e['action']}")
 
+def append_per_bug(bug_id, gt_type, agent_type, score_class, score_chain, score_evidence, score_root, score_cf, score_fix, total, notes=""):
+    """Record per-bug 7-dimension score. Called after each T2 bug investigation."""
+    ts = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    header = "timestamp\tbug_id\tgt_type\tagent_type\tscore_class\tscore_chain\tscore_evidence\tscore_root\tscore_cf\tscore_fix\ttotal\tnotes\n"
+
+    if not PER_BUG_FILE.exists():
+        PER_BUG_FILE.write_text(header, encoding="utf-8")
+
+    line = f"{ts}\t{bug_id}\t{gt_type}\t{agent_type}\t{score_class}\t{score_chain}\t{score_evidence}\t{score_root}\t{score_cf}\t{score_fix}\t{total}\t{notes}\n"
+    with open(PER_BUG_FILE, "a", encoding="utf-8") as f:
+        f.write(line)
+
+    log(f"Per-bug: {bug_id} type={agent_type} total={total}/8 {notes}")
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
 
@@ -180,6 +194,14 @@ if __name__ == "__main__":
     elif cmd == "append":
         ver, score, ttype, c4 = sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5])
         append_result(ver, score, ttype, c4, 10)
+
+    elif cmd == "per-bug":
+        # python pete-skill-evolve.py per-bug B01 T0 T0 1 1 1 2 1 1 7 "notes"
+        bug_id, gt, agent = sys.argv[2], sys.argv[3], sys.argv[4]
+        sc, sch, se, sr, scf, sf = [int(x) for x in sys.argv[5:11]]
+        total = int(sys.argv[11])
+        notes = sys.argv[12] if len(sys.argv) > 12 else ""
+        append_per_bug(bug_id, gt, agent, sc, sch, se, sr, scf, sf, total, notes)
 
     elif cmd == "log":
         if GROWTH_LOG.exists():
