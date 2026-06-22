@@ -34,7 +34,7 @@ const GT = {
     B03:{t:'T2',f:'activities_admin.go',fn:'ApproveActivity',kw:'strings.Contains college scope partial match comma split substring permission auth'.split(' ')},
     B04:{t:'T3',f:'main.py',fn:'certificates',kw:'int round FLOAT duration truncat silent data loss sum certificate hour minute'.split(' ')},
     B05:{t:'T4',f:'nginx-campus.conf',fn:'proxy_pass',kw:'nginx proxy_pass port 9500 9501 restart config revert deploy redirect'.split(' ')},
-    B06:{t:'T5',f:'activities.go',fn:'Signup',kw:'NULL default approval_required pending confirmed state machine stuck boolean migration'.split(' ')},
+    B06:{t:'T5',f:'activities.go',fn:'Signup',kw:'first_come removed auto-select pending selected state machine stuck transition missing initialStatus'.split(' ')},
     B07:{t:'T6',f:'activities.go',fn:'ListActivities',kw:'Go 1.23 1.22 NULL Scan sqlite postgres COALESCE schema environment CI version mismatch'.split(' ')},
     B08:{t:'T7',f:'dashboard.go',fn:'GetMySignups',kw:'NOT_A_BUG confirmed filter product design UI page link STOP no code fix'.split(' ')},
     B09:{t:'T1',f:'main.py',fn:'complete_activity',kw:'await async coroutine event loop GC update points timing intermittent missing'.split(' ')},
@@ -49,10 +49,10 @@ function buildPrompt(bug) {
 Bug: ${bug.d}
 语言: ${bug.l}
 
-1.分类 — 先看症状: 代码没改昨天能用?→T4|每次必现?→T0|偶尔出现刷新后又正常?→T1|某些输入触发其他不触发?→T2|卡在中间状态回不来?→T5|没报错结果不对(T1/T2/T5已排除)?→T3|本机行CI不行?→T6|读代码发现符合设计?→T7。T3是兜底分类——判T3前必须写排除T1/T2/T5
+1.分类 — STOP先想深层因果结构。然后: 代码没改昨天能用?→T4|每次必现?→T0|同一操作有时异常?→T1|换参数值就正常?→T2|卡在中间状态?→T5|1-5全排除?→T3(跳过直接选=报废)|本机行CI不行?→T6|符合设计?→T7。致命误判: F1"偶尔+刷新好了"=T1非T3 F2"某些输入触发"=T2非T3 F3"一直pending"=T5非T3
 2.证据 — 复现步骤+baseline(>40字)
 3.追踪 — 调用链+file:line
-4.分析 — 根因(含file:line)+Counterfactual(conf)
+4.分析 — 根因(含file:line)+Counterfactual(conf)。T3必须数值对比。找到第一个错误别停——继续往下挖
 5.修复 — 方案(T7不修代码)
 6.验证 — pre/post
 7.记录 — 潜在问题
