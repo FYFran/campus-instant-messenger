@@ -25,7 +25,7 @@ fi
 
 # 2. Constitution 存在（或至少有关键约束）
 if ! grep -qi "CONSTITUTION\|安全约束\|绝对不能" "$SKILL_MD"; then
-  echo "WARN: No CONSTITUTION or safety constraints found — skill-lab will create one"
+  echo "WARN: No CONSTITUTION or safety constraints found — forge will create one"
   ISSUES=$((ISSUES + 1))
 fi
 

@@ -7,7 +7,7 @@ tools: [Read, Grep, Glob, codegraph_search, codegraph_callers, codegraph_context
 
 # Campus Code Review
 
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 
 ### 核心功能
 - 提交前代码审查：13 类安全检查，覆盖 auth/RBAC/SQL注入/竞态/XSS/速率限制

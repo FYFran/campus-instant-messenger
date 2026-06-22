@@ -7,7 +7,7 @@ tools: [Read, Grep, Glob, Bash, codegraph_search, codegraph_callers, codegraph_c
 
 # Campus Red Team
 
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 
 ### 核心功能
 - 全对抗演练：3 攻击者角色 × 7 阶段 × 真实利用

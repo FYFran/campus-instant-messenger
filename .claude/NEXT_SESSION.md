@@ -10,7 +10,7 @@
 不是测模型（SWE-bench 干这个），是测 .md 文件让同一个 LLM 表现更好还是更差。
 
 **三体共生架构：**
-- **铸剑炉 (skill-lab)**: 优化 skill 文本
+- **铸剑炉 (forge)**: 优化 skill 文本
 - **试剑石 (BugHuntBench)**: 盲测 skill 质量
 - **Bug 矿场**: 从 git history 挖新 bug，持续供给
 
@@ -153,7 +153,7 @@ Workflow({scriptPath: "f:/ClaudeFiles/.claude/benchmarks/bughunt/bughunt_final.j
 ```
 f:/ClaudeFiles/              → 皮特主项目
 .claude/skills/缉凶.md        → 缉凶 v2.1 (187行, 分类决策树)
-.claude/skills/skill-lab/    → 铸剑炉 v0.3
+.claude/skills/forge/    → 铸剑炉 v0.3
 .claude/benchmarks/bughunt/  → 试剑石 (本对话全部产出)
 campus_go/                   → Go后端 (bug来源)
 campus_app/                  → Flutter+Python (bug来源)

@@ -7,7 +7,7 @@ tools: [Read, Grep, Glob, Bash, codegraph_search, codegraph_callers, codegraph_c
 
 # Campus Quality Gate — 上线前质量门禁
 
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 
 ### 核心功能
 - 9 道质量门禁：flutter→functional→go build→python→gitleaks→semgrep→nuclei→multi-agent→rollback

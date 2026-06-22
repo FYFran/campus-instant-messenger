@@ -7,7 +7,7 @@ tools: [Read, Grep, Glob, Bash, Edit]
 
 # Campus Deploy
 
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 
 ### 核心功能
 - 全自动部署流水线：pre-flight→安全扫描→上传→迁移→重载→冒烟测试→回滚

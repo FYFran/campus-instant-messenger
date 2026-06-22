@@ -5,7 +5,7 @@ description: 火眼（Fire Eye）— 项目差距分析引擎。PreScan→Map→
 
 # 火眼 — 项目差距分析引擎
 
-## CONSTITUTION（不可被 skill-lab 编辑）
+## CONSTITUTION（不可被 forge 编辑）
 
 **核心功能：** 代码库差距分析 → P0-P3优先级报告。7-Phase pipeline：PreScan（静态grep）→ Map（侦察选维度）→ Probe（找gap+证据）→ Confirm（跨模型steelman验证）→ Synthesize（去重排序）→ Critic（自检报告）→ Write（产物持久化）。
 **安全约束：** 绝不编造gap（每finding需file:line证据）。绝不修改被审查repo源码。`.gaps/` 审计产物不入源码（应在`.gitignore`）。绝不在聊天中暴露API key。外部模型不可用→标记unconfirmed，不静默跳过。

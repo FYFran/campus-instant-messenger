@@ -31,7 +31,7 @@
 | 高强度改动 | 重要/关键/mission-critical/pantheon | pantheon-custom (3变体并行+任意模型对抗验证) |
 | 项目差距分析 | 火眼/gap/差距/find gaps/confirm gaps | 火眼 (7 Phase pipeline: PreScan→Map→Probe→Confirm→Synthesize→Critic→Write) |
 | 自主监控 | 自检/watch/发现 | watcher (cost-watchdog + 自分配任务) |
-| Skill优化 | 优化skill/skill评分/改进skill/skill lab | skill-lab (评估→诊断→有界编辑→验证→保留/回滚) |
+| Skill优化 | 优化skill/skill评分/改进skill/skill lab | forge (评估→诊断→有界编辑→验证→保留/回滚) |
 | 搜索代码 | 找/在哪/搜 | codegraph_search (不用 Grep -r) |
 
 ## 捷径

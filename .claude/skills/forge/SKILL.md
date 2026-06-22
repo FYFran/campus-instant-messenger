@@ -1,5 +1,5 @@
 ---
-name: skill-lab
+name: forge
 description: >-
   Skill 实验台 v0.3 — 像训练神经网络一样优化 Agent Skill。核心循环：评估→诊断→有界编辑→Lint→Spot-Check→保留/回滚。
   融合 SkillOpt (bounded edit + rejected buffer) + darwin-skill (人审检查点 + 反例黑名单) + autoresearch (编排器模式)。
@@ -15,7 +15,7 @@ description: >-
 
 ## 目录
 
-1. [CONSTITUTION](#constitution本段不可被-skill-lab-编辑)
+1. [CONSTITUTION](#constitution本段不可被-forge-编辑)
 2. [Quick Reference](#quick-reference-速查)
 3. [设计哲学](#设计哲学)
 4. [6 维评估卡](#6-维评估卡5-维--确定性断言层)
@@ -43,7 +43,7 @@ description: >-
 
 ---
 
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 
 ### 核心功能
 - 像训练神经网络一样优化 Agent Skill 文本（不改模型权重）
@@ -79,12 +79,12 @@ description: >-
 优化前，从目标 skill 中识别或创建 Constitution 段。Constitution 是**不可编辑的意图锚**，优化器只能改 IMPLEMENTATION 部分。
 
 ```markdown
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 - [核心功能：这个 skill 做什么]
 - [安全约束：绝对不能做什么]
 - [触发条件：什么时候用这个 skill]
 
-## IMPLEMENTATION（skill-lab 可以优化本段）
+## IMPLEMENTATION（forge 可以优化本段）
 [具体的步骤、指令、示例...]
 ```
 
@@ -137,7 +137,7 @@ description: >-
 
 > **原理：** Compliance Gap 论文证明了违规从输出文本本身**无法检测**。必须用独立 agent 做 spot-check——不信任执行 agent 的输出，独立验证关键 Phase。
 > **对应：** SkillOpt 的 validation gate（不信任 rollout 结果，独立评估）。
-> **频率：** 每 3 轮 skill-lab 优化后跑 1 次（昂贵但必要）。
+> **频率：** 每 3 轮 forge 优化后跑 1 次（昂贵但必要）。
 
 **流程：**
 ```
@@ -151,7 +151,7 @@ description: >-
      T-Type 分类依据是否成立？是否有证据支持？
      如果分类错误——整个后续链都错了
 4. 每项判定：REAL（真实分析）/ TEMPLATE（填模板）/ WRONG（分析错误）
-5. 任一 TEMPLATE 或 WRONG → skill 质量标记 SUSPECT → 回 skill-lab Phase 2 优化
+5. 任一 TEMPLATE 或 WRONG → skill 质量标记 SUSPECT → 回 forge Phase 2 优化
 ```
 
 **验证 Prompt 模板：**
@@ -171,7 +171,7 @@ Phase {N} 输出: {phase_output}
 
 **L3 结果记录：**
 ```
-skill-lab Phase 2 Step 3.5 之后追加：
+forge Phase 2 Step 3.5 之后追加：
   Step 3.6 — L3 Spot-Check（每 3 轮 1 次）：
     跑 L3 验证 → 全 REAL→进 Step 4。有 TEMPLATE/WRONG→回 Step 1。
     记录结果到 results.tsv 的 L3 列。
@@ -361,7 +361,7 @@ Agent(
    - 用户没给名字 → 追问："哪个 skill？还是全部扫描？以下是当前可用的：[Glob 扫描结果]"
 2. 🔴 CHECKPOINT · 🛑 STOP：展示找到的 skill 列表 + tier 分级，等用户确认范围
 3. 检查 git 仓库状态
-4. 创建分支 skill-lab/YYYYMMDD-HHMM
+4. 创建分支 forge/YYYYMMDD-HHMM
 5. 初始化 results.tsv（如不存在）
 ```
 
@@ -426,7 +426,7 @@ for each skill in 优化范围 (按基线分数从低到高排序):
 
     Step 3 — 执行改进：
       编辑 SKILL.md
-      git add + commit（message: "skill-lab: {skill} round{round} {改进摘要}"）
+      git add + commit（message: "forge: {skill} round{round} {改进摘要}"）
       检查 150% 体积上限（行数：`wc -l`，新文件行数 > 旧文件 × 1.5 → 拒绝提交，精简后重试）
 
     Step 3.5 — 🔴 Pre-Judge Lint（新增：防吹牛逼门禁）：
@@ -506,7 +506,7 @@ for each skill in 优化范围 (按基线分数从低到高排序):
 ### 主要改进
 1. [skill-A] {改进摘要} — +{Δ} 分
 
-→ 用户确认后写入 memory MCP（skill-lab-{date}）
+→ 用户确认后写入 memory MCP（forge-{date}）
 ```
 
 ---
@@ -549,7 +549,7 @@ for each skill in 优化范围 (按基线分数从低到高排序):
 ### 重复劳动信号检测
 
 ```
-扫描 skill-lab/skill-usage.jsonl：
+扫描 forge/skill-usage.jsonl：
   如果同一 task_type 出现 3+ 次且无对应 skill →
   🔴 CHECKPOINT："我注意到你手动做了 3 次 {task_type}。要我创建一个 skill 来自动化吗？"
 ```
@@ -558,7 +558,7 @@ for each skill in 优化范围 (按基线分数从低到高排序):
 
 ## 使用追踪（Usage Tracker）
 
-每次 skill 被调用时，追加到 `.claude/skills/skill-lab/skill-usage.jsonl`：
+每次 skill 被调用时，追加到 `.claude/skills/forge/skill-usage.jsonl`：
 
 ```json
 {"timestamp": "2026-06-21T15:00", "skill": "campus-code-review", "task": "review auth.go changes", "outcome": "success", "tokens": 3200, "notes": "found 2 HIGH findings"}
@@ -574,7 +574,7 @@ for each skill in 优化范围 (按基线分数从低到高排序):
 | tokens | 消耗 token 数 |
 | notes | 简要备注 |
 
-**skill-lab 如何使用追踪数据：**
+**forge 如何使用追踪数据：**
 - 按使用频率排序 → 优先优化高频 skill
 - 按失败率排序 → 优先修复高失败率 skill
 - 检测 180 天未使用的 skill → 提议退役
@@ -591,7 +591,7 @@ timestamp	commit	skill	old_score	new_score	status	dimension	note
 2026-06-21T14:10	d4e5f6g	caveman	79	77	revert	可执行具体性	过度细化
 ```
 
-文件位置：`.claude/skills/skill-lab/results.tsv`
+文件位置：`.claude/skills/forge/results.tsv`
 
 ---
 

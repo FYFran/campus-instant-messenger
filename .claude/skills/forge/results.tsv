@@ -5,12 +5,12 @@ timestamp	commit	skill	old_score	new_score	status	dimension	note
 2026-06-21T14:20	b8da095	campus-code-review	88.5	98.5	keep	方法论重构	R3: +三级门控 +半形式推理 +source→sink +review artifacts
 2026-06-21T14:20	c5ffc59	campus-code-review	98.5	97.0	keep	操作层修复	R4: +校准 +预算 +工具指南 +目标检测 +安全边界
 2026-06-21T14:20	0fb61b8	campus-code-review	97.0	98.5	keep	收敛+质量	R5 FINAL: +收敛循环 +置信过滤 +no-hedging +TRUNCATED AT +8残余全修
-2026-06-21T14:20	baseline	skill-lab	-	68.0	baseline	-	初始评估 | 致命:子agent未定义/批处理缺失/歧义未编码
-2026-06-21T14:20	25ee95f	skill-lab	68.0	83.5	keep	机制+批处理	R1: +Agent工具调用 +Glob扫描 +歧义规则 +收敛+盲评+CHECKPOINT
-2026-06-21T14:20	cec6bcf	skill-lab	83.5	91.0	keep	操作层修复	R2: +Agent绑定 +收敛Δ<1 +Phase0.5冲突 +死锁 +代词 +150%单位
-2026-06-21T14:20	1131068	skill-lab	91.0	91.0	keep	确定性断言	R3 FINAL: +6维评估(5a确定性+5b三judge) +assert格式 +噪声±2
-2026-06-21T14:20	0d784bc	skill-lab	91.0	97.1	keep	结构+检查点	R4: +Table of Contents +Quick Reference +Phase0/3 CHECKPOINT. dim3→10 dim4→10
-2026-06-21T14:20	08038b6	skill-lab	97.1	97.1	keep	失败模式	R5 FINAL: pronoun+vague两步分解. dim2→10. 全部4静态维度天花板
+2026-06-21T14:20	baseline	forge	-	68.0	baseline	-	初始评估 | 致命:子agent未定义/批处理缺失/歧义未编码
+2026-06-21T14:20	25ee95f	forge	68.0	83.5	keep	机制+批处理	R1: +Agent工具调用 +Glob扫描 +歧义规则 +收敛+盲评+CHECKPOINT
+2026-06-21T14:20	cec6bcf	forge	83.5	91.0	keep	操作层修复	R2: +Agent绑定 +收敛Δ<1 +Phase0.5冲突 +死锁 +代词 +150%单位
+2026-06-21T14:20	1131068	forge	91.0	91.0	keep	确定性断言	R3 FINAL: +6维评估(5a确定性+5b三judge) +assert格式 +噪声±2
+2026-06-21T14:20	0d784bc	forge	91.0	97.1	keep	结构+检查点	R4: +Table of Contents +Quick Reference +Phase0/3 CHECKPOINT. dim3→10 dim4→10
+2026-06-21T14:20	08038b6	forge	97.1	97.1	keep	失败模式	R5 FINAL: pronoun+vague两步分解. dim2→10. 全部4静态维度天花板
 2026-06-21T15:30	baseline	铁壁	-	63.2	baseline	-	初始评估 | dim1:8(20.0) dim2:5(12.5) dim3:7(14.0) dim4:3(4.5) dim5a:10(8.0) dim5b:6(4.2) | 短板:dim4检查点 dim2失败模式
 2026-06-21T15:45	3042f02	铁壁	63.2	75.3	keep	检查点设计	R1: +4 CHECKPOINT gates (Step1 CRITICAL→BLOCK, Step2 ERROR→flag, Step6 user-confirm, Step7 pre-report verify). dim4:3→7
 2026-06-21T15:45	75f2f0e	铁壁	75.3	77.8	keep	失败模式编码	R2: +3 tool fallback paths (gitleaks→rg, semgrep→rg, pip-audit→safety). dim2:5→7
@@ -47,5 +47,5 @@ timestamp	commit	skill	old_score	new_score	status	dimension	note
 2026-06-21T22:33	489dd42	缉凶	-	100.0	baseline	v2.0合同框架	R1(v2.0): 合同框架重写. 370→102行(-73%). ~5000→~1500 token. ALL 6 DIMS=10. [L3: REAL*] — 主分析(schema migration根因+3真实CF)正确, 次级数据偏差(6处→说成12处). A/B vs v1.1: 根因更深+3真实CF+4文件修复+自动追加test#14.
 2026-06-21T20:52	bc4350d	campus-quality-gate	-	72.0	baseline	-	初始评估. +test-prompts(3cases). 预估: dim1=8 dim2=7 dim3=7 dim4=6 dim5a=9 dim5b=7.
 2026-06-21T20:52	bc4350d	campus-red-team	-	70.0	baseline	-	初始评估. +test-prompts(3cases). 预估: dim1=8 dim2=6 dim3=7 dim4=5 dim5a=9 dim5b=7.
-2026-06-21T20:52	bc4350d	pantheon-custom	-	65.0	baseline	-	新创建. +test-prompts(3cases). CONSTITUTION+IronLaw+6Phase+Gotchas. 待skill-lab优化.
-2026-06-21T20:52	bc4350d	pantheon-gap-custom	-	65.0	baseline	-	新创建. +test-prompts(3cases). CONSTITUTION+6Phase+Steelman+Gotchas. 待skill-lab优化.
+2026-06-21T20:52	bc4350d	pantheon-custom	-	65.0	baseline	-	新创建. +test-prompts(3cases). CONSTITUTION+IronLaw+6Phase+Gotchas. 待forge优化.
+2026-06-21T20:52	bc4350d	pantheon-gap-custom	-	65.0	baseline	-	新创建. +test-prompts(3cases). CONSTITUTION+6Phase+Steelman+Gotchas. 待forge优化.

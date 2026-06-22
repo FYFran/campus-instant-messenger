@@ -1,11 +1,11 @@
 # Constitution 模板
 
-每个 skill 的 CONSTITUTION 段格式。skill-lab 优化器不得编辑此段。
+每个 skill 的 CONSTITUTION 段格式。forge 优化器不得编辑此段。
 
 ## 必填字段
 
 ```markdown
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 
 ### 核心功能
 - [一句话：这个 skill 做什么]
@@ -28,7 +28,7 @@
 ## 示例（caveman skill）
 
 ```markdown
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 
 ### 核心功能
 - 控制 Claude 输出风格为极简、无废话、无填充词
@@ -47,7 +47,7 @@
 ## 示例（deploy-captain skill）
 
 ```markdown
-## CONSTITUTION（本段不可被 skill-lab 编辑）
+## CONSTITUTION（本段不可被 forge 编辑）
 
 ### 核心功能
 - 将代码部署到生产服务器

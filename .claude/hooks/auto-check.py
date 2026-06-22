@@ -45,6 +45,32 @@ if should_check():
         checks.append(f"📋 记得过10点清单: {checklist_path}")
         checks.append("   重点: 无硬编码密钥 | 输入验证 | AuthN/AuthZ | 错误处理 | 无slopsquatting")
 
+    # Auto-write to event log (改完即记 — no reminder, direct execution)
+    import subprocess as sp
+    import hashlib
+    log_script = "f:/ClaudeFiles/.claude/pete-eventlog.py"
+    log_domain = "lesson"
+    log_tags = "auto-check"
+    log_outcome = "pass"
+    log_desc = f"Modified {os.path.basename(file_path)} via {tool_name}"
+    action_hash = hashlib.sha256(f"{tool_name}:{file_path}".encode()).hexdigest()[:12]
+
+    if any("FAIL" in str(c) or "发现问题" in str(c) for c in checks):
+        log_domain = "bug"
+        log_tags = "auto-check,failed"
+        log_outcome = "fail"
+        log_desc = f"FAIL checks after {tool_name} on {os.path.basename(file_path)}"
+
+    try:
+        sp.run(
+            ["python", log_script, "log", log_domain, log_desc,
+             f"--tags={log_tags}", f"--outcome={log_outcome}",
+             f"--hash={action_hash}"],
+            timeout=10, capture_output=True
+        )
+    except Exception:
+        pass  # Event log is best-effort, never blocks
+
     if checks:
         print("🔍 自动检查结果:")
         for c in checks:
