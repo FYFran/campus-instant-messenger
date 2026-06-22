@@ -13,7 +13,7 @@ const BUGS = [
     {id:'B01',d:'campus_go 活动列表 API /api/activities 在数据库为空时返回 500 错误。有活动时正常。',t:'T0',l:'Go'},
     {id:'B02',d:'campus_go 报名接口偶尔出现同一学生报了两次名。约每20-30次一次。',t:'T1',l:'Go'},
     {id:'B03',d:'campus_go college_admin 有时能看到并操作其他学院的活动。跟学院名有关。',t:'T2',l:'Go'},
-    {id:'B04',d:'campus_go 学生志愿时长统计页面总时长偶尔比实际短。没报错没crash，数字不对。',t:'T3',l:'Python'},
+    {id:'B04',d:'campus_go 学生志愿时长统计页面总时长比实际短。没报错，数字不对。学生反映签了10小时页面显示7小时。',t:'T3',l:'Python'},
     {id:'B05',d:'campus_go JWT token 刷新昨天能用今天全401。代码没改，服务器重启过。',t:'T4',l:'Go'},
     {id:'B06',d:'campus_go 活动报名后状态一直pending不会变confirmed。审批流程是自动的。学生等2小时状态没变。',t:'T5',l:'Go'},
     {id:'B07',d:'campus_go 测试本机go1.22全通但CI go1.23 TestListActivities panic nil deref。',t:'T6',l:'Mixed'},
@@ -27,7 +27,7 @@ function buildClassifyPrompt() {
 
 分类规则:
 - STOP 先想 bug 的深层因果结构（什么变了？什么时候变？谁受影响？），不要匹配关键词
-- T0: 每次必现、稳定复现
+- T0: 每次必现 crash/panic/500。必须伴随报错——"每次都慢"是T3不是T0
 - T1: 同一操作有时正常有时异常、刷新后又正常 → 结果不一致
 - T2: 换一个参数值就正常了 → 不同输入不同结果
 - T3: T1/T2/T4/T5 全排除后才考虑。数据一致地错、没报错没crash
