@@ -1,0 +1,23 @@
+--- a/campus_go/internal/handlers/activities.go
++++ b/campus_go/internal/handlers/activities.go
+@@ -28,8 +28,7 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
+
+        rows, err := db.Query(c.Request.Context(),
+-           `SELECT a.id, a.title, a.description, a.status, a.reward_type, a.signup_mode,
+-            a.max_participants, COALESCE(s.cnt, 0),
++           `SELECT a.id, a.title, a.description, a.status, a.reward_type, a.signup_mode,
+-            a.max_participants,
+             a.hours, a.activity_date, a.deadline, a.location,
+             a.scope_type, a.scope_value, COALESCE(u.name,'') as creator_name,
+             a.created_at, a.gender_limit, COALESCE(a.signup_start,''),
+             COALESCE(a.contact_qq,''), COALESCE(a.contact_phone,''), COALESCE(a.qq_group,''),
+-            COALESCE(a.creator_override,'') as creator_override,
+-            EXISTS(SELECT 1 FROM signups WHERE activity_id=a.id AND user_id=$1) as signed_up
++            COALESCE(a.creator_override,'') as creator_override
+             FROM activities a LEFT JOIN users u ON a.created_by=u.id
+-            LEFT JOIN (SELECT activity_id, COUNT(*) as cnt FROM signups GROUP BY activity_id) s ON s.activity_id = a.id
+-            LEFT JOIN signups sg ON sg.activity_id = a.id AND sg.user_id = $1
+-            WHERE a.status != 'draft' ORDER BY a.created_at DESC LIMIT $2 OFFSET $3`, userID, limit, offset)
++            WHERE a.status != 'draft' ORDER BY a.created_at DESC LIMIT $2 OFFSET $3`, limit, offset)
+        if err != nil {
+            log.Printf("ListActivities query error: %v", err)

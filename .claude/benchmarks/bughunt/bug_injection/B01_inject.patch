@@ -1,0 +1,11 @@
+--- a/campus_go/internal/handlers/activities.go
++++ b/campus_go/internal/handlers/activities.go
+@@ -44,6 +44,8 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
+                return
+        }
+        defer rows.Close()
++       // BUG-INJECTION-B01: Missing rows.Err() check after for loop
++       // Original fix added: if err := rows.Err(); err != nil { ... }
+
+        var acts []gin.H
+        for rows.Next() {

@@ -1,0 +1,135 @@
+{
+  "_meta": {
+    "description": "L1 Skill Registry — always loaded (~1KB). L2 loaded on match, L3 on demand.",
+    "model": "Google ADK progressive disclosure pattern",
+    "updated": "2026-06-21"
+  },
+  "skills": {
+    "caveman:builder": {
+      "description": "1-2 file surgical edits",
+      "triggers": ["修", "fix", "patch", "改一行"],
+      "path_scope": null,
+      "l2_file": ".claude/agents/coder.md",
+      "l3_dir": null
+    },
+    "code-reviewer": {
+      "description": "Code quality review with severity grading",
+      "triggers": ["review", "审查", "critique", "代码质量"],
+      "path_scope": null,
+      "l2_file": ".claude/agents/reviewer.md",
+      "l3_dir": null
+    },
+    "security-auditor": {
+      "description": "Security vulnerability scanning and exploit analysis",
+      "triggers": ["安全", "漏洞", "audit", "渗透"],
+      "path_scope": null,
+      "l2_file": ".claude/agents/security.md",
+      "l3_dir": null
+    },
+    "debugger": {
+      "description": "Systematic root-cause investigation — hypothesis → evidence → fix",
+      "triggers": ["bug", "报错", "不工作", "为什么", "debug", "排查"],
+      "path_scope": null,
+      "l2_file": null,
+      "l3_dir": null
+    },
+    "refactor-master": {
+      "description": "Multi-file refactoring with tech debt hunting",
+      "triggers": ["重构", "refactor", "重写", "rewrite"],
+      "path_scope": null,
+      "l2_file": null,
+      "l3_dir": null
+    },
+    "architect": {
+      "description": "System design, ADRs, tech stack decisions",
+      "triggers": ["架构", "设计", "新系统", "ADR", "选型"],
+      "path_scope": null,
+      "l2_file": null,
+      "l3_dir": null
+    },
+    "deploy-captain": {
+      "description": "Deployment to production server",
+      "triggers": ["部署", "deploy", "上线", "发布"],
+      "path_scope": "_research/rewriter-go",
+      "l2_file": ".claude/agents/deploy-captain.md",
+      "l3_dir": null
+    },
+    "flutter-doctor": {
+      "description": "Flutter/Dart frontend specialist",
+      "triggers": ["flutter", "dart", "UI组件", "app界面", "移动端"],
+      "path_scope": "campus_app",
+      "l2_file": ".claude/agents/flutter-doctor.md",
+      "l3_dir": null
+    },
+    "backend-surgeon": {
+      "description": "FastAPI/Go backend specialist",
+      "triggers": ["后端", "API", "handler", "middleware", "go代码"],
+      "path_scope": "_research/rewriter-go",
+      "l2_file": ".claude/agents/backend-surgeon.md",
+      "l3_dir": null
+    },
+    "db-doctor": {
+      "description": "PostgreSQL/SQLite query optimization and schema review",
+      "triggers": ["数据库", "SQL", "schema", "migration", "查询"],
+      "path_scope": null,
+      "l2_file": ".claude/agents/db-doctor.md",
+      "l3_dir": null
+    },
+    "test-generator": {
+      "description": "Generate test suites for existing code",
+      "triggers": ["测试", "test", "用例", "coverage"],
+      "path_scope": null,
+      "l2_file": null,
+      "l3_dir": null
+    },
+    "api-tester": {
+      "description": "API endpoint testing with curl generation",
+      "triggers": ["API测试", "端点", "curl", "接口测试"],
+      "path_scope": null,
+      "l2_file": ".claude/agents/api-tester.md",
+      "l3_dir": null
+    },
+    "pantheon": {
+      "description": "3-variant parallel implementation + adversarial verification",
+      "triggers": ["重要", "关键", "mission-critical", "pantheon", "高强度"],
+      "path_scope": null,
+      "l2_file": ".claude/skills/pantheon/SKILL.md",
+      "l3_dir": ".claude/skills/pantheon/"
+    },
+    "watcher": {
+      "description": "Autonomous system monitoring + anomaly detection + self-assign",
+      "triggers": ["自检", "watch", "发现", "监控"],
+      "path_scope": null,
+      "l2_file": ".claude/agents/watcher.md",
+      "l3_dir": null
+    },
+    "codegraph_context": {
+      "description": "Code intelligence — find symbols, trace flows, explore codebase",
+      "triggers": ["在哪", "怎么实现", "谁调用", "代码结构"],
+      "path_scope": null,
+      "l2_file": null,
+      "l3_dir": null
+    },
+    "impeccable": {
+      "description": "Production-grade frontend interface design",
+      "triggers": ["UI", "界面", "样式", "landing", "设计页面"],
+      "path_scope": null,
+      "l2_file": null,
+      "l3_dir": null
+    }
+  },
+  "path_scopes": {
+    "campus_app": {
+      "description": "Flutter mobile app",
+      "default_skills": ["flutter-doctor", "code-reviewer", "security-auditor"]
+    },
+    "_research/rewriter-go": {
+      "description": "Go backend for TokenLine",
+      "default_skills": ["backend-surgeon", "db-doctor", "deploy-captain", "security-auditor"]
+    },
+    "_research": {
+      "description": "Research and experiments",
+      "default_skills": ["code-reviewer", "test-generator"]
+    }
+  }
+}

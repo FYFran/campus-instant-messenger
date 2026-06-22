@@ -1,0 +1,7 @@
+--- a/campus_app/server/main.py
++++ b/campus_app/server/main.py
+@@ -1070,7 +1070,7 @@ async def complete_activity(activity_id: int, user: dict = Depends(get_current_u
+             # Update user points
+-            await update_user_points(user_id, points)
++            update_user_points(user_id, points)  # BUG-INJECTION-B09: Missing await
+             return {"ok": True}

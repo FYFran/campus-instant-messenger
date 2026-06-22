@@ -1,0 +1,57 @@
+{
+  "timestamp": "20260621_050023",
+  "files": {
+    ".claude/settings.json": {
+      "hash": "ea9328ea8fb2e054",
+      "size": 1075
+    },
+    ".claude/settings.local.json": {
+      "hash": "0f9c063f860b682c",
+      "size": 44
+    },
+    ".claude/CLAUDE.md": {
+      "hash": "67a7a0079ed4c890",
+      "size": 2734
+    },
+    ".claude/skills-registry.json": {
+      "hash": "b5061e59d374a662",
+      "size": 4861
+    },
+    ".claude/eventstore/events.jsonl": {
+      "hash": "9d17d72a0500d8d4",
+      "size": 7660
+    },
+    ".claude/hooks/task-router.py": {
+      "hash": "ffd8b98148a4323d",
+      "size": 6360
+    },
+    ".claude/hooks/guard-all.py": {
+      "hash": "cddb041311a4f28a",
+      "size": 1799
+    },
+    ".claude/hooks/guard-repeat-fail.py": {
+      "hash": "ebfe91a13ca9d18d",
+      "size": 2329
+    },
+    ".claude/hooks/auto-check.py": {
+      "hash": "ef0659f078de3b9b",
+      "size": 2975
+    },
+    ".claude/hooks/boot-injector.py": {
+      "hash": "ce23fbcb41893929",
+      "size": 1943
+    },
+    ".claude/hooks/memory-keeper.py": {
+      "hash": "672ef485c410a6ea",
+      "size": 2404
+    },
+    "CLAUDE.md": {
+      "hash": "0c6ca82bad1475c0",
+      "size": 4492
+    },
+    "KERNEL.md": {
+      "hash": "b6ad1d27de6e8c2c",
+      "size": 2499
+    }
+  }
+}

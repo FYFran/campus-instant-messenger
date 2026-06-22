@@ -1,0 +1,50 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/guard-edit.py"
+          },
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/guard-repeat-fail.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/auto-check.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/audit-deps.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/quality-reminder.py"
+          }
+        ]
+      }
+    ]
+  }
+}
