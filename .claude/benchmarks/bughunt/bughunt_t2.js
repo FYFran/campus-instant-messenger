@@ -40,30 +40,41 @@ const GT = {
 function buildPrompt(bug) {
     return `BUG_ID: ${bug.id}  ← JSON的bug_id必须为此值
 
-你是缉凶 agent。合同链7步全填。
+你是缉凶 agent v2.7-hybrid。线性分类 + 可证伪假设追踪。
 
 Bug: ${bug.d}
 语言: ${bug.l}
 
-1.分类 — STOP先想深层因果结构。然后: 代码没改昨天能用?→T4|每次必现?→T0|同一操作有时异常?→T1|换参数值就正常?→T2|卡在中间状态回不来?→T5|1-5全排除了?→T3(跳过直接选=报废)|本机行CI不行?→T6|符合设计?→T7。致命误判: F1"偶尔+刷新好了"=T1非T3 F2"某些输入触发"=T2非T3 F3"一直pending"=T5非T3
-2.证据 — 复现步骤+baseline(>40字)
-3.追踪 — 调用链+file:line
-4.分析 — 根因(含file:line)+Counterfactual(conf)。T3必须数值对比。找到第一个错误别停——继续往下挖
-5.修复 — 方案(T7不修代码)
-6.验证 — pre/post
-7.记录 — 潜在问题
+合同链(8步全填):
+0.分类+H — STOP先想深层因果结构。决策流: 代码没改昨天能用?→T4|每次必现crash/panic/500?→T0|同一操作有时异常?→T1|换参数值就正常?→T2|卡在中间状态回不来?→T5|1-5全排除了?→T3(跳过直接选=报废)|本机行CI不行?→T6|符合设计?→T7|症状可被配置差异解释且近期有部署/重启?→T4。致命误判: F1"偶尔+刷新好了"=T1非T3 F2"某些输入触发"=T2非T3 F3"一直pending"=T5非T3 F4"间歇但非竞态"=T3 F5"安全审查说"=T7 F6"昨天好+重启+代码没改"被当代码bug→T4专属配置检查通过前不许读源码。
+  输出: Type: T___ 依据: ___ + 假设H: "如果我对，___应该为真。验证方法: ___"
+  ⚠ T4必须走3步配置检查(nginx/env/port/startup log)才能读源码。3步全过无异常→门禁解除。
 
-返回JSON: {bug_id,classification,classification_reason,evidence,trace,root_cause,root_cause_file_line,cf_evidence,fix_description,confidence,latent_issues}`
+1.证据 — 复现步骤+baseline(>40字) + H验证结果: 成立/推翻(证据:___)
+  如果H被推翻 → 查F1-F6找替代方向 → 修正分类+H2 → 重新收集证据。
+
+2.追踪 — 调用链+file:line+Expected vs Actual。H被推翻→修正H2记录。
+
+3.分析 — 根因(含file:line)+Counterfactual(conf)。T3必须数值对比。找到第一个错误别停——继续往下挖。
+
+4.修复 — 方案(T7不修代码)
+
+5.验证 — pre/post
+
+6.记录 — 潜在问题
+
+返回JSON: {bug_id,classification,classification_reason,hypothesis,falsifiable_test,evidence,h_verification,trace,root_cause,root_cause_file_line,cf_evidence,fix_description,confidence,latent_issues}`
 }
 
 function buildBatchJudgePrompt(reports) {
-    let p = `你是独立评分agent。一次评估以下全部 ${reports.length} 个 bug report。每 report 评 3 维。
+    let p = `你是独立评分agent。一次评估以下全部 ${reports.length} 个 bug report。每 report 评 4 维。
 
 评分标准:
 - 证据充分性 (0|1): 1=有具体复现步骤+可验证的baseline输出, 0=笼统描述无具体数据
 - 根因正确性 (0|1|2): 2=根因方向与GT方向一致+有file:line引用, 1=方向对但细节/文件不同, 0=方向完全错误或不相关
   ⚠ 不要用关键词匹配。"方向一致"意思是:agent找到的根因和GT指向同一个问题领域。比如GT说"nginx端口配错"但agent说"JWT密钥丢失"→方向不同=0分。GT说"ON CONFLICT缺失导致竞态"但agent说"FOR UPDATE没添加导致并发插入"→方向一致(都是并发报名保护缺失)=2分。
 - CF真实性 (0|1): 1=有pre/post可验证证据(T3必须含数值对比), 0=模板文字无具体对比
+- bonus_real_bug (0|1): 1=agent发现了一个真实的代码问题(不是幻觉/瞎编),这个问题与GT不同(不同文件或不同根因方向),但确实是合法的bug。0=agent要么和GT一致,要么没发现任何真实问题。
 
 `
     for (const {r, bug} of reports) {
@@ -72,6 +83,8 @@ function buildBatchJudgePrompt(reports) {
         p += `---
 Bug ${bug.id} (GT Type:${g.t} | GT根因方向:${g.kw.slice(0,5).join(' ')})
 Agent分类: ${r.classification||'?'}
+Agent假设H: ${(r.hypothesis||'').substring(0,200)}
+Agent H验证: ${(r.h_verification||'').substring(0,150)}
 Agent证据: ${(r.evidence||'').substring(0,250)}
 Agent根因: ${(r.root_cause||'').substring(0,250)}
 Agent文件行: ${r.root_cause_file_line||'N/A'}
@@ -79,17 +92,18 @@ Agent CF: ${(r.cf_evidence||'').substring(0,250)}
 `
     }
     p += `---
-返回JSON数组: [{"bug_id":"Bxx","evidence":0|1,"root_cause":0|1|2,"cf":0|1,"reasoning":"根因方向一致性判断依据"}, ...]`
+返回JSON数组: [{"bug_id":"Bxx","evidence":0|1,"root_cause":0|1|2,"cf":0|1,"bonus_real_bug":0|1,"reasoning":"根因方向一致性+bonus判断依据"}, ...]`
     return p
 }
 
 const AGENT_SCHEMA = {
     type:'object', properties:{
         bug_id:{type:'string'}, classification:{type:'string'}, classification_reason:{type:'string'},
-        evidence:{type:'string'}, trace:{type:'string'}, root_cause:{type:'string'},
+        hypothesis:{type:'string'}, falsifiable_test:{type:'string'},
+        evidence:{type:'string'}, h_verification:{type:'string'}, trace:{type:'string'}, root_cause:{type:'string'},
         root_cause_file_line:{type:'string'}, cf_evidence:{type:'string'},
         fix_description:{type:'string'}, confidence:{type:'number'}, latent_issues:{type:'string'},
-    }, required:['bug_id','classification','evidence','trace','root_cause','cf_evidence','fix_description'],
+    }, required:['bug_id','classification','hypothesis','evidence','trace','root_cause','cf_evidence','fix_description'],
 }
 
 // ============================================================
@@ -148,7 +162,7 @@ try {
     }
     if (arr) {
         arr.forEach(v => {
-            judgeResults[v.bug_id] = {evidence:parseInt(v.evidence)||0, root_cause:parseInt(v.root_cause)||0, cf:parseInt(v.cf)||0, reasoning:v.reasoning||''}
+            judgeResults[v.bug_id] = {evidence:parseInt(v.evidence)||0, root_cause:parseInt(v.root_cause)||0, cf:parseInt(v.cf)||0, bonus_real_bug:parseInt(v.bonus_real_bug)||0, reasoning:v.reasoning||''}
         })
     }
     if (Object.keys(judgeResults).length === 0) {
@@ -194,23 +208,32 @@ const pct = (total/(BUGS.length*8)*100).toFixed(1)
 const ttype = scores.filter(s=>s.c1).length
 const chain = scores.filter(s=>s.c2).length
 const real = scores.filter(s=>s.l3==='REAL'||s.l3==='REAL*').length
+const bonusBugs = Object.values(judgeResults).filter(j=>j.bonus_real_bug).length
+const bonusIds = Object.entries(judgeResults).filter(([k,v])=>v.bonus_real_bug).map(([k])=>k)
 
 log('============================================')
 log(`试剑石 T2 — ${BUGS.length} Bug Batch Judge`)
 log('============================================')
 log(`Score: ${total}/${BUGS.length*8} = ${pct}% | T-Type: ${ttype}/${BUGS.length} | Chain: ${chain}/${BUGS.length} | L3: ${real}R`)
+log(`BONUS (real bug != GT): ${bonusBugs}/${BUGS.length} ${bonusIds.length ? '['+bonusIds.join(',')+']' : ''}`)
+if (bonusBugs >= 3) log('[Exp C] >=3 bonus -> scoring needs bonus dimension')
+else if (bonusBugs <= 1) log('[Exp C] <=1 bonus -> B03/B04 likely noise, no scoring change')
+else log('[Exp C] 2 bonus -> borderline, run 1 more T2')
 log('')
-log('Bug | GT | Agent | Score | L3 | Judge(E/R/C)')
-log('----|----|-------|-------|----|------------')
+log('Bug | GT | Agent | Score | L3 | Judge(E/R/C/B)')
+log('----|----|-------|-------|----|--------------')
 for (const s of scores) {
     const jr = judgeResults[s.bug_id]
-    log(` ${s.bug_id} | ${s.gt_type} | ${s.agent_type} | ${s.total}/8 | ${s.l3} | ${jr?jr.evidence+'/'+jr.root_cause+'/'+jr.cf:'rule'}`)
+    const b = jr && jr.bonus_real_bug ? '★' : ''
+    log(` ${s.bug_id} | ${s.gt_type} | ${s.agent_type} | ${s.total}/8 | ${s.l3} | ${jr?jr.evidence+'/'+jr.root_cause+'/'+jr.cf+'/'+b:'rule'}`)
 }
 log('')
 log(`Cost: ~$0.5 (10 investigate + 1 batch judge) vs Tier 3 $5 (10 invest + 10 bare + 20 judge)`)
 
 return {
     total, pct: parseFloat(pct), ttype, chain, real,
+    bonus_count: bonusBugs, bonus_ids: bonusIds,
+    exp_c_decision: bonusBugs >= 3 ? 'ADD_BONUS_DIMENSION' : bonusBugs <= 1 ? 'NOISE' : 'BORDERLINE',
     scores, judgeResults,
     cost: '~$0.50',
 }
