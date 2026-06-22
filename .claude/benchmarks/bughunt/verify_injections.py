@@ -267,11 +267,67 @@ def print_report(results: list[VerifyResult]):
         print(f"  Active rejection: {rejection:.0f}% ({fail}/{active} FAIL)")
 
 
+def check_behavioral(bug_id: str) -> dict:
+    """Run behavioral verification (SWE-bench FAIL_TO_PASS standard).
+
+    Research: SWE-bench Verified (OpenAI 2024) requires FAIL_TO_PASS + PASS_TO_PASS
+    tests for each instance. verify.sh implements this at the bug level.
+    """
+    verify_path = BUGSET_DIR / bug_id / "verify.sh"
+    if not verify_path.exists():
+        return {"has_behavioral": False, "status": "N/A"}
+
+    try:
+        result = subprocess.run(
+            ["bash", str(verify_path)],
+            cwd=REPO_ROOT, capture_output=True, text=True, timeout=30
+        )
+        output = result.stdout
+        has_fail = "FAIL:" in output and "bug exists" in output
+        has_pass = "PASS:" in output
+        return {
+            "has_behavioral": True,
+            "status": "PASS" if (has_fail and has_pass) else "PARTIAL",
+            "fail_ok": has_fail,
+            "pass_ok": has_pass,
+            "output": output.strip()[-200:],
+        }
+    except Exception as e:
+        return {"has_behavioral": True, "status": "ERROR", "error": str(e)[:100]}
+
+
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--bug":
-        bug_id = sys.argv[2]
+    behavior = "--behavior" in sys.argv
+
+    if "--bug" in sys.argv:
+        idx = sys.argv.index("--bug")
+        bug_id = sys.argv[idx + 1]
         r = verify_bug(bug_id)
+        if behavior and not r.retired:
+            b = check_behavioral(bug_id)
+            if b["has_behavioral"]:
+                print(f"\n  Behavioral (SWE-bench FAIL->PASS): {b['status']}")
+                if b.get("output"):
+                    print(f"  {b['output']}")
         print_report([r])
     else:
         results = verify_all()
         print_report(results)
+
+        if behavior:
+            print(f"\n{'='*60}")
+            print(" Behavioral Verification (SWE-bench FAIL_TO_PASS)")
+            print(f"{'='*60}\n")
+            behavioral_ok = 0
+            for r in results:
+                if r.retired:
+                    continue
+                b = check_behavioral(r.bug_id)
+                if b["has_behavioral"]:
+                    icon = "[OK]" if b["status"] == "PASS" else "[~]"
+                    print(f"  {icon} {r.bug_id}: {b['status']}")
+                    if b["status"] == "PASS":
+                        behavioral_ok += 1
+                else:
+                    print(f"  [--] {r.bug_id}: no verify.sh")
+            print(f"\n  Behavioral coverage: {behavioral_ok}/{len(results)} bugs")
