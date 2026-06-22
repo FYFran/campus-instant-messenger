@@ -43,7 +43,7 @@ const BUGS = [
     {id:'B24',d:'campus_go API偶尔返回旧数据。用户刚报名的活动，刷新列表后报名状态按钮没变。等1-2分钟后再刷新才正确。前端开发者确认没有本地缓存，API返回的数据就是旧的。',t:'T4',l:'Infra',inj:false},
     {id:'B25',d:'campus_go 用户点击通知后详情页显示已读，但返回通知列表后该通知仍显示未读(红点仍在)。用户再次点击同一条通知，详情页又显示已读，但列表永远是未读。',t:'T5',l:'Mixed',inj:false},
     {id:'B26',d:'campus_go 在特定条件下处理不带Authorization头的请求时发生panic。日志显示 nil pointer dereference 发生在JWT中间件。正常带token的请求没问题。',t:'T0',l:'Go',inj:false},
-    {id:'B27',d:'TokenLine平台用户报告：调用AI API时偶尔扣了token但没有返回结果。用户余额减少了但对话历史中没有对应的AI回复。大约20次调用出现1次。',t:'T3',l:'Python',inj:false},
+    {id:'B27',d:'TokenLine平台：调用AI API时扣费发生在API调用之前。当AI API超时或失败时，token已被扣除但用户没有收到任何回复。余额减少但没有AI回复。每次API失败都会触发。',t:'T3',l:'Python',inj:false},
     {id:'B28',d:'TokenLine平台充值订单偶尔一直显示处理中(processing)，不会自动变为已完成或失败。用户已完成支付(微信/支付宝回调已收到)但订单状态没更新。钱付了token没到账。',t:'T5',l:'Python',inj:false},
     {id:'B29',d:'安全审查报告标记 campus_go 密码哈希使用了不安全的bcrypt cost值。auth.go中 bcrypt.DefaultCost 值为10，而OWASP 2026推荐最低cost为12。审查者认为密码哈希易被暴力破解。',t:'T7',l:'Go',inj:false},
     {id:'B30',d:'campus_go WebSocket实时推送偶尔丢消息。用户收到新通知推送时，有时WebSocket连接正常但收不到消息。刷新页面(重新连接)后消息又出现了。大约10条消息丢1-2条。',t:'T1',l:'Go',inj:false},
