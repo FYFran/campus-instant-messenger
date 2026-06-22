@@ -164,19 +164,21 @@ def append_from_workflow(skill_ver, score, ttype, c4_hits, total_bugs=10, model=
         for e in events:
             log(f"  [{e['ring']}] {e['action']}")
 
-def append_per_bug(bug_id, gt_type, agent_type, score_class, score_chain, score_evidence, score_root, score_cf, score_fix, total, notes=""):
-    """Record per-bug 7-dimension score. Called after each T2 bug investigation."""
+def append_per_bug(bug_id, gt_type, agent_type, score_class, score_chain, score_evidence, score_root, score_cf, score_fix, total, notes="", bonus=0, hypothesis=""):
+    """Record per-bug scoring data. bonus=1 means agent found real bug different from GT."""
     ts = datetime.now().strftime("%Y-%m-%dT%H:%M")
-    header = "timestamp\tbug_id\tgt_type\tagent_type\tscore_class\tscore_chain\tscore_evidence\tscore_root\tscore_cf\tscore_fix\ttotal\tnotes\n"
+    header = "timestamp\tbug_id\tgt_type\tagent_type\tscore_class\tscore_chain\tscore_evidence\tscore_root\tscore_cf\tscore_fix\ttotal\tbonus\thypothesis\tnotes\n"
 
     if not PER_BUG_FILE.exists():
         PER_BUG_FILE.write_text(header, encoding="utf-8")
 
-    line = f"{ts}\t{bug_id}\t{gt_type}\t{agent_type}\t{score_class}\t{score_chain}\t{score_evidence}\t{score_root}\t{score_cf}\t{score_fix}\t{total}\t{notes}\n"
+    hyp_short = (hypothesis or "")[:80].replace("\t", " ").replace("\n", " ")
+    line = f"{ts}\t{bug_id}\t{gt_type}\t{agent_type}\t{score_class}\t{score_chain}\t{score_evidence}\t{score_root}\t{score_cf}\t{score_fix}\t{total}\t{bonus}\t{hyp_short}\t{notes}\n"
     with open(PER_BUG_FILE, "a", encoding="utf-8") as f:
         f.write(line)
 
-    log(f"Per-bug: {bug_id} type={agent_type} total={total}/8 {notes}")
+    bonus_flag = " [BONUS]" if bonus else ""
+    log(f"Per-bug: {bug_id} type={agent_type} total={total}/8{bonus_flag} {notes}")
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
