@@ -60,25 +60,26 @@ function buildBatchJudgePrompt(reports) {
     let p = `你是独立评分agent。一次评估以下全部 ${reports.length} 个 bug report。每 report 评 3 维。
 
 评分标准:
-- 证据充分性 (0|1): 1=具体复现步骤+可验证baseline, 0=笼统
-- 根因正确性 (0|1|2): 2=根因方向一致+file:line正确, 1=方向对细节偏, 0=完全错误
-- CF真实性 (0|1): 1=有pre/post可验证证据(T3必须有数值对比), 0=模板文字
+- 证据充分性 (0|1): 1=有具体复现步骤+可验证的baseline输出, 0=笼统描述无具体数据
+- 根因正确性 (0|1|2): 2=根因方向与GT方向一致+有file:line引用, 1=方向对但细节/文件不同, 0=方向完全错误或不相关
+  ⚠ 不要用关键词匹配。"方向一致"意思是:agent找到的根因和GT指向同一个问题领域。比如GT说"nginx端口配错"但agent说"JWT密钥丢失"→方向不同=0分。GT说"ON CONFLICT缺失导致竞态"但agent说"FOR UPDATE没添加导致并发插入"→方向一致(都是并发报名保护缺失)=2分。
+- CF真实性 (0|1): 1=有pre/post可验证证据(T3必须含数值对比), 0=模板文字无具体对比
 
 `
     for (const {r, bug} of reports) {
         if (!r || !r.root_cause) continue
         const g = GT[bug.id]
         p += `---
-Bug ${bug.id} (GT:${g.t} | GT方向:${g.kw.slice(0,4).join(' ')})
-分类: ${r.classification||'?'}
-证据: ${(r.evidence||'').substring(0,250)}
-根因: ${(r.root_cause||'').substring(0,250)}
-文件行: ${r.root_cause_file_line||'N/A'}
-CF: ${(r.cf_evidence||'').substring(0,250)}
+Bug ${bug.id} (GT Type:${g.t} | GT根因方向:${g.kw.slice(0,5).join(' ')})
+Agent分类: ${r.classification||'?'}
+Agent证据: ${(r.evidence||'').substring(0,250)}
+Agent根因: ${(r.root_cause||'').substring(0,250)}
+Agent文件行: ${r.root_cause_file_line||'N/A'}
+Agent CF: ${(r.cf_evidence||'').substring(0,250)}
 `
     }
     p += `---
-返回JSON数组: [{"bug_id":"Bxx","evidence":0|1,"root_cause":0|1|2,"cf":0|1,"reasoning":"一句话"}, ...]`
+返回JSON数组: [{"bug_id":"Bxx","evidence":0|1,"root_cause":0|1|2,"cf":0|1,"reasoning":"根因方向一致性判断依据"}, ...]`
     return p
 }
 
@@ -164,19 +165,26 @@ function makeScores() {
         const r = match(b.id)
         if (!r||!r.root_cause) return {bug_id:b.id,gt_type:GT[b.id].t,agent_type:'?',total:0,c1:0,c2:0,c3:0,c4:0,c5:0,c6:0,c7:0,l3:'WRONG'}
         const g=GT[b.id]; const jr=judgeResults[b.id]||null
-        const txt=((r.root_cause||'')+' '+(r.root_cause_file_line||'')).toLowerCase()
         const at=(r.classification||'').trim().substring(0,2)
-        const fm=txt.includes(g.f.toLowerCase()); const fnm=txt.includes(g.fn.toLowerCase())
-        const kwHits=g.kw.filter(k=>txt.includes(k.toLowerCase()))
-        const c1=at===g.t?1:0; const c2=(r.evidence&&r.trace&&r.root_cause&&r.cf_evidence&&r.fix_description)?1:0
-        const c3=jr?jr.evidence:((r.evidence||'').length>30?1:0)
-        const c4=jr?jr.root_cause:((fm&&fnm)?2:(fm||kwHits.length>=Math.ceil(g.kw.length*0.3))?1:0)
+        const hasFileLine = !!(r.root_cause_file_line)
+        // c1: T-Type string match (rule)
+        const c1=at===g.t?1:0
+        // c2: chain completeness (rule)
+        const c2=(r.evidence&&r.trace&&r.root_cause&&r.cf_evidence&&r.fix_description)?1:0
+        // c3: evidence (judge, or fallback: has file:line + evidence >30 chars)
+        const c3=jr?jr.evidence:((r.evidence||'').length>30 && hasFileLine?1:0)
+        // c4: root cause (judge, or conservative: has file:line → 1, else 0)
+        const c4=jr?jr.root_cause:(hasFileLine?1:0)
+        // c5: CF (judge, or fallback: CF >30 chars)
         const c5=jr?jr.cf:((r.cf_evidence||'').length>30?1:0)
-        const c6=(r.fix_description||'').length>15?1:0; const c7=c2
+        // c6: fix quality (rule)
+        const c6=(r.fix_description||'').length>15?1:0
+        // c7: trajectory (rule)
+        const c7=c2
         let l3='TEMPLATE'
         if(jr){const jo=[c3,c4,c5].filter(x=>x>0).length; if(jo===3&&c1)l3='REAL'; else if(jo>=2&&c1)l3='REAL*'; else if(jo===0)l3='WRONG'}
         else if(c4===2&&c1)l3='REAL'; else if(c4>=1&&c1)l3='REAL*'
-        return {bug_id:b.id,gt_type:g.t,agent_type:at,total:c1+c2+c3+c4+c5+c6+c7,c1,c2,c3,c4,c5,c6,c7,l3,kw:kwHits.length,conf:r.confidence||0}
+        return {bug_id:b.id,gt_type:g.t,agent_type:at,total:c1+c2+c3+c4+c5+c6+c7,c1,c2,c3,c4,c5,c6,c7,l3,conf:r.confidence||0}
     })
 }
 
