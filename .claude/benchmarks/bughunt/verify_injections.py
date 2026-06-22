@@ -29,13 +29,14 @@ from typing import Optional
 BENCH_DIR = Path(__file__).parent
 BUGSET_DIR = BENCH_DIR / "bugset"
 INJECT_DIR = BENCH_DIR / "bug_injection"
+ARCHIVE_DIR = BENCH_DIR / "archive"
 REPO_ROOT = Path("f:/ClaudeFiles")
 
 
 @dataclass
 class VerifyResult:
     bug_id: str
-    status: str  # OK, WARN, FAIL
+    status: str  # OK, WARN, FAIL, RETIRED
     issues: list[str] = field(default_factory=list)
 
     # File existence
@@ -54,6 +55,18 @@ class VerifyResult:
     # Bug type
     bug_type: str = "unknown"
     needs_injection: bool = True
+    retired: bool = False
+
+
+def is_retired(bug_id: str) -> bool:
+    """Check if bug has been retired to archive/."""
+    # Check all archive subdirectories
+    if not ARCHIVE_DIR.exists():
+        return False
+    for subdir in ARCHIVE_DIR.iterdir():
+        if subdir.is_dir() and (subdir / bug_id).is_dir():
+            return True
+    return False
 
 
 def load_bug_ids() -> list[str]:
@@ -94,6 +107,13 @@ def check_patch_applies(patch_path: Path) -> tuple[bool, str]:
             cwd=REPO_ROOT, capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
+            return True, ""
+        # Try reverse: bug may already be in HEAD
+        result2 = subprocess.run(
+            ["git", "apply", "--check", "-R", str(patch_path)],
+            cwd=REPO_ROOT, capture_output=True, text=True, timeout=10
+        )
+        if result2.returncode == 0:
             return True, ""
         return False, result.stderr.strip()[:200]
     except Exception as e:
@@ -142,6 +162,13 @@ def check_desc_matches(bug_id: str) -> bool:
 def verify_bug(bug_id: str) -> VerifyResult:
     """Run all verification checks for a single bug."""
     r = VerifyResult(bug_id=bug_id, status="OK")
+
+    # Retired bugs are preserved for history, skip strict injection checks
+    r.retired = is_retired(bug_id)
+    if r.retired:
+        r.status = "RETIRED"
+        r.issues.append("Retired — injection verification skipped.")
+        return r
 
     desc_path = BUGSET_DIR / bug_id / "desc.md"
     truth_path = BUGSET_DIR / bug_id / "truth.md"
@@ -205,11 +232,13 @@ def print_report(results: list[VerifyResult]):
     ok = sum(1 for r in results if r.status == "OK")
     warn = sum(1 for r in results if r.status == "WARN")
     fail = sum(1 for r in results if r.status == "FAIL")
+    retired = sum(1 for r in results if r.status == "RETIRED")
+    active = len(results) - retired
     total = len(results)
 
     print(f"\n{'='*60}")
     print(f" 试剑石 注入一致性验证 — SWE-bench curation pipeline")
-    print(f" Bugs: {total} | OK={ok} | WARN={warn} | FAIL={fail}")
+    print(f" Bugs: {total} (active={active}, retired={retired}) | OK={ok} | WARN={warn} | FAIL={fail}")
     print(f"{'='*60}\n")
 
     for r in results:
@@ -217,20 +246,25 @@ def print_report(results: list[VerifyResult]):
             icon = "[OK]"
         elif r.status == "WARN":
             icon = "[WARN]"
+        elif r.status == "RETIRED":
+            icon = "[RET]"
         else:
             icon = "[FAIL]"
 
         injection_note = ""
-        if not r.needs_injection:
+        if r.retired:
+            injection_note = " [retired]"
+        elif not r.needs_injection:
             injection_note = f" [no-inject:{r.bug_type}]"
 
         print(f"  {icon} {r.bug_id} ({r.bug_type}){injection_note}")
         for issue in r.issues:
             print(f"      → {issue}")
 
-    print(f"\n  Research baseline: SWE-bench 56% rejection rate.")
-    rejection = fail / total * 100 if total > 0 else 0
-    print(f"  Our rejection: {rejection:.0f}% ({fail}/{total} FAIL)")
+    if fail > 0:
+        print(f"\n  Research baseline: SWE-bench 56% rejection rate.")
+        rejection = fail / max(active, 1) * 100
+        print(f"  Active rejection: {rejection:.0f}% ({fail}/{active} FAIL)")
 
 
 if __name__ == "__main__":

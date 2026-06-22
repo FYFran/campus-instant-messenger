@@ -1,0 +1,23 @@
+diff --git b/campus_go/internal/handlers/activities.go a/campus_go/internal/handlers/activities.go
+index b67cb97..8196d1b 100644
+--- b/campus_go/internal/handlers/activities.go
++++ a/campus_go/internal/handlers/activities.go
+@@ -14,7 +14,6 @@ import (
+ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
+ 	return func(c *gin.Context) {
+ 		userID := c.GetInt("user_id")
+-		role := c.GetString("role")
+ 
+ 		page := 1
+ 		limit := 20
+@@ -36,9 +35,7 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
+ 			 COALESCE(a.creator_override,'') as creator_override,
+ 			 EXISTS(SELECT 1 FROM signups WHERE activity_id=a.id AND user_id=$1) as signed_up
+ 			 FROM activities a LEFT JOIN users u ON a.created_by=u.id
+-			 WHERE a.status != 'draft'
+-				   AND ($4 = 'school_admin' OR a.scope_type = 'all' OR a.college = (SELECT college FROM users WHERE id=$1))
+-				 ORDER BY a.created_at DESC LIMIT $2 OFFSET $3`, userID, limit, offset, role)
++			 WHERE a.status != 'draft' ORDER BY a.created_at DESC LIMIT $2 OFFSET $3`, userID, limit, offset)
+ 		if err != nil {
+ 			log.Printf("ListActivities query error: %v", err)
+ 			c.JSON(500, gin.H{"detail": "查询活动失败"})

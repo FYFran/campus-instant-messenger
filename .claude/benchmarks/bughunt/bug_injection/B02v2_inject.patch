@@ -1,0 +1,13 @@
+diff --git a/campus_go/internal/handlers/activities.go b/campus_go/internal/handlers/activities.go
+index 8196d1b..139a591 100644
+--- a/campus_go/internal/handlers/activities.go
++++ b/campus_go/internal/handlers/activities.go
+@@ -149,7 +149,7 @@ func Signup(db *pgxpool.Pool) gin.HandlerFunc {
+ 		err = tx.QueryRow(c.Request.Context(),
+ 			`SELECT COALESCE(deadline,''), COALESCE(signup_start,''), status, signup_mode, max_participants,
+ 			 (SELECT COUNT(*) FROM signups WHERE activity_id=$1)
+-			 FROM activities WHERE id=$1 FOR UPDATE`, actID,
++			 FROM activities WHERE id=$1`, actID,
+ 		).Scan(&deadlineStr, &signupStartStr, &status, &signupMode, &maxP, &cnt)
+ 		if err != nil {
+ 			if errors.Is(err, pgx.ErrNoRows) {

@@ -2,8 +2,7 @@
 
 **Type:** T1（竞态条件 — 跨两个 API endpoint 的 SELECT-INSERT 窗口）
 
-**根因:** 
-1. Signup handler 中 SELECT 检查已有报名和 INSERT 新报名之间存在窗口期。两个并发请求同时通过 SELECT，然后都执行 INSERT → UNIQUE violation
+**根因:** `activities.go:152` Signup handler 中 SELECT 缺少 `FOR UPDATE`。SELECT 检查已有报名和 INSERT 新报名之间存在窗口期。两个并发请求同时通过 SELECT，然后都执行 INSERT → UNIQUE violation
 2. 更微妙的问题：`/api/activities/{id}` 的"已报名"状态通过 `EXISTS(SELECT 1 FROM signups WHERE ...)` 子查询实时计算（快），但 `/api/my-signups` 通过 LEFT JOIN 读取（慢）。在高并发下，INSERT 事务在 EXISTS 子查询和 LEFT JOIN 之间提交 → EXISTS 看到新行（已报名=true），LEFT JOIN 读到旧快照（无此报名）
 
 两个因素共同造成："UNIQUE violation" 错误 + "看到已报名但列表没有" 的状态不一致。

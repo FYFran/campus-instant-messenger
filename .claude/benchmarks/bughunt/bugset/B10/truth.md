@@ -1,15 +1,18 @@
-# B10 — Ground Truth
+# B10 — Ground Truth (v2)
 
-**Type:** T3（无 crash/error，数据悄悄错——这里"错"的是性能）
+**Type:** T3（无 crash/error，性能退化 — N+1 查询模式）
 
-**根因:** `ListActivities` handler 中主查询获取活动列表后，对每个活动执行了单独的 SQL 查询获取 `signup_count`（N+1 模式）。活动 50 个时 51 次查询还能接受，200 个时 201 次查询导致性能退化。代码没有报错——只是越来越慢。
+**根因:** `dashboard.go:149` `GetMySignups` handler 中，主查询获取报名记录后，对每条记录执行了单独的 SQL 查询获取活动信息。原代码用 JOIN 一次查询完成，注入后改为逐条查询 → N+1。
 
-**正确修复:** 使用子查询或 JOIN 将 signup_count 合并到主查询中：`LEFT JOIN (SELECT activity_id, COUNT(*) as cnt FROM signups GROUP BY activity_id) s ON a.id = s.activity_id`
+注入前 (bug): 逐条查询 activity 详情 — 10 signups = 11 queries
+注入后 (fix): `JOIN activities a ON s.activity_id=a.id` — 1 query
+
+**正确修复:** 使用 JOIN 合并查询：`FROM signups s JOIN activities a ON s.activity_id=a.id`
 
 **评分要点:**
-- 分类: T3 (1pt)
-- 证据: 数据量-延迟对比 + 查询日志分析 (1pt)
-- 根因: N+1 查询 — 主查询 + 每个活动单独查 (2pt)
-- CF: JOIN→200活动<200ms (1pt)
-- 修复: JOIN 替代 N+1 (1pt)
+- 分类: T3 — 无报错，越来越慢 (1pt)
+- 证据: 查询计数对比（N条报名=N+1 vs JOIN=1）(1pt)
+- 根因: N+1 — 循环内单独查询替代 JOIN (2pt)
+- CF: JOIN→查询数从N+1降为1 (1pt)
+- 修复: JOIN 合并 (1pt)
 - 链完整 (1pt)
