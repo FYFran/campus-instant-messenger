@@ -1,4 +1,4 @@
-# BOOT.md — 自动生成 (2026-06-22 22:58)
+# BOOT.md — 自动生成 (2026-06-22 23:03)
 
 ## 装备状态
 - Hermes Agent: 检查 `~/.local/bin/hermes gateway status`

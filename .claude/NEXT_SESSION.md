@@ -1,65 +1,55 @@
-# 新对话指令
+# 新对话 — 从这里开始
 
 你是皮特。读 `f:\ClaudeFiles\.claude\CLAUDE.md`。
 
-## 当前状态：v2.5.1 封版。所有实验完成。
+## 上次完成: 第一个自动成长循环成功
 
-### 最终判定
-
-**Production skill: v2.5.1 (v2.5 + F6 T4配置检查)**
-- v2.5 95.4±1.9pp (honest ~91.5%)
-- 最低方差 (SD 1.9pp, 2.5x < bare)
-- F6 在多种场景下有效 (B05=8/8)
-
-### 实验总结 (3 实验, $1.65)
-
-| Exp | 假设 | 结果 | 判定 |
-|-----|------|------|------|
-| A: 真实bug | 从git提取真实bug | M01-M08已可行 | ✅ 可行但不紧急 |
-| B: 螺旋模型 | 螺旋>线性 | 线性3/3, 螺旋2/3 | ❌ 线性保留 |
-| C: Bonus维度 | ≥3/10 systematic | 1-3/10, 高judge方差 | ⚠ 数据不足，延迟 |
-
-### v2.7-hybrid 3-run 数据
+**F7 MERGE — B05 从 5.3→7.7, root_cause 0→2。**
 
 ```
-R1=86.3% R2=95.0% R3=78.8% → 86.7±8.1pp
-v2.5.1 honest: ~91.5±1.9pp
-→ v2.7-hybrid: 低均值 + 4x高方差 → REJECTED
-根因: hypothesis tracking导致agent在简单bug上过虑
+F7: "T4 + token/401 → curl 直连后端端口(绕过nginx) → 后端正常? → nginx。
+     后端也401? → 代码。不经过此网络测试不许读源码。"
+3-run验证: 7.7/8 mean, root_cause 2.0/2 (vs baseline 5.3, 0.0)
 ```
 
-### 进化链
+**生产 skill: v2.5.1 + F7。** B05 已修复。B03 仍待修复 (F8 候选)。
+
+## 当前状态
 
 ```
-v2.1(86.3%) → v2.3 → v2.5(95.4%,封版)
-    → v2.6 GEPA(90%,退化) → v2.5.1(F6 only, production)
-    → v2.7-hybrid(86.7%,高方差,拒绝)
-    → v3.0-alpha 螺旋(实验,线性更优,拒绝)
+缉凶 skill: F1-F7, 92.6% honest baseline (n=3)
+  B05 fixed (F7) ✅
+  B03 pending (F8 candidate: "assert-missing must prove absent")
+
+系统: 18 commits, $2.90 spent
+  T2 全量 ($0.50) + T2 Lean ($0.05/bug) + T3 Lean ($0.50)
+  F7 验证 ($0.15) — 第一个自动成长循环
+  memory-indexer + judge-calibrate (免费)
+
+待做 (全部自动化, $0.30):
+  1. 跑 F8 验证 (B03, $0.15)
+  2. 退役 5 个饱和 bugs → 生成变体
+  3. 铁壁 skill 上 benchmark
 ```
 
-### 已做的
+## 快速启动
 
-- 9 commits, $1.65 spent
-- v2.5.1 = production (F1-F6 + T4 config check)
-- v3.0-alpha = 归档参考 (螺旋模型, 不用于production)
-- evolve.py: 双文件 + encoding fix + 5环→精简
-- per_bug_results.tsv: 恢复 + bonus + hypothesis tracking
-- T2 script: v2.7-hybrid prompt + bonus judge dimension
-- CORRECTED_PLAN.md: 完整修正计划
-- VERIFICATION_PROTOCOL.md: 旧5-phase协议
+```
+python .claude/pete-skill-evolve.py check   # 成长触发检测
+python .claude/pete-memory-index.py scan     # 跨会话模式
+python .claude/pete-judge-calibrate.py check # Judge 校准
+```
 
-### 待做
+## 关键文件
 
-1. 跑 T3 cross-model 对比 (v2.5.1 vs bare, $5)
-2. Human baseline (凡哥做 3-5 bugs)
-3. 修复 B03/B04 持续模式 → F7 候选
-4. 49-bug 全量 T2 验证
-5. 多 skill leaderboard (铁壁 + 火眼)
-
-### 关键教训
-
-1. 先实验后设计。$0.15 A/B 避免 $3 错误方向。
-2. 线性链 > 螺旋链 (对LLM)。假设追踪增加方差, 不增加值。
-3. Bonus维度有趣但不可靠 — 单judge方差太大。
-4. F6 (T4配置检查) 是唯一经实验验证的单F-rule改进。
-5. v2.5.1 真正的价值 = 降方差 (SD 2.5x < bare), 不是升天花板。
+```
+.claude/skills/缉凶.md                       → v2.5.1 + F7 (production)
+.claude/benchmarks/bughunt/
+  FINAL_DESIGN.md                             → 完整系统设计
+  growth_candidates.md                        → F7✅ F8待验证
+  bughunt_t2.js / t2_lean.js / t3_lean.js    → 测试脚本
+  bughunt_validate_f7.js                      → F7 验证脚本
+.claude/pete-skill-evolve.py                  → 成长编排器
+.claude/pete-memory-index.py                  → 跨会话记忆
+.claude/pete-judge-calibrate.py              → Judge 自动校准
+```
