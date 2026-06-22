@@ -44,7 +44,7 @@ function buildClassifyPrompt() {
 phase('Classify')
 log('1 agent classifies 5 hold-out bugs...')
 
-const output = await agent(buildClassifyPrompt(), {label:'classify-holdout', phase:'Classify'})
+const output = await agent(buildClassifyPrompt(), {label:'classify-holdout', phase:'Classify', agentType:'debugger'})
 
 let classifications = {}
 try {
