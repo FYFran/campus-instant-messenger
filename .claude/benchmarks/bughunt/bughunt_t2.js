@@ -128,11 +128,20 @@ const batchVerdict = await agent(buildBatchJudgePrompt(judgeInput), {label:'batc
 let judgeResults = {}
 try {
     const text = typeof batchVerdict === 'string' ? batchVerdict : JSON.stringify(batchVerdict)
+    let arr = null
     const m = text.match(/\[[\s\S]*\]/)
-    if (m) {
-        JSON.parse(m[0]).forEach(v => {
+    if (m) { try { arr = JSON.parse(m[0]) } catch {} }
+    if (!arr) {
+        const cm = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+        if (cm) { const cm2 = cm[1].match(/\[[\s\S]*\]/); if (cm2) try { arr = JSON.parse(cm2[0]) } catch {} }
+    }
+    if (arr) {
+        arr.forEach(v => {
             judgeResults[v.bug_id] = {evidence:parseInt(v.evidence)||0, root_cause:parseInt(v.root_cause)||0, cf:parseInt(v.cf)||0, reasoning:v.reasoning||''}
         })
+    }
+    if (Object.keys(judgeResults).length === 0) {
+        log(`Judge parse failed. Raw (first 500): ${text.substring(0,500)}`)
     }
 } catch(e) { log(`Judge parse error: ${e}`) }
 log(`Judged: ${Object.keys(judgeResults).length}/${BUGS.length}`)
