@@ -12,3 +12,4 @@ timestamp	skill_version	score	ttype	c4_hits	total_bugs	model	condition
 2026-06-22 21:16:33	v2.7-hybrid	63	7	5	10	deepseek-v4	skill
 2026-06-22 21:47:52	v2.5.1-full	71	9	8	10	deepseek-v4	skill
 2026-06-22 22:17:51	v2.5.1-full	77	10	10	10	deepseek-v4	skill
+2026-06-22 22:45:57	v2.5.1-full-lean	12	2	2	10	deepseek-v4	skill
