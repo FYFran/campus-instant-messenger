@@ -68,16 +68,43 @@ const classifyOutput = await agent(buildClassifyPrompt(), {
 let classifications = {}
 try {
     const text = typeof classifyOutput === 'string' ? classifyOutput : JSON.stringify(classifyOutput)
+    // Try multiple parse strategies
+    let arr = null
+    // Strategy 1: match JSON array in text
     const match = text.match(/\[[\s\S]*\]/)
     if (match) {
-        const arr = JSON.parse(match[0])
+        try { arr = JSON.parse(match[0]) } catch {}
+    }
+    // Strategy 2: match code-fenced JSON
+    if (!arr) {
+        const cm = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+        if (cm) {
+            const cm2 = cm[1].match(/\[[\s\S]*\]/)
+            if (cm2) try { arr = JSON.parse(cm2[0]) } catch {}
+        }
+    }
+    // Strategy 3: look for individual bug entries
+    if (!arr) {
+        arr = []
+        const entries = text.match(/\{[^}]+\}/g)
+        if (entries) {
+            for (const e of entries) {
+                try { arr.push(JSON.parse(e)) } catch {}
+            }
+        }
+    }
+    if (arr) {
         for (const c of arr) {
+            if (!c.bug_id) continue
             classifications[c.bug_id] = {
                 classification: (c.classification || '').trim().substring(0, 2),
                 reason: (c.classification_reason || '').substring(0, 80),
                 confidence: c.confidence || 0,
             }
         }
+    }
+    if (Object.keys(classifications).length === 0) {
+        log(`Parse failed. Raw output (first 500 chars): ${text.substring(0,500)}`)
     }
 } catch (e) {
     log(`Parse error: ${e}`)
