@@ -13,6 +13,7 @@ from collections import defaultdict
 
 BENCH_DIR = Path(".claude/benchmarks/bughunt")
 RESULTS_FILE = BENCH_DIR / "results.tsv"
+PER_BUG_FILE = BENCH_DIR / "per_bug_results.tsv"
 GROWTH_LOG = BENCH_DIR / "growth.log"
 LEADERBOARD = BENCH_DIR / "LEADERBOARD.md"
 BASELINE_SCORE = 76  # 95% of 80 max
@@ -50,12 +51,23 @@ def load_results():
     headers = lines[0].split("\t")
     return [dict(zip(headers, l.split("\t"))) for l in lines[1:] if l.strip()]
 
+def load_per_bug_results():
+    """Load per-bug scoring data (bug_id, dimensions, total)."""
+    if not PER_BUG_FILE.exists():
+        return []
+    lines = PER_BUG_FILE.read_text(encoding="utf-8").strip().split("\n")
+    if len(lines) < 2:
+        return []
+    headers = lines[0].split("\t")
+    return [dict(zip(headers, l.split("\t"))) for l in lines[1:] if l.strip()]
+
 def check_triggers():
-    """Check all 5 ring triggers from results.tsv."""
-    results = load_results()
+    """Check all 5 ring triggers. R2/R3 use per-bug data. R4/R5 use summary."""
+    summary = load_results()
+    per_bug = load_per_bug_results()
     events = []
 
-    if not results:
+    if not summary and not per_bug:
         log("No results data. Run T2 at least once.")
         return events
 
@@ -68,46 +80,57 @@ def check_triggers():
         )
         commits = [l for l in r.stdout.split("\n") if l.strip()]
         if len(commits) >= 5:
-            events.append({"ring":"R1_MINE","trigger":f"{len(commits)} fix commits","action":"python growth_engine.py mine","auto":False})
+            events.append({"ring":"R1_MINE","trigger":f"{len(commits)} fix commits in 14 days","action":"python growth_engine.py mine","auto":False})
     except: pass
 
-    # R2: Difficulty upgrade — bugs with 3+ perfect scores
+    # R2: Difficulty upgrade — per-bug: 3+ perfect scores (total >= 7)
     bug_scores = defaultdict(list)
-    for r in results:
-        bug_scores[r.get("bug_id","?")].append(int(r.get("score",0)))
+    for r in per_bug:
+        bid = r.get("bug_id","")
+        if not bid or not bid.startswith("B"):
+            continue
+        try:
+            bug_scores[bid].append(int(r.get("total", 0)))
+        except (ValueError, TypeError):
+            continue
 
     for bid, scores in bug_scores.items():
-        if len(scores) >= 3 and sum(1 for s in scores if s >= 8) >= 3:
-            events.append({"ring":"R2_RETIRE","trigger":f"{bid} 3x perfect","action":f"Retire {bid} -> harder variant","auto":False})
+        perfect = sum(1 for s in scores if s >= 7)
+        if len(scores) >= 3 and perfect >= 3:
+            events.append({"ring":"R2_RETIRE","trigger":f"{bid} {perfect}x perfect (>=7/8) in {len(scores)} runs","action":f"Retire {bid} -> generate harder variant","auto":False})
 
-    # R3: Blind spot — same bug c4 consistently 0
-    bug_c4 = defaultdict(list)
-    for r in results:
-        c4 = r.get("c4_hits","")
-        if c4:
-            bug_c4[r.get("bug_id","?")].append(int(c4))
+    # R3: Blind spot — per-bug: score_root consistently 0 (root cause never found)
+    bug_root = defaultdict(list)
+    for r in per_bug:
+        bid = r.get("bug_id","")
+        if not bid or not bid.startswith("B"):
+            continue
+        try:
+            bug_root[bid].append(int(r.get("score_root", -1)))
+        except (ValueError, TypeError):
+            continue
 
-    for bid, c4s in bug_c4.items():
-        if len(c4s) >= 3 and sum(1 for c in c4s if c == 0) >= 3:
-            events.append({"ring":"R3_BLINDSPOT","trigger":f"{bid} c4=0 x{len([c for c in c4s if c==0])}","action":"GEPA reflection -> F-rule","auto":True})
+    for bid, roots in bug_root.items():
+        zeros = sum(1 for s in roots if s == 0)
+        if len(roots) >= 2 and zeros >= 2:
+            events.append({"ring":"R3_BLINDSPOT","trigger":f"{bid} score_root=0 x{zeros}/{len(roots)}","action":"GEPA reflection -> F-rule for root cause","auto":True})
 
-    # R4: Overfit — hold-out gap from recent runs
-    if len(results) >= 5:
-        recent = results[-10:]
-        scores_list = [int(r["score"]) for r in recent]
-        avg = sum(scores_list) / len(scores_list)
-        recent_scores = [int(r["score"]) for r in results[-3:]]
-        recent_avg = sum(recent_scores) / len(recent_scores)
+    # R4: Overfit — summary: recent 3-run avg < overall avg - 4pp
+    if len(summary) >= 5:
+        all_scores = [int(r["score"]) for r in summary]
+        overall_avg = sum(all_scores) / len(all_scores)
+        recent_3 = all_scores[-3:]
+        recent_avg = sum(recent_3) / len(recent_3)
 
-        if recent_avg < avg - 4:
-            events.append({"ring":"R4_OVERFIT","trigger":f"Recent avg {recent_avg:.0f} < overall {avg:.0f}","action":"Re-select hold-out + GEPA diversity","auto":True})
+        if recent_avg < overall_avg - 4:
+            events.append({"ring":"R4_OVERFIT","trigger":f"Recent avg {recent_avg:.0f} vs overall {overall_avg:.0f} (gap={overall_avg-recent_avg:.0f}pp)","action":"Re-select hold-out + GEPA diversity optimization","auto":True})
 
-    # R5: Regression — score below baseline
-    if len(results) >= 3:
-        recent_3 = [int(r["score"]) for r in results[-3:]]
+    # R5: Regression — summary: last 3-run avg below baseline
+    if len(summary) >= 3:
+        recent_3 = [int(r["score"]) for r in summary[-3:]]
         avg3 = sum(recent_3) / len(recent_3)
         if avg3 < BASELINE_SCORE - 4:
-            events.append({"ring":"R5_REGRESSION","trigger":f"3-run avg {avg3:.0f} < baseline {BASELINE_SCORE}","action":"GEPA analyze -> fix skill -> verify","auto":True})
+            events.append({"ring":"R5_REGRESSION","trigger":f"3-run avg {avg3:.0f} < baseline {BASELINE_SCORE} (gap={BASELINE_SCORE-avg3:.0f}pp)","action":"GEPA analyze -> fix skill -> verify","auto":True})
 
     return events
 
