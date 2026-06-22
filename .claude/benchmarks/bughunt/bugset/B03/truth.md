@@ -1,20 +1,18 @@
 # B03 — Ground Truth
 
-**Type:** T2（≥2 因素共同触发 — 需要同时满足：学院名包含逗号 + 活动学院名是管理员学院名的子串）
+**Type:** T0（稳定复现 — 每次 college_admin 请求都看到所有学院的活动）
 
-**根因:** 
-1. 权限检查使用 `strings.Contains()` 做学院匹配，"计算机" 匹配 "计算机科学" → true（误匹配）
-2. 学院名字段使用逗号分隔存储多个学院，"计算机科学,电子工程" 中 "计算机" in split结果 因为空格问题 → false（漏匹配）
-两个因素共同导致：有些 admin 被错误授权（因素1），有些被错误拒绝（因素2）。
+**根因:** `activities.go` ListActivities 函数的 SQL WHERE 子句只过滤了 `status != 'draft'`，完全没有 college 范围的过滤条件。其他管理 handler（ApproveActivity、RejectActivity、ModifyActivity、GetPendingApprovals）使用 `($role = 'school_admin' OR scope_type = 'all' OR college = (SELECT college FROM users WHERE id=$userID))` 模式做了学院隔离，但 ListActivities 遗漏了此条件。同时 handler 没有从 Gin context 读取 `role` 变量。
 
 **正确修复:** 
-1. 改用精确匹配（`==` 或标准化后的集合查找）
-2. 学院名存储改为 JSON 数组或关联表
+1. 在 ListActivities 中读取 `role := c.GetString("role")`
+2. 在 SQL WHERE 子句追加 `AND ($4 = 'school_admin' OR a.scope_type = 'all' OR a.college = (SELECT college FROM users WHERE id=$1))`
+3. 将 role 作为第 4 个查询参数传入
 
 **评分要点:**
-- 分类: T2 — 识别多因素 (1pt)
-- 证据: 两个独立复现条件 (1pt)
-- 根因: strings.Contains + 逗号分隔 → 两个因素 (2pt)
-- CF: 每个因素独立验证 (1pt)
-- 修复: 精确匹配 + 数据结构修复 (1pt)
+- 分类: T0 — 识别为缺失功能/稳定复现 (1pt)
+- 证据: 复现 + 对比其他 handler 的 college 过滤模式 (1pt)
+- 根因: ListActivities SQL 缺少 college 过滤 + role 未读取 (2pt)
+- CF: 对比其他 handler 中已有的 college 过滤模式 vs ListActivities 缺失 (1pt)
+- 修复: 添加 role 读取 + SQL college 过滤条件 (1pt)
 - 链完整 (1pt)
