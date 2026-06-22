@@ -2,9 +2,10 @@ export const meta = {
     name: '试剑石 T2',
     description: 'Tier 2 — 全调查+batch judge (~$0.5, ~5min)。10 缉凶 agent 并行 + 1 Sonnet batch judge。',
     phases: [
-        { title: 'Inject', detail: '注入可注入bug' },
-        { title: 'Investigate', detail: '10 缉凶 agent 并行 7步全走' },
-        { title: 'Revert', detail: '还原注入' },
+        { title: 'EnvBugs', detail: '7 env-only bugs 并行调查' },
+        { title: 'Inj-B02', detail: '注入→调查→还原' },
+        { title: 'Inj-B06', detail: '注入→调查→还原' },
+        { title: 'Inj-B10', detail: '注入→调查→还原' },
         { title: 'Judge', detail: '1 Sonnet batch judge 评 10 报告' },
         { title: 'Report', detail: '8分制汇总' },
     ],
@@ -91,32 +92,41 @@ const AGENT_SCHEMA = {
 }
 
 // ============================================================
-phase('Inject')
-const injectableBugs = BUGS.filter(b => b.inj)
-log(`Injecting ${injectableBugs.length} bugs...`)
-for (const bug of injectableBugs) {
-    await agent(`Run: python .claude/benchmarks/bughunt/bug_injection.py inject ${bug.id}`, {label:'inj-'+bug.id, phase:'Inject'})
-}
-
+// Serialized injection: inject→investigate→revert per injected bug
+// Prevents cross-contamination when multiple bugs modify same file
 // ============================================================
-phase('Investigate')
-log(`Spawning ${BUGS.length} 缉凶 agents in parallel...`)
 
-const allReports = await parallel(BUGS.map(b => () => agent(buildPrompt(b), {label:'zx-'+b.id, phase:'Investigate', agentType:'debugger', schema:AGENT_SCHEMA})))
-const validReports = allReports.filter(Boolean)
-log(`缉凶: ${validReports.length}/${BUGS.length}`)
+const envBugs = BUGS.filter(b => !b.inj)
+const injBugs = BUGS.filter(b => b.inj)
+const allReports = {}
+
+// Phase 1: Investigate env-only bugs in parallel (no injection)
+phase('EnvBugs')
+log(`Investigating ${envBugs.length} env-only bugs in parallel...`)
+const envResults = await parallel(envBugs.map(b => () => agent(buildPrompt(b), {label:'zx-'+b.id, phase:'EnvBugs', agentType:'debugger', schema:AGENT_SCHEMA})))
+envBugs.forEach((b,i) => { allReports[b.id] = envResults[i] })
+log(`Env bugs: ${envResults.filter(Boolean).length}/${envBugs.length}`)
+
+// Phase 2+: Serialize each injected bug: inject→investigate→revert
+for (const bug of injBugs) {
+    phase('Inj-'+bug.id)
+    log(`Inject ${bug.id}...`)
+    await agent(`Run: python .claude/benchmarks/bughunt/bug_injection.py inject ${bug.id}`, {label:'inj-'+bug.id, phase:'Inj-'+bug.id})
+
+    log(`Investigate ${bug.id}...`)
+    const result = await agent(buildPrompt(bug), {label:'zx-'+bug.id, phase:'Inj-'+bug.id, agentType:'debugger', schema:AGENT_SCHEMA})
+    allReports[bug.id] = result
+
+    log(`Revert ${bug.id}...`)
+    await agent(`Run: python .claude/benchmarks/bughunt/bug_injection.py revert ${bug.id}`, {label:'rev-'+bug.id, phase:'Inj-'+bug.id})
+    log(`  ${bug.id}: ${result ? 'OK' : 'FAIL'}`)
+}
 
 function match(rid) {
-    const r = allReports.find(r => r && r.bug_id===rid)
-    return r || null
+    return allReports[rid] || null
 }
 
-// ============================================================
-phase('Revert')
-for (const bug of injectableBugs) {
-    await agent(`Run: python .claude/benchmarks/bughunt/bug_injection.py revert ${bug.id}`, {label:'rev-'+bug.id, phase:'Revert'})
-}
-log('Reverted')
+log(`Total: ${Object.values(allReports).filter(Boolean).length}/${BUGS.length}`)
 
 // ============================================================
 phase('Judge')
