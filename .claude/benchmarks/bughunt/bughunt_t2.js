@@ -206,8 +206,6 @@ log(`Cost: ~$0.5 (10 investigate + 1 batch judge) vs Tier 3 $5 (10 invest + 10 b
 
 return {
     total, pct: parseFloat(pct), ttype, chain, real,
-    bonus_count: bonusBugs, bonus_ids: bonusIds,
-    exp_c_decision: bonusBugs >= 3 ? 'ADD_BONUS_DIMENSION' : bonusBugs <= 1 ? 'NOISE' : 'BORDERLINE',
     scores, judgeResults,
     cost: '~$0.50',
 }
