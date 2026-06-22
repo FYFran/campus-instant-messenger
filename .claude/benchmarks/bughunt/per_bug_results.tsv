@@ -10,3 +10,6 @@ timestamp	bug_id	gt_type	agent_type	score_class	score_chain	score_evidence	score
 2026-06-21T23:30	B09	T1	T1	1	1	1	2	1	1	7	missing await — perfect hit
 2026-06-21T23:30	B10	T3	T3	1	1	1	2	1	1	7	N+1 query — correlated subquery->LEFT JOIN, perfect hit
 2026-06-23T00:02	B03	T0	T0	1	1	1	2	1	1	7	0		F8-DISCARD: construct-validity-fix-GT-changed-T2-to-T0
+2026-06-23T07:44	B03	T0	T3	0	1	1	2	1	1	6	0		bare-v2: found root(hit) but misclass T3 vs GT T0
+2026-06-23T07:44	B04	T3	T3	1	1	1	2	0	0	5	0		bare-v2: T3 hit, root=2, VLDB2020 pattern
+2026-06-23T07:44	B07	T6	T1	0	1	1	2	1	1	6	0		bare-v2: misclass T1 vs GT T6, found real bug(websocket race)
