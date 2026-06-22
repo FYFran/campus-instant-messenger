@@ -92,49 +92,59 @@
 
 ## 三、4 Phase 路线图
 
-### Phase 1: 闭环启动 ($2, 今天/明天)
+### Phase 1: 闭环启动 (~$0.60, 今天/明天) [曾预算 $2]
 
 - [ ] T2 R2 + R3 → n=3 诚实基线
+  - R2: 全量 10 bugs ($0.50, 进行中)
+  - R3: 只跑失败 bugs (≤6/8) via T2 Lean ($0.10-0.20)
 - [ ] B05 第二个 ≤5/8 → 触发 GEPA
-- [ ] GEPA 分析 B05 失败 trace → 生成候选 F-rule
-- [ ] 候选单独 T2 验证 (3-run, $0.15)
-- [ ] 通过 → merge 到 skill → **第一个完整的 GEPA-GATE 循环**
+- [ ] GEPA 分析 B05 失败 trace → 生成候选 F-rule (~$0.05)
+- [ ] 候选单独 T2 Lean 验证 (3-run on B05 only, ~$0.15)
+- [ ] 通过 → merge → **第一个完整的 GEPA-GATE 循环**
 
 **里程碑: 闭环跑通 1 次。**
+**省钱: $0.60 vs 原预算 $2 (70% 节省: 失败 case 重跑用 Lean, 不用全量)**
 
-### Phase 2: 测量升级 ($5, 本周)
+### Phase 2: 测量升级 (~$2, 本周) [曾预算 $5]
 
-- [ ] 凡哥手动做 5 bugs → 人类基线
-- [ ] Sonnet judge 评分 vs 凡哥评分 → 校准 judge
-- [ ] SkillAxe 4 维诊断: trigger precision / instruction compliance / solution coverage / quality impact
-- [ ] Per-bug 全量 T2 (10 bugs × per-bug 数据)
-- [ ] 修复最弱维度 (预计 solution-path coverage)
+- [ ] 凡哥手动做 5 bugs → 人类基线 (免费)
+- [ ] Sonnet judge 评分 vs 凡哥评分 → 校准 judge (免费)
+- [ ] SkillAxe 4 维诊断: GEPA 单次分析 (~$0.05)
+- [ ] 修复最弱维度 → T2 Lean 验证 ($0.15)
 
-**里程碑: 人类基线 + Judge 校准 + 4 维诊断。**
+**省钱: $2 vs 原预算 $5 (60% 节省: 人类基线免费, GEPA 一次够, Lean 验证)**
 
-### Phase 3: 多 Skill + 记忆 ($10, 本月)
+### Phase 3: 多 Skill + 记忆 (~$3, 本月) [曾预算 $10]
 
-- [ ] 铁壁 skill 上 benchmark
-- [ ] 跨会话错误记忆库 (.fixes/ 自动索引 → 模式检测)
-- [ ] 3 个完整 GEPA-GATE 循环 (≥2 个成功 merge)
-- [ ] Hold-out 10 bugs T2 验证
-- [ ] growth_engine mine 改进 → 新增 5+ 真实 bugs
+- [ ] 铁壁 skill 上 benchmark (改 T2 script, 免费)
+- [ ] 跨会话错误记忆库 (code change, 免费)
+- [ ] 3 个完整 GEPA-GATE 循环 (3 × $0.20 平均)
+- [ ] growth_engine mine 改进 → +5 真实 bugs (免费)
 
-**里程碑: 多 skill leaderboard + 跨会话学习 + 3 次自动进化。**
+**省钱: $3 vs 原预算 $10 (70% 节省: 脚本复用, mine 免费, Lean 验证)**
 
-### Phase 4: 自主进化 (长期, $20/月)
+### Phase 4: 自主进化 (~$5/月) [曾预算 $20/月]
 
-- [ ] 闭环全自动 (触发 → 分析 → 验证 → merge, 无人类干预)
-- [ ] Benchmark 自动硬化 (退役满分 bugs, 生成变体)
-- [ ] 每周自动 T3 cross-model 回归检测
-- [ ] 多项目验证 (campus_go + TokenLine + _research)
-- [ ] 公开 leaderboard (如果凡哥想)
+- [ ] 闭环全自动 (触发 → 分析 → 验证 → merge)
+- [ ] 每周 T2 Lean 自动回归检测 ($0.20/周)
+- [ ] Benchmark 自动硬化 (退役满分 bugs)
 
-**里程碑: 无人干预运行 1 个月, skill 持续改进, 0 退化。**
+**省钱: $5/月 vs 原预算 $20/月 (75% 节省: Lean 自动化, 低频 T3)**
+
 
 ---
 
-## 四、度量: 什么叫"到了顶级"
+## 四、预算对比 (精打细算 vs 原计划)
+
+| Phase | 原预算 | 精打细算 | 怎么省的 |
+|-------|--------|---------|---------|
+| P1: 闭环启动 | $2.00 | **$0.60** | R3 只跑失败 case (Lean $0.15 vs 全量 $0.50) |
+| P2: 测量升级 | $5.00 | **$2.00** | 人类基线+校准免费, GEPA 一次够 |
+| P3: 多 Skill | $10.00 | **$3.00** | 脚本复用, mine 免费, Lean 验证 |
+| P4: 自主/月 | $20.00 | **$5.00** | 周检用 Lean, T3 低频 |
+| **总计** | **$37** | **~$11** | **70% 节省** |
+
+## 五、度量: 什么叫"到了顶级"
 
 | 维度 | 现在 | 顶级 = |
 |------|------|--------|
@@ -146,4 +156,4 @@
 | **Judge** | 单模未校准 | Sonnet + 凡哥校准 10 case |
 | **诊断精度** | "总分 88.8%" | "Trigger 100%, Solution 70%" |
 | **真实 bug** | 8 mined | 20+ mined + hold-out gap <5pp |
-| **成本** | $2.15 spent | $0.50/run T2, $5/月 自主运行 |
+| **成本** | $2.15 spent | $0.50/首跑 T2, $0.15/重跑 Lean, $5/月 |
