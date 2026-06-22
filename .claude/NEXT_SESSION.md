@@ -2,53 +2,59 @@
 
 你是皮特。读 `f:\ClaudeFiles\.claude\CLAUDE.md`。
 
-## 当前任务：3 实验判定方向
+## 当前状态：Exp B 完成，混合模型就绪
 
-### 背景
+### Exp B 结果：线性 > 螺旋 (分类 3/3 vs 2/3)
 
-上轮深度思考发现4缺陷 → 写 CORRECTED_PLAN.md → 不用全量设计，先做3个小实验判定方向。
+| Bug | GT | Spiral type | Linear type | Spiral root | Linear root | Winner |
+|-----|-----|-------------|-------------|-------------|-------------|--------|
+| B05 | T4 | T4 ✅ | T4 ✅ | DB restore (wrong) | nginx port (correct) | **Linear** |
+| B07 | T6 | T6 ✅ | T6 ✅ | nil guard (correct) | Go NULL Scan (correct) | Tie |
+| M03 | T3 | T2 ❌ | T3 ✅ | Commented code (correct) | Commented code (correct) | **Linear** |
 
-### 实验状态
+**关键发现：**
+1. 线性分类更准 (3/3 vs 2/3)。螺旋未提升分类准确度。
+2. 螺旋的 hypothesis_chain 字段非常有价值——agent 推理过程完全可审计。
+3. 螺旋在 B05 上走了 3 轮假设推翻（H1:JWT→推翻→H2:DB→推翻→H3:DB双失效→确认），展现了真正的假设驱动 debugging。但最终还是线性猜对了根因。
+4. **最佳方案：混合模型。** 线性分类（可靠）+ 可证伪假设追踪（透明）。
 
-| Exp | 内容 | 成本 | 状态 |
-|-----|------|------|------|
-| A | 真实bug可行性 | $0 | ✅ M01-M08已证明可行 |
-| B | 螺旋vs线性对比 | $0.15 | 🔄 跑中 (B05/B07/M03) |
-| C | "发现真bug"prevalence | $0.50 | 📋 脚本就绪，待跑 |
-
-### 实验 B 判定规则
-
-```
-螺旋 > 线性 (type更准+conf更高) → 螺旋方向推进
-螺旋 ≈ 线性 (type同+conf同) → 螺旋有hypothesis_chain数据=更可解释, 推进
-螺旋 < 线性 (type错+conf低) → 螺旋模型退化, 保留线性链
-```
-
-### 实验 C 判定规则
+### v2.7-hybrid 设计（已实现）
 
 ```
-bonus ≥3/10 → 评分系统需要bonus维度 (B03/B04是系统性模式)
-bonus ≤1/10 → B03/B04是噪音, 不改评分
-bonus =2/10 → borderline, 再跑1次T2确认
+[分类 + H] → [证据：验证H] → [追踪：H成立?继续:H推翻?修正H2] → [分析] → [修复] → [验证] → [记录]
+```
+
+关键改变：
+- 分类步增加 `假设 H: 如果我对，___应该为真。验证方法: ___`
+- 证据步增加 `H验证结果: 成立/推翻(证据:___)`
+- H 被推翻 → 查 F1-F6 找替代方向 → 修正分类 + 新 H
+- 最多推翻 2 次，第 3 次 STOP
+- **分类决策流不变**（v2.5.1 核心），**F1-F6 不变**，**T4 配置检查不变**
+
+### 待做
+
+```
+1. 跑 v2.7-hybrid T2 验证 (10 bugs, $0.50) → 确认 ≥93%
+2. 跑 Exp C: bonus bug checker ($0.03 + T2 agent reports)
+3. 如果 v2.7 ≥93% 且 Exp C ≤1 bonus → 封版 v2.7-hybrid
+4. 如果 v2.7 ≥93% 且 Exp C ≥3 bonus → 加 bonus 维度 + 重跑
+5. 如果 v2.7 <93% → 回滚 v2.5.1
 ```
 
 ### 关键文件
 
 ```
-.claude/skills/缉凶.md                → v2.5.1 (production)
-.claude/skills/缉凶-v3.0-alpha.md     → 螺旋合同链 (实验)
+.claude/skills/缉凶.md                    → v2.7-hybrid (当前)
+.claude/skills/缉凶-v3.0-alpha.md         → 纯螺旋 (实验，保留参考)
 .claude/benchmarks/bughunt/
-  CORRECTED_PLAN.md                    → 修正计划
-  bughunt_ab_spiral.js                 → Exp B: A/B对比脚本
-  bughunt_bonus_check.js               → Exp C: bonus检测脚本
-  bughunt_t2.js                        → T2 workflow (10 bugs)
-  per_bug_results.tsv                  → per-bug数据
-  results.tsv                          → summary数据
+  bughunt_ab_spiral.js                     → Exp B A/B脚本
+  bughunt_bonus_check.js                   → Exp C bonus检测
+  CORRECTED_PLAN.md                        → 修正计划
 ```
 
-### 上次教训
+### 实验教训
 
-1. 不先做全量设计再做实验 — 先做实验再设计
-2. 不为2个样本改系统 — 先测prevalence
-3. 不 6 变量一起改 — 逐项验证
-4. 螺旋模型假设 LLM 能做假设追踪 — 未验证, Exp B 会回答
+1. **螺旋不提升分类准确度** — 线性决策流本身就是好的分类器
+2. **假设链的最大价值是审计** — 知道 agent 为什么犯错比知道它犯什么错更有用
+3. **混合 > 纯替代** — 保留工作的部分(分类)，增强弱的部分(推理透明)
+4. **3 bug A/B 够用** — 便宜 ($0.15) 且能在问题变大前发现方向错误
