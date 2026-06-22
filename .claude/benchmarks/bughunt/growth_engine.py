@@ -25,7 +25,7 @@ from collections import defaultdict
 
 BENCH_DIR = Path(__file__).parent
 BUGSET_DIR = BENCH_DIR / "bugset"
-RESULTS_FILE = BENCH_DIR / "results.tsv"
+RESULTS_FILE = BENCH_DIR / "per_bug_results.tsv"
 REPO_ROOT = Path("f:/ClaudeFiles")
 
 

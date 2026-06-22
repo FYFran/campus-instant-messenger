@@ -1,0 +1,12 @@
+diff --git a/campus_go/internal/handlers/dashboard.go b/campus_go/internal/handlers/dashboard.go
+--- a/campus_go/internal/handlers/dashboard.go
++++ b/campus_go/internal/handlers/dashboard.go
+@@ -183,7 +183,7 @@ func GetMyStats(db *pgxpool.Pool) gin.HandlerFunc {
+ 	return func(c *gin.Context) {
+ 		userID := c.GetInt("user_id")
+ 		var totalHours float64
+-		db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1", userID).Scan(&totalHours)
++		db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(a.hours),0) FROM certificates c JOIN activities a ON c.activity_id = a.id WHERE c.user_id=$1", userID).Scan(&totalHours)
+ 		var totalSignups int
+ 		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM signups WHERE user_id=$1", userID).Scan(&totalSignups)
+ 		var totalSelected int
