@@ -41,18 +41,18 @@
   "门神": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 0,
+    "bugs": 3,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "L1 only. Bugset NOT created — Q01/Q02/Q03 planned but no desc.md+truth.md files."
+    "notes": "L1 only. Q01/Q02/Q03 bugset created 2026-06-23 — L2 baseline pending."
   },
   "破阵": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 0,
+    "bugs": 3,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "L1 only. Bugset NOT created — R01/R02/R03 planned but no desc.md+truth.md files. CNA from manual run only.",
+    "notes": "L1 only. R01/R02/R03 bugset created 2026-06-23 — L2 baseline pending. CNA from manual run only.",
     "cna": 0.2963,
     "tokens": 27000
   },
