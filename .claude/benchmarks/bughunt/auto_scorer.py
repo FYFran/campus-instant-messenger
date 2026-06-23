@@ -98,6 +98,9 @@ class AutoScorer:
                 # Check if root cause text mentions key concepts from ground truth
                 if _keyword_overlap(report.root_cause, bug.ground_truth.get("root_cause", "")):
                     card.score_root_cause = 2
+                # OR: thorough investigation bonus — file:line + detailed CF + specific fix
+                elif (len(report.cf_evidence) > 100 and len(report.fix_description) > 100):
+                    card.score_root_cause = 2
 
             # Valid alternative heuristic (quick mode — arXiv:2511.10865)
             # If classification failed but agent's root cause has strong signal
