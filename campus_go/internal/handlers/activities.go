@@ -81,6 +81,11 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
 				"qq_group": qqGroup, "signed_up": signedUp,
 			})
 		}
+		if err := rows.Err(); err != nil {
+			log.Printf("ListActivities rows iteration error: %v", err)
+			c.JSON(500, gin.H{"detail": "查询活动失败"})
+			return
+		}
 		if acts == nil {
 			acts = []gin.H{}
 		}
