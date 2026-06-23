@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	log "campus-go/internal/logger"
 	"errors"
-	"log"
 	"strconv"
 	"time"
 

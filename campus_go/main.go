@@ -3,8 +3,8 @@ package main
 import (
 	"campus-go/internal/database"
 	"campus-go/internal/handlers"
+	log "campus-go/internal/logger"
 	"campus-go/internal/middleware"
-	"log"
 	"os"
 	"time"
 

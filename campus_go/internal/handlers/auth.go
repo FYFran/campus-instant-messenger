@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	log "campus-go/internal/logger"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"log"
 	"os"
 	"strings"
 	"sync"

@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	log "campus-go/internal/logger"
 	"encoding/json"
-	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

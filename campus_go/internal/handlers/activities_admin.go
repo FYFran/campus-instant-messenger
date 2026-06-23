@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	log "campus-go/internal/logger"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"

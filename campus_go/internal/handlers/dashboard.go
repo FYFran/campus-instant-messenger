@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	log "campus-go/internal/logger"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gin-gonic/gin"

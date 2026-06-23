@@ -1,8 +1,8 @@
 package database
 
 import (
+	log "campus-go/internal/logger"
 	"context"
-	"log"
 	"os"
 	"time"
 
