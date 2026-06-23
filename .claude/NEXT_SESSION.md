@@ -1,76 +1,45 @@
-# 新对话 — 从这里开始
+# 下一会话
 
-你是皮特。读 `f:\ClaudeFiles\.claude\CLAUDE.md`。
+## 系统状态 (2026-06-23)
 
-## 试剑石 — Self-Evolving Skill Evaluation Framework
+### 11 Skill — 0 issues, 0 warnings
+| Skill | Baseline | pass@k | CNA |
+|------|---------|--------|-----|
+| 铁壁 v2.1 | 8.0 | pass@3 | 0.009/k |
+| 明镜 v2.1 | 8.0 | pass@2 | 0.012/k |
+| 破阵 v2.1 | 8.0 L1 | pass@1 | 0.296/k |
+| 缉凶 v3.1 | 6.1 | pass@3(v2.5) | 0.020/k |
+| 布阵 v3.0 | 8.0 L1 | — | — |
+| 门神 v2.1 | 8.0 L1 | — | — |
+| 火眼 v1.1 | 8.0 L1 | — | — |
+| 试金石 v1.0 | 8.0 L1 | — | — |
+| 天眼 v1.0 | — | — | — |
+| 架构师 v1.0 | — | — | — |
+| 轮回 v1.1 | — | — | — |
 
-自主技能副驾驶。评估→诊断→优化→验证→循环。不靠人。
+### 飞轮 (每次commit自动)
+- compat_check → health → drift(L0+L1) → drift.log → GEPA proposal
+- L0: file/frontmatter/size/sections
+- L1: gotcha ratchet/constitution/red lines
+- L2: 待数据积累后启用
 
-**组件合体:** SkillsBench (评估) + SkillAxe (诊断) + BenchEvolver (硬化)
+### campus_go 线上 (47.82.103.247)
+- nginx /campus/ → :9501
+- PostgreSQL Docker (glitchtip-postgres-1)
+- S01/S03/S05 fixed + upload JWT + register rate limit
+- iptables persisted, first DB backup done
+- Python: race condition fixed, bare except fixed, hardcoded code fixed
+- 天眼 health monitor cron 60s
 
-### 全貌
+### 待修
+- Python 代码 git 追踪 (submodule残留)
+- L2 agent采样门禁 (数据不够)
+- 缉凶 v3.1 re-benchmark
+- 破阵 pass@2
+- DAG 链执行
+- Flutter app 连接测试
 
-```
-试剑石 = {
-  基准: 40 bugs (B01-B38 + B01v2 + B02v2 + S01-S03)
-  验证: 16/35 active OK, 5 retired, 18 gap (B11-B38扩展)
-  统计: v2.5 76.3/80 CI[75-78] n=3 | bare 71.0/80 n=1
-  诊断: SkillAxe D2 weakest (T-Type 83%), D4 root_hit 92%
-  觉醒: 缉凶 +5.3pp vs bare, SkillsBench SE域均值 +4.5pp
-  预算: $3.35/$5.00, 剩余 $1.65
-}
-```
-
-### Phase 完成状态
-
-```
-Phase 1 ✅ Inject patches: B01-B10 16/16 OK + B03/B04 verify.sh
-Phase 2 ✅ Bare T2 Lean B03/B04/B07 ($0.15)
-Phase 3 ✅ SkillAxe + behavioral verify ($0)
-Phase 4 ✅ B01v2 6/7 + B02v2 5/7 — SOLVABLE ($0.10)
-Phase 5 ⚠️ 铁壁 3/10 bugs + S01 inject
-```
-
-### 自动化管道
-
-```
-python .claude/pete-skill-evolve.py check     → 5环触发检测
-python .claude/pete-skill-evolve.py evolve    → 自动执行+写NEXT_ACTION
-python .claude/benchmarks/bughunt/skillaxe_diagnose.py --suggest → 诊断+候选
-python .claude/benchmarks/bughunt/bootstrap_ci.py  → 统计CI
-python .claude/benchmarks/bughunt/verify_injections.py --behavior → SWE-bench验证
-python .claude/benchmarks/bughunt/judge_calibrate.py stats → Judge校准
-
-成长循环: check → evolve → NEXT_ACTION → Lean T2 Workflow($0.15) → append → 重复
-```
-
-### 关键文件
-
-```
-.claude/skills/缉凶.md                              production skill v2.5.1+F7
-.claude/benchmarks/bughunt/FINAL_DESIGN.md           系统设计
-.claude/benchmarks/bughunt/verify_injections.py      注入验证
-.claude/benchmarks/bughunt/skillaxe_diagnose.py      4维诊断
-.claude/benchmarks/bughunt/bootstrap_ci.py          统计CI
-.claude/benchmarks/bughunt/judge_calibrate.py       Judge校准
-.claude/pete-skill-evolve.py                         成长编排器
-.claude/benchmarks/bughunt/per_bug_results.tsv       15条数据
-.claude/benchmarks/bughunt/results.tsv               14条T2汇总
-.claude/benchmarks/bughunt/bug_injection/            注入补丁
-.claude/benchmarks/bughunt/bugset/B01-B38,S01-S03/  bug定义
-```
-
-### 设计理念
-
-不是学术通用benchmark。是缉凶skill的私有教练。
-对标不是SWE-bench(SOTA排名)，是SkillsBench SE域+SkillAxe自进化。
-唯一优势: 自有代码库，零污染。
-
-### 下个会话
-
-触发干净(R1 only)。$1.65剩。
-想做: 跑F9验证($0.15) 或 铁壁补全 或 就让它跑自动循环。
-
-## MemPalace评估
-
-[待查看]
+### 启动
+1. `python -m mempalace mine` → wake-up → search
+2. `python .claude/scripts/skill_health.py` 看状态
+3. 继续飞轮 L2 或修剩余漏洞
