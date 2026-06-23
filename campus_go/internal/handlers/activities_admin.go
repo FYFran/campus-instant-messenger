@@ -382,6 +382,16 @@ func CreateNotice(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(400, gin.H{"detail": "公告标题不能为空"})
 			return
 		}
+		// R02 fix: filter impersonation prefixes for non-admin publishers
+		if role != "college_admin" && role != "school_admin" {
+			prefixes := []string{"【系统】", "【官方】", "【教务】", "【学校】", "[系统]", "[官方]"}
+			for _, p := range prefixes {
+				if strings.HasPrefix(req.Title, p) {
+					c.JSON(400, gin.H{"detail": "公告标题不能使用系统前缀"})
+					return
+				}
+			}
+		}
 		var id int
 		err := db.QueryRow(c.Request.Context(),
 			`INSERT INTO notifications (title, content, type, user_id, is_read)

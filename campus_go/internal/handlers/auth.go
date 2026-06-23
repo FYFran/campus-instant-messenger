@@ -159,19 +159,27 @@ func Register(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(500, gin.H{"detail": "服务器错误"})
 			return
 		}
-		// Default role is student
-		role := "student"
+		// R02 fix: require registration code for all roles (align with Python backend)
 		teacherCode := os.Getenv("REG_TEACHER_CODE")
-		// No fallback — must be explicitly configured
 		collegeAdminCode := os.Getenv("REG_COLLEGE_ADMIN_CODE")
 		superCode := os.Getenv("REG_SUPER_CODE")
+		studentCode := os.Getenv("REG_STUDENT_CODE")
+
+		role := ""
 		switch {
-		case teacherCode != "" && req.RegCode == teacherCode:
-			role = "teacher"
+		case superCode != "" && req.RegCode == superCode:
+			role = "school_admin" // R02 fix: use "school_admin" not "super"
 		case collegeAdminCode != "" && req.RegCode == collegeAdminCode:
 			role = "college_admin"
-		case superCode != "" && req.RegCode == superCode:
-			role = "super"
+		case teacherCode != "" && req.RegCode == teacherCode:
+			role = "teacher"
+		case studentCode != "" && req.RegCode == studentCode:
+			role = "student"
+		}
+
+		if role == "" {
+			c.JSON(400, gin.H{"detail": "注册码无效或未配置"})
+			return
 		}
 		var userID int
 		err = db.QueryRow(c.Request.Context(),
