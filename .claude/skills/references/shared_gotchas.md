@@ -63,6 +63,45 @@
 - → 铁壁: 扫描规则——GREP "SELECT *" 标记数据暴露风险
 - → 明镜: 审查时逐SQL检查是否显式列名
 
+### 来自 布阵部署实战 (2026-06-23)
+
+**模式 #D01: Docker容器端口→iptables DNAT**
+- 发现: 布阵 campus_go 部署
+- 描述: PG容器(glitchtip-postgres-1)端口5432仅Docker内部可达。需iptables DNAT转发+持久化
+- → 布阵: gotcha#9 部署前检查端口映射
+- → 门神: 部署前检查——所有依赖服务端口可达性
+
+**模式 #D02: nginx conf.d在http层→location必须server内**
+- 发现: 布阵 nginx配置
+- 描述: /etc/nginx/conf.d/*.conf在http块include，裸location指令非法
+- → 布阵: gotcha#10 直改sites-enabled
+
+**模式 #D03: 云安全组→非标端口不可达**
+- 发现: 布阵 campus_go部署
+- 描述: 阿里云安全组仅放80/443，9501外部不可达
+- → 布阵: gotcha#11 新服务走nginx反向代理
+- → 破阵: 攻击面枚举时考虑nginx代理层
+
+**模式 #D04: bcrypt哈希→shell参数毁坏**
+- 发现: 布阵 seed数据
+- 描述: bcrypt哈希含$符号，经ssh/bash→psql时被展开毁坏
+- → 布阵: gotcha#12 scp sql文件→docker exec < file
+
+### 来自 部署验证 (2026-06-23)
+
+**模式 #S05确认: 速率限制禁用=真实漏洞**
+- 确认: 铁壁+破阵双重验证 live server
+- 描述: campus_go auth.go:69-78 速率限制注释未恢复。nginx /campus/ location无限流。双重防御失效。
+- → 破阵: 攻击面——登录端点可暴力破解
+- → 门神: 部署前检查——不仅检查代码存在，curl验证实际生效
+- → 门神: gotcha#6#7 防御有效性验证
+
+**模式 #AV6: 新路径绕过已有防御**
+- 发现: 破阵R03 live攻击
+- 描述: 部署新增/campus/前缀→nginx location无限流→绕过已有/api/login的limit_req
+- → 布阵: gotcha#11 新路径独立验证所有防御
+- → 门神: 部署前逐location验证速率限制
+
 ## 过期策略
 - 模式被修复后30天→降级为历史记录
 - 连续3次skill运行未触发→标记为已修复

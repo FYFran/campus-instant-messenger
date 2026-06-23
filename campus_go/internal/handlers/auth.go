@@ -66,16 +66,16 @@ func Login(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(400, gin.H{"detail": "学号或密码错误"})
 			return
 		}
-		// Rate limit: DISABLED FOR TESTING - RESTORE AFTER
-		// loginRateMu.Lock()
-		// lastAttempt, exists := loginRateLimit[c.ClientIP()]
-		// if exists && time.Since(lastAttempt) < 12*time.Second {
-		// 	loginRateMu.Unlock()
-		// 	c.JSON(429, gin.H{"detail": "登录过于频繁，请12秒后重试"})
-		// 	return
-		// }
-		// loginRateLimit[c.ClientIP()] = time.Now()
-		// loginRateMu.Unlock()
+		// Rate limit: 12s cooldown per IP
+		loginRateMu.Lock()
+		lastAttempt, exists := loginRateLimit[c.ClientIP()]
+		if exists && time.Since(lastAttempt) < 12*time.Second {
+			loginRateMu.Unlock()
+			c.JSON(429, gin.H{"detail": "登录过于频繁，请12秒后重试"})
+			return
+		}
+		loginRateLimit[c.ClientIP()] = time.Now()
+		loginRateMu.Unlock()
 
 		var id, tokenVersion int
 		var name, role, pwHash string
