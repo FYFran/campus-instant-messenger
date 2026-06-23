@@ -61,13 +61,57 @@ def load_per_bug_results():
     headers = lines[0].split("\t")
     return [dict(zip(headers, l.split("\t"))) for l in lines[1:] if l.strip()]
 
+def scan_agent_candidates():
+    """Scan .fixes/ for agent-written pattern-candidate.md files.
+
+    Contract step 8 (成长反馈) produces these. Each file describes an uncovered
+    misclassification pattern or quality trap with a suggested F-rule.
+    Returns list of {file, pattern, signal, suggested_f_rule, timestamp}.
+    """
+    import re, os
+    fixes_dir = Path(".fixes")
+    candidates = []
+    if not fixes_dir.exists():
+        return candidates
+
+    for f in sorted(fixes_dir.glob("*pattern-candidate*")):
+        try:
+            content = f.read_text(encoding="utf-8")
+            # Extract structured fields (match both "Pattern:" and "## Pattern" forms)
+            pattern = re.search(r'#*\s*[Pp]attern:?\s*(.+)', content)
+            signal = re.search(r'#*\s*[Ss]ignal:?\s*(.+)', content)
+            rule = re.search(r'[Ss]uggested.?[Ff][- ]?[Rr]ule:?\s*(.+)', content)
+            if pattern:
+                candidates.append({
+                    "file": str(f),
+                    "pattern": pattern.group(1).strip(),
+                    "signal": (signal.group(1).strip() if signal else "?"),
+                    "suggested_f_rule": (rule.group(1).strip() if rule else "?"),
+                    "timestamp": datetime.fromtimestamp(os.path.getmtime(str(f))).strftime("%Y-%m-%d %H:%M"),
+                })
+        except Exception:
+            continue
+    return candidates
+
+
 def check_triggers():
-    """Check all 5 ring triggers. R2/R3 use per-bug data. R4/R5 use summary."""
+    """Check all 6 ring triggers. R0=agent feedback, R1-R5=benchmark-driven."""
     summary = load_results()
     per_bug = load_per_bug_results()
+    agent_candidates = scan_agent_candidates()
     events = []
 
-    if not summary and not per_bug:
+    # R0: Agent self-reported patterns (contract step 8: 成长反馈)
+    for c in agent_candidates:
+        events.append({
+            "ring": "R0_AGENT_FEEDBACK",
+            "trigger": f"Agent reported: {c['pattern'][:80]}",
+            "action": f"Review {c['file']} → if valid, add F-rule to 致命误判表",
+            "auto": False,  # Requires human review before adding to skill
+            "candidate": c,
+        })
+
+    if not summary and not per_bug and not agent_candidates:
         log("No results data. Run T2 at least once.")
         return events
 
@@ -158,7 +202,14 @@ def evolve(auto=False):
         icon = "[AUTO]" if e["auto"] else "[MANUAL]"
         log(f"  {icon} [{e['ring']}] {e['trigger']}")
 
-        if e["ring"] == "R3_BLINDSPOT" and e["auto"]:
+        if e["ring"] == "R0_AGENT_FEEDBACK":
+            c = e.get("candidate", {})
+            log(f"       → Agent-suggested F-rule: {c.get('suggested_f_rule','?')}")
+            log(f"       → Review {c.get('file','?')} before adding to 致命误判表")
+            log(f"       → Pattern: {c.get('pattern','?')}")
+            actions_taken.append(f"AgentFeedback: {c.get('suggested_f_rule','?')[:60]}")
+
+        elif e["ring"] == "R3_BLINDSPOT" and e["auto"]:
             # Auto: run SkillAxe → generate F-candidate
             bug_id = e.get("bug_id", "?")
             log(f"       → SkillAxe analyzing {bug_id}...")
