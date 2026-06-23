@@ -33,6 +33,15 @@
             "command": "python f:/ClaudeFiles/.claude/hooks/audit-deps.py"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python f:/ClaudeFiles/.claude/hooks/skill-drift-check.py"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
