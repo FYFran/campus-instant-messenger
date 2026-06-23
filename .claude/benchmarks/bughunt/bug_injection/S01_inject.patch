@@ -1,0 +1,14 @@
+diff --git a/campus_go/internal/middleware/auth.go b/campus_go/internal/middleware/auth.go
+index 1761daa..55b78e7 100644
+--- a/campus_go/internal/middleware/auth.go
++++ b/campus_go/internal/middleware/auth.go
+@@ -18,7 +18,8 @@ var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+ // Call once at server startup — not at package init time.
+ func ValidateConfig() error {
+ 	if len(jwtSecret) == 0 {
+-		return fmt.Errorf("JWT_SECRET env var is required — set it before starting the server")
++		// BUG-INJECTION-S01: Weak JWT secret fallback
++		jwtSecret = []byte("campus-secret-key-2024")
+ 	}
+ 	return nil
+ }
