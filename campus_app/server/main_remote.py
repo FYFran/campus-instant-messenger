@@ -1509,9 +1509,12 @@ async def auth_reset_password(request: Request, req: dict = Body(...)):
     new_hash = _hash_pw(new_pw)
     await pool.execute("UPDATE users SET password_hash=$1 WHERE id=$2", new_hash, user["id"])
     _pw_reset_cooldowns[phone] = time.time()
-    # Log the reset
+    # Log the reset + notify user (破阵 finding: weak verification)
     client_ip = request.client.host if request else "unknown"
     print(f"[SEC] Password reset: user_id={user['id']} ip={client_ip} time={datetime.now().isoformat()}")
+    await pool.execute(
+        "INSERT INTO notifications (user_id, title, content, type) VALUES ($1,'密码已重置','你的密码刚刚被修改。如非本人操作，请联系管理员。','security')",
+        user["id"])
     return {"ok": True}
 
 @app.post("/api/users/reset-password")

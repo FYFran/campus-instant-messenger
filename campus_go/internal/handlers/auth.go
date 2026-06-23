@@ -197,7 +197,7 @@ func Register(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(500, gin.H{"detail": "服务器错误"})
 			return
 		}
-		token, err := middleware.GenerateToken(userID, role, 0)
+		token, err := middleware.GenerateToken(userID, role, 1) // version=1 enables single-device enforcement
 		if err != nil {
 			log.Printf("GenerateToken error: %v", err)
 			c.JSON(500, gin.H{"detail": "服务器错误"})
