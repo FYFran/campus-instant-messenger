@@ -67,10 +67,10 @@
   "试金石": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 0,
+    "bugs": 3,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "L1 only. Bugset NOT created — M01-M08 planned but no desc.md+truth.md files. Only tested indirectly via 缉凶 bugs."
+    "notes": "L1 only. M01/M02/M03 exist (T1+T3 bugs for test-generation validation). L2 baseline pending — needs test-gen scoring rubric."
   },
   "_cna_methodology": {
     "formula": "CNA = score / (tokens / 1000) = 千token产出分",
