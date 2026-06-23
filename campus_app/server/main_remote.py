@@ -714,7 +714,7 @@ def _can_manage_act(act: dict, user: dict) -> bool:
         uc = user.get("college","")
         sv = act.get("scope_value","")
         if act.get("scope_type") == "all": return True
-        if sv and uc in sv.split(","): return True
+        if sv and uc and uc in [s.strip() for s in sv.split(",") if s.strip()]: return True
     return False
 
 @app.put("/api/activities/{activity_id}")
@@ -1985,7 +1985,9 @@ async def _validate_gps_range(activity_id: int, lat: float | None, lng: float | 
         d = _haversine_m(lat, lng, float(act["latitude"]), float(act["longitude"]))
         if d > 50:
             return f"超出签到范围（需在50米以内，当前{d:.0f}米）"
-    return None
+        return None  # GPS check passed
+    # Fail-closed: activity has no GPS coords -> deny (破阵 finding)
+    return "该活动未配置签到位置，请使用二维码签到"
 
 @app.post("/api/activities/{activity_id}/checkin-qr")
 async def generate_checkin_qr(activity_id: int, request: Request, user: dict = require_role("teacher", "publisher", "college_admin", "school_admin")):
