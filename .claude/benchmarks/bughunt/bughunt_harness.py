@@ -32,11 +32,11 @@ BUGSET_PATTERN = re.compile(r"^(B|S|C|D|Q|R|M|T|G)\d{2}$")  # Multi-skill: 缉�
 # Skill → bug prefix mapping
 SKILL_PREFIX = {
     "缉凶": "B", "铁壁": "S", "明镜": "C", "布阵": "D",
-    "门神": "Q", "破阵": "R", "试金石": "T", "元": "M",
+    "门神": "Q", "破阵": "R", "试金石": "M", "火眼": "G",
     # English aliases
     "bughunt": "B", "security": "S", "code-review": "C",
     "deploy": "D", "quality-gate": "Q", "red-team": "R",
-    "testing": "T", "meta": "M",
+    "testing": "M", "meta": "M", "gap": "G",
 }
 
 # --- Data Classes ---

@@ -94,8 +94,19 @@ if should_check():
                     except Exception:
                         pass
                 elif "STABLE" in output:
-                    # All good, silent pass
-                    pass
+                    # L0+L1 stable — now check L2 benchmark drift
+                    try:
+                        auto_bm = "f:/ClaudeFiles/.claude/scripts/auto_benchmark.py"
+                        bm_result = subprocess.run(
+                            ["python", auto_bm, "--skill", skill_name, "--max-drift", "5.0"],
+                            capture_output=True, text=True, timeout=60,
+                            encoding='utf-8', errors='replace'
+                        )
+                        if "DRIFT_DOWN" in bm_result.stdout:
+                            print(f"⚠️ 飞轮 L2: 基准分数漂移!")
+                            print(f"  {bm_result.stdout[-300:]}")
+                    except Exception:
+                        pass  # L2 check is best-effort, don't block
         except Exception as e:
             print(f"  Drift check skipped (error): {e}")
 
