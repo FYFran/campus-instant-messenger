@@ -13,7 +13,7 @@ export const meta = {
 const ALL_BUGS = [
     {id:'B01',d:'campus_go 活动列表 API /api/activities 在数据库为空时返回 500 错误。有活动时正常。curl http://139.196.50.134/api/activities → 500',t:'T0',l:'Go'},
     {id:'B02',d:'campus_go 活动报名接口偶尔出现同一学生报了两次名。正常逻辑应阻止重复报名，偶发同一个人同一活动出现两条记录。约每20-30次一次。',t:'T1',l:'Go'},
-    {id:'B03',d:'campus_go 中 college_admin 有时能看到并操作其他学院的活动。权限设计是只管自己学院，偶尔跨学院操作成功。跟学院名包含特殊字符或部分匹配有关。',t:'T2',l:'Go'},
+    {id:'B03',d:'campus_go 中 college_admin 用户能看到并操作其他学院的活动。权限设计是只管自己学院，但活动列表 API /api/activities 对所有 college_admin 返回了全校所有学院的活动。每次必现。',t:'T0',l:'Go'},
     {id:'B04',d:'campus_go 学生志愿时长统计页面总时长偶尔比实际短。没报错没crash，数字不对。学生反映签了10小时只显示7小时。',t:'T3',l:'Python'},
     {id:'B05',d:'campus_go JWT token 刷新 /api/token/refresh 昨天能用今天全401。代码没改，服务器重启过。',t:'T4',l:'Go'},
     {id:'B06',d:'campus_go 活动报名后状态一直pending不会变confirmed。审批流程是自动的(不需人工审核)。学生等2小时状态没变。',t:'T5',l:'Go'},
@@ -26,7 +26,7 @@ const ALL_BUGS = [
 const GT = {
     B01:{t:'T0',f:'activities.go',fn:'ListActivities',kw:'nil deref empty rows.Err rows.Scan null pointer panic 500 crash'.split(' ')},
     B02:{t:'T1',f:'activities.go',fn:'Signup',kw:'SELECT INSERT race concurrent duplicate UNIQUE ON CONFLICT FOR UPDATE TOCTOU window'.split(' ')},
-    B03:{t:'T2',f:'activities_admin.go',fn:'ApproveActivity',kw:'strings.Contains college scope partial match comma split substring permission auth'.split(' ')},
+    B03:{t:'T0',f:'activities.go',fn:'ListActivities',kw:'ListActivities SQL WHERE missing college filter role c.GetString scope_type isolated handler regression'.split(' ')},
     B04:{t:'T3',f:'main.py',fn:'certificates',kw:'int round FLOAT duration truncat silent data loss sum certificate hour minute'.split(' ')},
     B05:{t:'T4',f:'nginx-campus.conf',fn:'proxy_pass',kw:'nginx proxy_pass port 9500 9501 restart config revert deploy redirect'.split(' ')},
     B06:{t:'T5',f:'activities.go',fn:'Signup',kw:'first_come removed auto-select pending selected state machine stuck transition missing initialStatus'.split(' ')},
@@ -39,7 +39,7 @@ const GT = {
 function buildPrompt(bug) {
     return `BUG_ID: ${bug.id}  ← JSON必须填此值
 
-使用缉凶 skill v2.5.1 的完整合同链调查此 bug。
+使用缉凶 skill 的完整合同链调查此 bug。
 
 Bug描述: ${bug.d}
 技术栈: ${bug.l}
