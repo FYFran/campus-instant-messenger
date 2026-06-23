@@ -2,10 +2,10 @@
   "铁壁": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 4,
+    "bugs": 3,
     "timestamp": "2026-06-23T20:00:00",
     "mode": "full",
-    "notes": "0.048/千token — Phase 1.5 full audit",
+    "notes": "L2 full baseline 8.0/8. L1 ceiling: 7.5/8.",
     "cna": 0.0479,
     "tokens": 167000
   },
@@ -15,7 +15,7 @@
     "bugs": 3,
     "timestamp": "2026-06-23T20:30:00",
     "mode": "full",
-    "notes": "0.038/千token — Phase 1.5 full review",
+    "notes": "L2 full baseline 8.0/8. L1 ceiling: 8.0/8.",
     "cna": 0.0379,
     "tokens": 211000
   },
@@ -23,54 +23,54 @@
     "score": 6.1,
     "adjusted_score": "~7.0",
     "max_score": 8,
-    "bugs": 38,
+    "bugs": 35,
     "timestamp": "2026-06-23T00:00:00",
     "mode": "full",
-    "notes": "v3.1 baseline 6.1/8. GEPA audit (2026-06-23) found 2/3 lowest bugs are benchmark calibration issues (valid_alternative). Adjusted estimate ~7.0. v3.2 with Gotcha#9+RedLine#7. Re-benchmark pending.",
+    "notes": "L2 full baseline 6.1/8. v3.2 adjusted ~7.0. L1 ceiling: 8.0/8. Re-benchmark pending.",
     "cna": 0.0197,
     "tokens": 310000
   },
   "布阵": {
-    "score": 8.0,
+    "score": 7.2,
     "max_score": 8,
     "bugs": 3,
     "mode": "L1_quick",
-    "timestamp": "2026-06-23",
-    "notes": "L1 only. D01/D02/D03 bugset created 2026-06-23 — L2 baseline pending."
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 7.2/8 (format match ceiling). L2 full baseline pending."
   },
   "门神": {
-    "score": 8.0,
+    "score": 7.2,
     "max_score": 8,
     "bugs": 3,
     "mode": "L1_quick",
-    "timestamp": "2026-06-23",
-    "notes": "L1 only. Q01/Q02/Q03 bugset created 2026-06-23 — L2 baseline pending."
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 7.2/8 (format match ceiling). L2 full baseline pending."
   },
   "破阵": {
-    "score": 8.0,
+    "score": 7.2,
     "max_score": 8,
     "bugs": 3,
     "mode": "L1_quick",
-    "timestamp": "2026-06-23",
-    "notes": "L1 only. R01/R02/R03 bugset created 2026-06-23 — L2 baseline pending. CNA from manual run only.",
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 7.2/8 (format match ceiling). L2 full baseline pending. Real agent pilot: R01 agent found /api/ws JWT bypass.",
     "cna": 0.2963,
     "tokens": 27000
   },
   "火眼": {
-    "score": 8.0,
+    "score": 7.0,
     "max_score": 8,
     "bugs": 3,
     "mode": "L1_quick",
-    "timestamp": "2026-06-23",
-    "notes": "L1 only. G01/G02/G03 bugset created 2026-06-23 — L2 baseline pending."
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 7.0/8 (format match ceiling). L2 full baseline pending."
   },
   "试金石": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 3,
+    "bugs": 8,
     "mode": "L1_quick",
-    "timestamp": "2026-06-23",
-    "notes": "L1 only. M01/M02/M03 exist (T1+T3 bugs for test-generation validation). L2 baseline pending — needs test-gen scoring rubric."
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 8.0/8 (reuses 缉凶 bug types). L2 full baseline pending."
   },
   "_cna_methodology": {
     "formula": "CNA = score / (tokens / 1000) = 千token产出分",
