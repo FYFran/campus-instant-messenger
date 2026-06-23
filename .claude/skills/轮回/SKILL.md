@@ -1,5 +1,5 @@
 ---
-name: forge
+name: 轮回
 description: >-
   Skill 实验台 v0.3 — 像训练神经网络一样优化 Agent Skill。核心循环：评估→诊断→有界编辑→Lint→Spot-Check→保留/回滚。
   融合 SkillOpt (bounded edit + rejected buffer) + darwin-skill (人审检查点 + 反例黑名单) + autoresearch (编排器模式)。

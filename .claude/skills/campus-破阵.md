@@ -1,5 +1,5 @@
 ---
-name: campus-red-team
+name: campus-破阵
 description: Full adversarial exercise — 3 attacker personas, 7 phases, real exploits against campus app
 model: claude-sonnet-4-6
 tools: [Read, Grep, Glob, Bash, codegraph_search, codegraph_callers, codegraph_context, codegraph_trace]

@@ -25,6 +25,7 @@ from bughunt_harness import (
     load_bugs, parse_agent_report, score_by_rules,
     append_result, load_results, generate_summary,
     AgentReport, ScoreCard, BugSpec, RESULTS_FILE, BENCH_DIR,
+    SKILL_PREFIX,
 )
 from auto_scorer import AutoScorer
 
@@ -149,6 +150,12 @@ def main():
     parser.add_argument("--mode", default="quick",
                        choices=["quick", "full", "verify"],
                        help="CI mode (default: quick)")
+    parser.add_argument("--skill", default=None,
+                       help="Skill name (铁壁/明镜/布阵/门神/破阵/缉凶). Filters bugs by prefix.")
+    parser.add_argument("--baseline", default=None,
+                       help="Path to baseline TSV for drift detection")
+    parser.add_argument("--max-drift", type=float, default=5.0,
+                       help="Max allowed score drift percentage (default: 5%%)")
     parser.add_argument("--bugs", default="all",
                        help="Bug IDs or 'all'")
     parser.add_argument("--output", default=str(RESULTS_FILE),
@@ -229,8 +236,18 @@ def main():
     bug_ids = None if args.bugs == "all" else [b.strip() for b in args.bugs.split(",")]
     bugs = load_bugs(bug_ids)
 
+    # Filter by skill if --skill specified
+    if args.skill:
+        prefix = SKILL_PREFIX.get(args.skill)
+        if prefix:
+            bugs = [b for b in bugs if b.id.startswith(prefix)]
+            print(f"Skill filter: {args.skill} ({prefix}##) → {len(bugs)} bugs")
+        else:
+            print(f"Unknown skill: {args.skill}. Known: {list(SKILL_PREFIX.keys())}")
+            sys.exit(1)
+
     if not bugs:
-        print(f"No bugs found: {args.bugs}")
+        print(f"No bugs found: {args.bugs} (skill={args.skill})")
         sys.exit(1)
 
     print(f"BugHuntBench CI [{args.mode}] — {len(bugs)} bugs\n")
@@ -263,6 +280,43 @@ def main():
 
     print()
     print(gate.report())
+
+    # Baseline drift detection
+    if args.baseline:
+        baseline_path = Path(args.baseline)
+        if baseline_path.exists():
+            baseline_results = load_results(baseline_path)
+            if baseline_results:
+                # Compute average scores
+                curr_avg = sum(c.total for c in cards) / len(cards)
+                base_scores = {}
+                for r in baseline_results:
+                    bid = r.get("bug_id", "")
+                    base_scores[bid] = int(r.get("total", 0))
+
+                # Per-bug drift
+                drifts = []
+                for c in cards:
+                    if c.bug_id in base_scores:
+                        drift = c.total - base_scores[c.bug_id]
+                        drifts.append((c.bug_id, base_scores[c.bug_id], c.total, drift))
+
+                base_avg = sum(base_scores.values()) / len(base_scores) if base_scores else 0
+                avg_drift_pct = ((curr_avg - base_avg) / base_avg * 100) if base_avg > 0 else 0
+
+                print(f"\n=== Baseline Drift [{baseline_path.name}] ===")
+                print(f"  Baseline avg: {base_avg:.1f}  Current avg: {curr_avg:.1f}  Drift: {avg_drift_pct:+.1f}%")
+                for bid, base, curr, drift in drifts:
+                    icon = "++" if drift > 0 else ("--" if drift < 0 else "~~")
+                    print(f"  {icon} {bid}: {base}→{curr} ({drift:+d})")
+
+                if avg_drift_pct < -args.max_drift:
+                    print(f"\n  DRIFT FAIL: Score dropped {abs(avg_drift_pct):.1f}% > {args.max_drift}% threshold")
+                    passed = False
+                else:
+                    print(f"  DRIFT OK: within {args.max_drift}% threshold")
+        else:
+            print(f"\nBaseline file not found: {args.baseline}")
 
     # Summary
     summary = generate_summary(cards)

@@ -1,0 +1,66 @@
+{
+  "铁壁": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 4,
+    "timestamp": "2026-06-23T20:00:00",
+    "mode": "full",
+    "notes": "Phase 1.5 baseline. S01-S05 bugs. 20 findings, 3.5/4 bugs hit."
+  },
+  "明镜": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 3,
+    "timestamp": "2026-06-23T20:30:00",
+    "mode": "full",
+    "notes": "Phase 1.5 baseline. C01-C03 bugs. 37 findings, 3/3 bugs hit."
+  },
+  "缉凶": {
+    "score": 6.1,
+    "max_score": 8,
+    "bugs": 10,
+    "timestamp": "2026-06-23T00:00:00",
+    "mode": "full",
+    "notes": "v2.5 avg across 3 runs (76.3%). Best single: 80%. Debug skill — threshold=5."
+  },
+  "布阵": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23",
+    "notes": "Structure check only. 3 bugs verified."
+  },
+  "门神": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23",
+    "notes": "Structure check only. 3 bugs verified."
+  },
+  "破阵": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23",
+    "notes": "Structure check only. 3 bugs verified."
+  },
+  "火眼": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23",
+    "notes": "Structure check only. 3 bugs verified."
+  },
+  "试金石": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23",
+    "notes": "Structure check only. 3 bugs verified."
+  }
+}

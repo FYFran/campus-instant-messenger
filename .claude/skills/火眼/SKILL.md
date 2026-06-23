@@ -17,7 +17,7 @@ review_after: 2026-07-23
 **Iron Law：** NO GAP CLAIM WITHOUT FILE:LINE EVIDENCE. 绝不编造gap。
 **红线：** 绝不编造gap。绝不修改被审查repo源码。.gaps/不入源码。绝不在聊天暴露API key。外部模型不可用→标记unconfirmed。
 **触发：** 火眼 / gap analysis / find gaps / 差距分析 / confirm gaps / project review
-**边界：** 差距分析→火眼。安全→铁壁。Bug→缉凶。前瞻设计→架构师。代码审查→code-review。
+**边界：** 差距分析→火眼。安全→铁壁。Bug→缉凶。前瞻设计→架构师。代码审查→明镜。
 **模型：** deepseek-v4-pro。换模型→重跑BugHuntBench quick。
 
 ---
@@ -81,7 +81,7 @@ PreScan → Map → Probe → Confirm → Synthesize → Critic → Write
 2. 假阳性/假阴性有没有？
 3. 外部模型稳定性？
 4. 火眼→架构师的交叉引用有没有产生value？
-→ forge采集→确认→注入
+→ 轮回采集→确认→注入
 ```
 
 ## 验证

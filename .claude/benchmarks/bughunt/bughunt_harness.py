@@ -27,7 +27,17 @@ BUGS_DIR = BENCH_DIR / "bugs"          # v1 旧格式 (兼容)
 BUGSET_DIR = BENCH_DIR / "bugset"       # v2 新格式 (答案分离)
 RESULTS_FILE = BENCH_DIR / "results.tsv"
 BUG_PATTERN = re.compile(r"^B\d{2}_.+\.md$")
-BUGSET_PATTERN = re.compile(r"^B\d{2}$")
+BUGSET_PATTERN = re.compile(r"^(B|S|C|D|Q|R|M|T)\d{2}$")  # Multi-skill: 缉凶/铁壁/明镜/布阵/门神/破阵/元/试金石
+
+# Skill → bug prefix mapping
+SKILL_PREFIX = {
+    "缉凶": "B", "铁壁": "S", "明镜": "C", "布阵": "D",
+    "门神": "Q", "破阵": "R", "试金石": "T", "元": "M",
+    # English aliases
+    "bughunt": "B", "security": "S", "code-review": "C",
+    "deploy": "D", "quality-gate": "Q", "red-team": "R",
+    "testing": "T", "meta": "M",
+}
 
 # --- Data Classes ---
 

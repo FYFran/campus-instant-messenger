@@ -1,5 +1,5 @@
 ---
-name: campus-deploy
+name: campus-布阵
 description: Full deploy pipeline — pre-flight checks, security scan, upload, migrate, reload, smoke test, rollback
 model: claude-sonnet-4-6
 tools: [Read, Grep, Glob, Bash, Edit]

@@ -1,5 +1,5 @@
 ---
-name: campus-code-review
+name: campus-明镜
 description: 13-category pre-commit code review — auth, RBAC, input validation, SQL injection, rate limiting, race conditions, XSS
 model: claude-sonnet-4-6
 tools: [Read, Grep, Glob, codegraph_search, codegraph_callers, codegraph_context, codegraph_explore]

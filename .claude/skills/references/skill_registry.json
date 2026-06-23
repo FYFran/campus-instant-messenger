@@ -1,0 +1,301 @@
+{
+  "version": "1.0",
+  "updated": "2026-06-23",
+  "skills": {
+    "铁壁": {
+      "version": "2.1",
+      "file": "铁壁.md",
+      "tier": "core",
+      "created": "2026-06-21",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L4",
+      "baseline_score": 8.0,
+      "bug_prefix": "S",
+      "depends_on": [
+        "试金石",
+        "轮回"
+      ],
+      "depended_by": [
+        "明镜",
+        "破阵",
+        "门神",
+        "布阵",
+        "轮回"
+      ],
+      "output_schema": "findings",
+      "lifecycle": "active"
+    },
+    "缉凶": {
+      "version": "3.1",
+      "file": "缉凶.md",
+      "tier": "core",
+      "created": "2026-06-21",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L4",
+      "baseline_score": 6.4,
+      "bug_prefix": "B",
+      "depends_on": [
+        "天眼",
+        "轮回"
+      ],
+      "depended_by": [
+        "轮回",
+        "明镜",
+        "门神"
+      ],
+      "output_schema": "root_cause",
+      "lifecycle": "active"
+    },
+    "明镜": {
+      "version": "2.1",
+      "file": "明镜.md",
+      "tier": "core",
+      "created": "2026-06-21",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L4",
+      "baseline_score": 8.0,
+      "bug_prefix": "C",
+      "depends_on": [
+        "铁壁",
+        "架构师",
+        "轮回"
+      ],
+      "depended_by": [
+        "试金石",
+        "门神",
+        "轮回"
+      ],
+      "output_schema": "review_ok",
+      "lifecycle": "active"
+    },
+    "布阵": {
+      "version": "3.0",
+      "file": "布阵.md",
+      "tier": "core",
+      "created": "2026-06-21",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L4",
+      "baseline_score": null,
+      "bug_prefix": "D",
+      "depends_on": [
+        "门神",
+        "铁壁"
+      ],
+      "depended_by": [
+        "天眼"
+      ],
+      "output_schema": "deployed",
+      "lifecycle": "active"
+    },
+    "门神": {
+      "version": "2.1",
+      "file": "门神.md",
+      "tier": "core",
+      "created": "2026-06-21",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L3",
+      "baseline_score": null,
+      "bug_prefix": "Q",
+      "depends_on": [
+        "铁壁",
+        "明镜",
+        "破阵"
+      ],
+      "depended_by": [
+        "布阵"
+      ],
+      "output_schema": "gate_ok",
+      "lifecycle": "active"
+    },
+    "破阵": {
+      "version": "2.1",
+      "file": "破阵.md",
+      "tier": "core",
+      "created": "2026-06-21",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L3",
+      "baseline_score": null,
+      "bug_prefix": "R",
+      "depends_on": [
+        "铁壁"
+      ],
+      "depended_by": [
+        "门神",
+        "布阵"
+      ],
+      "output_schema": "attack_report",
+      "lifecycle": "active"
+    },
+    "天眼": {
+      "version": "1.0",
+      "file": "天眼.md",
+      "tier": "support",
+      "created": "2026-06-23",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L3",
+      "baseline_score": null,
+      "bug_prefix": null,
+      "depends_on": [
+        "布阵"
+      ],
+      "depended_by": [
+        "缉凶"
+      ],
+      "output_schema": "alert",
+      "lifecycle": "active"
+    },
+    "架构师": {
+      "version": "1.0",
+      "file": "架构师.md",
+      "tier": "support",
+      "created": "2026-06-23",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L3",
+      "baseline_score": null,
+      "bug_prefix": null,
+      "depends_on": [
+        "火眼"
+      ],
+      "depended_by": [
+        "明镜"
+      ],
+      "output_schema": "adr_output",
+      "lifecycle": "active"
+    },
+    "试金石": {
+      "version": "1.0",
+      "file": "试金石.md",
+      "tier": "support",
+      "created": "2026-06-23",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L3",
+      "baseline_score": null,
+      "bug_prefix": "T",
+      "depends_on": [
+        "明镜"
+      ],
+      "depended_by": [
+        "铁壁"
+      ],
+      "output_schema": "test_ok",
+      "lifecycle": "active"
+    },
+    "火眼": {
+      "version": "1.1",
+      "file": "火眼/SKILL.md",
+      "tier": "meta",
+      "created": "2026-06-23",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L3",
+      "baseline_score": null,
+      "bug_prefix": "G",
+      "depends_on": [],
+      "depended_by": [
+        "架构师"
+      ],
+      "output_schema": "gap_report",
+      "lifecycle": "active"
+    },
+    "轮回": {
+      "version": "1.1",
+      "file": "轮回.md",
+      "tier": "meta",
+      "created": "2026-06-21",
+      "updated": "2026-06-23",
+      "review_after": "2026-07-23",
+      "maturity": "L3",
+      "baseline_score": null,
+      "bug_prefix": null,
+      "depends_on": [
+        "缉凶",
+        "铁壁",
+        "明镜"
+      ],
+      "depended_by": [
+        "铁壁",
+        "明镜",
+        "缉凶"
+      ],
+      "output_schema": "skill_updated",
+      "lifecycle": "active"
+    }
+  },
+  "tiers": {
+    "core": {
+      "description": "每次变更触发",
+      "skills": [
+        "铁壁",
+        "缉凶",
+        "明镜",
+        "布阵",
+        "门神",
+        "破阵"
+      ]
+    },
+    "support": {
+      "description": "按需触发",
+      "skills": [
+        "天眼",
+        "架构师",
+        "试金石"
+      ]
+    },
+    "meta": {
+      "description": "系统进化用",
+      "skills": [
+        "火眼",
+        "轮回"
+      ]
+    }
+  },
+  "compatibility_rules": {
+    "output_break": "如果上游skill修改了output_schema→下游skill必须验证兼容性",
+    "deprecation": "退役前30天标记lifecycle=deprecated→下游skill迁移→删除",
+    "upgrade_policy": "小版本(auto) 大版本(人工确认) 主版本(ADR+双baseline对比)"
+  },
+  "pantheon_variants": {
+    "pantheon-custom": {
+      "file": "pantheon-custom.md",
+      "description": "高强度改动——3变体并行+对抗验证"
+    },
+    "pantheon-gap-custom": {
+      "file": "pantheon-gap-custom.md",
+      "description": "火眼Pantheon强化版"
+    }
+  },
+  "campus_variants": {
+    "campus-明镜": {
+      "file": "campus-明镜.md",
+      "model": "claude-sonnet-4-6"
+    },
+    "campus-布阵": {
+      "file": "campus-布阵.md",
+      "model": "claude-sonnet-4-6"
+    },
+    "campus-门神": {
+      "file": "campus-门神.md",
+      "model": "claude-sonnet-4-6"
+    },
+    "campus-破阵": {
+      "file": "campus-破阵.md",
+      "model": "claude-sonnet-4-6"
+    }
+  },
+  "archived": [
+    "pantheon",
+    "pantheon-x",
+    "pantheon-gap",
+    "pantheon-gap-x",
+    "pantheon-model"
+  ]
+}

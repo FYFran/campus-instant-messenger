@@ -1,5 +1,5 @@
 ---
-name: campus-quality-gate
+name: campus-门神
 description: Pre-commit/pre-deploy quality gate — flutter analyze, campus_check, go build, Python syntax, gitleaks, semgrep, multi-agent consensus, quality score
 model: claude-sonnet-4-6
 tools: [Read, Grep, Glob, Bash, codegraph_search, codegraph_callers, codegraph_context, codegraph_explore]
