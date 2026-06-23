@@ -21,55 +21,56 @@
   },
   "缉凶": {
     "score": 6.1,
+    "adjusted_score": "~7.0",
     "max_score": 8,
-    "bugs": 10,
+    "bugs": 38,
     "timestamp": "2026-06-23T00:00:00",
     "mode": "full",
-    "notes": "0.020/千token — v2.5 avg 3 runs, debug inherently expensive",
+    "notes": "v3.1 baseline 6.1/8. GEPA audit (2026-06-23) found 2/3 lowest bugs are benchmark calibration issues (valid_alternative). Adjusted estimate ~7.0. v3.2 with Gotcha#9+RedLine#7. Re-benchmark pending.",
     "cna": 0.0197,
     "tokens": 310000
   },
   "布阵": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 3,
+    "bugs": 0,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "Structure check only. 3 bugs verified."
+    "notes": "L1 only. Bugset NOT created — D01/D02/D03 planned but no desc.md+truth.md files."
   },
   "门神": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 3,
+    "bugs": 0,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "Structure check only. 3 bugs verified."
+    "notes": "L1 only. Bugset NOT created — Q01/Q02/Q03 planned but no desc.md+truth.md files."
   },
   "破阵": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 3,
+    "bugs": 0,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "0.296/千token — AV-6发现(部署引入的新漏洞), ROI极高",
+    "notes": "L1 only. Bugset NOT created — R01/R02/R03 planned but no desc.md+truth.md files. CNA from manual run only.",
     "cna": 0.2963,
     "tokens": 27000
   },
   "火眼": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 3,
+    "bugs": 0,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "Structure check only. 3 bugs verified."
+    "notes": "L1 only. Bugset NOT created — G01/G02/G03 planned but no desc.md+truth.md files."
   },
   "试金石": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 3,
+    "bugs": 0,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "Structure check only. 3 bugs verified."
+    "notes": "L1 only. Bugset NOT created — M01-M08 planned but no desc.md+truth.md files. Only tested indirectly via 缉凶 bugs."
   },
   "_cna_methodology": {
     "formula": "CNA = score / (tokens / 1000) = 千token产出分",
