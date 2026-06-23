@@ -1,28 +1,37 @@
 # R01 — Ground Truth
 
-**Type:** R0 — 认证绕过（Missing JWT middleware on sensitive endpoint）
+**Type:** R0 — 认证绕过（WebSocket endpoint outside JWT group）
 
-**根因:** `campus_go/main.go` 路由注册中 `/api/admin/stats` 端点被注册在公共路由组（无需JWT），而非 admin 保护路由组。JWT 中间件只在 `/api/*` 路由组内生效，但 `/api/admin/stats` 被错误地注册在外部。
+**根因:** `campus_go/main.go` 第 71 行，`/api/ws` WebSocket 端点被注册在公开的 `api` 路由组中，而非 JWT 保护的 `protected` 组。任何知道服务器地址的人都可以建立未经认证的 WebSocket 连接。
 
-**正确发现路径:**
-1. 读取 `main.go` 路由注册，识别 admin/stats 的路由组归属
-2. 用 curl 无 Authorization header 访问 `/api/admin/stats`
-3. 成功返回敏感统计数据（用户数、活动数、签到统计）
-4. 对比其他 admin 端点（如 `/api/admin/approvals`）需要 JWT token
+```go
+// main.go:71 — 在 JWT 保护组外部
+api.GET("/ws", handlers.HandleWS)
+```
+
+对比：所有其他用户数据端点（`/api/my-stats`, `/api/college/dashboard`, `/api/school/dashboard`）都在 `protected` 组内，有 `JWT()` + `RateLimit()` 双重保护。
+
+**次要发现（bonus points）：**
+- Go backend 缺少 JSON 404 handler — 暴露 Gin 默认 HTML 404
+- `/api/token/refresh` 在公开组但设计合理（refresh_token 自身是凭证）
 
 **利用证明:**
 ```bash
-# 无认证访问成功
-curl http://139.196.50.134/api/admin/stats → 200 + JSON 数据
-# 对比：受保护的管理端点
-curl http://139.196.50.134/api/admin/approvals → 401 Unauthorized
+# WebSocket 连接无需认证
+curl -i -N \
+  -H "Connection: Upgrade" \
+  -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  http://139.196.50.134/api/ws
+# → 101 Switching Protocols (无需 Authorization header)
 ```
 
 **评分要点:**
 - 漏洞分类: R0 认证绕过 (1pt)
-- 利用路径: 无认证 curl → 200 + 敏感数据 (1pt)
-- 根因: 路由注册错误 — admin/stats 在公共路由组 (2pt)
-- 攻击链: 信息泄露 → 可枚举用户 → 下一步攻击 (1pt)
-- 修复: 将 admin/stats 移入 JWT 保护路由组 (1pt)
-- 防御建议: 审计所有管理端点路由注册 + 添加自动化测试 (1pt)
+- 利用路径: 无认证 ws 连接 → 可能推送未授权消息 (1pt)
+- 根因: main.go:71 ws 路由在公开 api 组 (2pt)
+- 攻击链: 匿名WS连接 → 信息收集 → 结合其他漏洞 (1pt)
+- 修复: 将 /api/ws 移入 protected 组 或在 HandleWS 内加 token 验证 (1pt)
+- 防御建议: 审计所有路由注册，每个端点明确标注认证需求 (1pt)
 - 链完整 (1pt)
