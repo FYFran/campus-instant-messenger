@@ -14,8 +14,8 @@
     "max_score": 8,
     "bugs": 3,
     "timestamp": "2026-06-23T20:30:00",
-    "mode": "full",
-    "notes": "L2 full baseline 8.0/8. L1 ceiling: 8.0/8.",
+    "mode": "L1_quick",
+    "notes": "C01-C03 bugset created 2026-06-23. L2 baseline pending.",
     "cna": 0.0379,
     "tokens": 211000
   },
