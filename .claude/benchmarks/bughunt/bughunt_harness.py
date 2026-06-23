@@ -83,24 +83,25 @@ class AgentReport:
 class ScoreCard:
     """Per-bug scoring result."""
     bug_id: str
-    score_classification: int = 0   # Dimension 1
-    score_chain: int = 0            # Dimension 2
-    score_evidence: int = 0         # Dimension 3
-    score_root_cause: int = 0      # Dimension 4 (0-2)
-    score_cf: int = 0              # Dimension 5
-    score_fix: int = 0             # Dimension 6
-    score_trace: int = 0           # Dimension 7
-    l3_verdict: str = "NOT_RUN"    # L3定性标注
+    score_classification: float = 0.0  # Dimension 1 (0-1, partial=0.5 for valid_alternative)
+    score_chain: int = 0              # Dimension 2
+    score_evidence: int = 0           # Dimension 3
+    score_root_cause: int = 0         # Dimension 4 (0-2)
+    score_cf: int = 0                 # Dimension 5
+    score_fix: int = 0                # Dimension 6
+    score_trace: int = 0              # Dimension 7
+    l3_verdict: str = "NOT_RUN"       # L3定性标注
+    valid_alternative: bool = False   # Agent found real bug, not injected bug (arXiv:2511.10865)
     notes: str = ""
 
     @property
-    def total(self) -> int:
+    def total(self) -> float:
         return (self.score_classification + self.score_chain +
                 self.score_evidence + self.score_root_cause +
                 self.score_cf + self.score_fix + self.score_trace)
 
     @property
-    def max_score(self) -> int:
+    def max_score(self) -> float:
         return 8  # 1+1+1+2+1+1+1
 
 
@@ -353,6 +354,9 @@ def score_by_rules(report: AgentReport, bug: BugSpec) -> ScoreCard:
             card.score_classification = 1
         else:
             card.notes += f"Type mismatch: agent={agent_type_clean} gt={gt_type}; "
+    else:
+        # Agent used non-standard type (e.g. T_AUTH, T9) — may indicate valid_alternative
+        card.notes += f"Non-std type: agent={agent_type} gt={gt_type}; "
 
     # Dimension 2: Chain completeness
     if report.chain_complete:
@@ -491,9 +495,16 @@ Agent 文件引用: {agent_report.root_cause_file_line}
 评分标准:
 - 2: 根因与 ground truth 方向一致，file:line 引用正确，因果链完整
 - 1: 方向对但细节偏差（正确函数但错误行号，或漏了次要因素）
-- 0: 根因错误或分析完全跑偏
+  OR 发现了一个 valid alternative — agent找到了真实的bug，虽非GT注入的bug，但在同一大类（如auth漏洞/data错误/竞态等），证据链完整，file:line具体
+- 0: 根因错误或分析完全跑偏（幻觉、不存在的bug、错误的因果分析）
 
-返回 JSON: {{"score": 0|1|2, "confidence": 0-100, "reasoning": "一句话", "matches_gt": true|false}}""",
+valid_alternative 判定条件（必须全部满足）:
+  a) Agent确实找到了一个真实的bug（非幻觉）
+  b) Bug类型与GT属于同一大类（如都是auth问题/都是数据错误/都是竞态）
+  c) 证据链完整（有具体的复现步骤或代码引用）
+  d) 有file:line级别的具体位置引用，非泛泛而谈
+
+返回 JSON: {{"score": 0|1|2, "confidence": 0-100, "reasoning": "一句话", "matches_gt": true|false, "valid_alternative": true|false}}""",
 
         "cf": f"""你是独立评分 agent。评估以下 bug report 的【Counterfactual 真实性】。
 

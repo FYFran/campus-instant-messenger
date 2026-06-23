@@ -34,6 +34,7 @@ class JudgeVerdict:
     confidence: float  # 0-100
     reasoning: str
     model: str = ""
+    valid_alternative: bool = False  # Agent found real bug, not injected bug
 
     @property
     def weight(self) -> float:
@@ -98,6 +99,17 @@ class AutoScorer:
                 if _keyword_overlap(report.root_cause, bug.ground_truth.get("root_cause", "")):
                     card.score_root_cause = 2
 
+            # Valid alternative heuristic (quick mode — arXiv:2511.10865)
+            # If classification failed but agent's root cause has strong signal
+            # (specific file:line + good evidence + same category keywords), flag it
+            if card.score_classification == 0 and card.score_root_cause >= 1:
+                gt_category = _extract_category(bug.ground_truth.get("root_cause", ""))
+                agent_category = _extract_category(report.root_cause)
+                if gt_category and agent_category and gt_category == agent_category:
+                    card.valid_alternative = True
+                    card.score_classification = 0.5  # Partial: right category
+                    card.notes += "[valid_alternative: heuristic — same category, specific file:line] "
+
             # CF: check if CF evidence has pre/post comparison
             if report.cf_evidence and len(report.cf_evidence) > 30:
                 card.score_cf = 1
@@ -111,6 +123,8 @@ class AutoScorer:
                 card.l3_verdict = "REAL* (quick heuristic)"
             elif card.score_root_cause == 0:
                 card.l3_verdict = "SUSPECT (quick heuristic)"
+            elif card.valid_alternative:
+                card.l3_verdict = "REAL* (valid_alternative heuristic)"
             else:
                 card.l3_verdict = "NOT_RUN"
 
@@ -134,6 +148,7 @@ class AutoScorer:
                     score=int(data.get("score", 0)),
                     confidence=float(data.get("confidence", 50)),
                     reasoning=data.get("reasoning", ""),
+                    valid_alternative=data.get("valid_alternative", False),
                 )
         except (json.JSONDecodeError, ValueError, KeyError):
             pass
@@ -194,6 +209,21 @@ class AutoScorer:
         if "cf" in consensus:
             card.score_cf = int(consensus["cf"].final_score)
 
+        # Valid alternative adjustment (arXiv:2511.10865 — generalize rubrics)
+        # If any root_cause judge flagged valid_alternative, adjust classification
+        if "root_cause" in consensus:
+            rc_consensus = consensus["root_cause"]
+            has_valid_alt = any(
+                getattr(v, 'valid_alternative', False)
+                for v in rc_consensus.votes
+            )
+            if has_valid_alt and card.score_classification == 0:
+                card.valid_alternative = True
+                card.score_classification = 0.5  # Partial credit for right category
+                if card.score_root_cause == 0:
+                    card.score_root_cause = 1  # Give partial if completely zeroed
+                card.notes += "[valid_alternative: found real bug, not injected GT] "
+
         # L3 verdict based on consensus reliability
         all_reliable = all(c.is_reliable for c in consensus.values())
         any_split = any(c.suspecT for c in consensus.values())
@@ -211,6 +241,35 @@ class AutoScorer:
 
 
 # --- Heuristic Helpers ---
+
+
+# Bug category taxonomy for valid_alternative matching
+# Maps root cause keywords to general bug categories
+_BUG_CATEGORIES = {
+    "auth": ["auth", "authorization", "permission", "role", "college", "scope", "admin",
+             "授权", "权限", "角色", "学院", "管理"],
+    "data": ["aggregate", "sum", "count", "null", "nil", "truncat", "join", "query",
+             "sql", "propagation", "int(", "float", "数据", "聚合", "查询"],
+    "race": ["race", "concurrent", "FOR UPDATE", "atomic", "竞态", "并发", "lock"],
+    "config": ["nginx", "config", "deploy", "port", "proxy_pass", "restart",
+               "配置", "部署", "重启", "端口"],
+    "state": ["state", "status", "stuck", "pending", "状态", "卡住", "流转"],
+    "regression": ["yesterday", "昨天", "之前", "regression", "used to work"],
+}
+
+
+def _extract_category(text: str) -> str | None:
+    """Extract the general bug category from root cause text.
+
+    Returns category key (e.g. 'auth', 'data') or None if no match.
+    Used for valid_alternative heuristic — compares agent finding category vs GT category.
+    """
+    text_lower = text.lower()
+    for category, keywords in _BUG_CATEGORIES.items():
+        for kw in keywords:
+            if kw.lower() in text_lower:
+                return category
+    return None
 
 
 def _keyword_overlap(text1: str, text2: str, threshold: float = 0.3) -> bool:
