@@ -8,9 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 	"strconv"
 	"strings"
 	"time"

@@ -12,8 +12,14 @@ import (
 )
 
 func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
+	if db == nil {
+		return func(c *gin.Context) {
+			c.JSON(500, gin.H{"detail": "服务器配置错误"})
+		}
+	}
 	return func(c *gin.Context) {
 		userID := c.GetInt("user_id")
+		role := c.GetString("role")
 
 		page := 1
 		limit := 20
@@ -27,15 +33,17 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
 
 		rows, err := db.Query(c.Request.Context(),
 			`SELECT a.id, a.title, a.description, a.status, a.reward_type, a.signup_mode,
-			 a.max_participants, (SELECT COUNT(*) FROM signups WHERE activity_id=a.id),
-			 a.hours, a.activity_date, a.deadline, a.location,
-			 a.scope_type, a.scope_value, COALESCE(u.name,'') as creator_name,
-			 a.created_at, a.gender_limit, COALESCE(a.signup_start,''),
-			 COALESCE(a.contact_qq,''), COALESCE(a.contact_phone,''), COALESCE(a.qq_group,''),
-			 COALESCE(a.creator_override,'') as creator_override,
-			 EXISTS(SELECT 1 FROM signups WHERE activity_id=a.id AND user_id=$1) as signed_up
-			 FROM activities a LEFT JOIN users u ON a.created_by=u.id
-			 WHERE a.status != 'draft' ORDER BY a.created_at DESC LIMIT $2 OFFSET $3`, userID, limit, offset)
+				 a.max_participants, (SELECT COUNT(*) FROM signups WHERE activity_id=a.id),
+				 a.hours, a.activity_date, a.deadline, a.location,
+				 a.scope_type, a.scope_value, COALESCE(u.name,'') as creator_name,
+				 a.created_at, a.gender_limit, COALESCE(a.signup_start,''),
+				 COALESCE(a.contact_qq,''), COALESCE(a.contact_phone,''), COALESCE(a.qq_group,''),
+				 COALESCE(a.creator_override,'') as creator_override,
+				 EXISTS(SELECT 1 FROM signups WHERE activity_id=a.id AND user_id=$1) as signed_up
+				 FROM activities a LEFT JOIN users u ON a.created_by=u.id
+				 WHERE a.status != 'draft'
+				   AND ($4 != 'college_admin' OR a.scope_type = 'all' OR a.college = (SELECT college FROM users WHERE id=$1))
+				 ORDER BY a.created_at DESC LIMIT $2 OFFSET $3`, userID, limit, offset, role)
 		if err != nil {
 			log.Printf("ListActivities query error: %v", err)
 			c.JSON(500, gin.H{"detail": "查询活动失败"})
@@ -81,30 +89,38 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
 }
 
 func GetActivity(db *pgxpool.Pool) gin.HandlerFunc {
+	if db == nil {
+		return func(c *gin.Context) {
+			c.JSON(500, gin.H{"detail": "服务器配置错误"})
+		}
+	}
 	return func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
 			c.JSON(400, gin.H{"detail": "无效的活动ID"})
 			return
 		}
+		userID := c.GetInt("user_id")
+		role := c.GetString("role")
 		var (
-			actID, maxP, signupCount                                                 int
-			hours                                                                    float64
-			title, desc, status, rewardType, signupMode, activityDate, deadline      string
-			location, scopeType, scopeVal, creatorName, creatorOverride, genderLimit string
-			createdAt                                                                time.Time
+			actID, maxP, signupCount                                                             int
+			hours                                                                                float64
+			title, desc, status, rewardType, signupMode, activityDate, deadline                  string
+			location, scopeType, scopeVal, creatorName, creatorOverride, genderLimit, actCollege string
+			createdAt                                                                            time.Time
 		)
 		err = db.QueryRow(c.Request.Context(),
 			`SELECT a.id, a.title, a.description, a.status, a.reward_type, a.signup_mode,
-			 a.max_participants, (SELECT COUNT(*) FROM signups WHERE activity_id=a.id),
-			 a.hours, a.activity_date, a.deadline, a.location,
-			 a.scope_type, a.scope_value, COALESCE(u.name,'') as creator_name,
-			 a.created_at, a.gender_limit, COALESCE(a.creator_override,'') as creator_override
-			 FROM activities a LEFT JOIN users u ON a.created_by=u.id WHERE a.id=$1`, id,
+				 a.max_participants, (SELECT COUNT(*) FROM signups WHERE activity_id=a.id),
+				 a.hours, a.activity_date, a.deadline, a.location,
+				 a.scope_type, a.scope_value, COALESCE(u.name,'') as creator_name,
+				 a.created_at, a.gender_limit, COALESCE(a.creator_override,'') as creator_override,
+				 COALESCE(a.college,'')
+				 FROM activities a LEFT JOIN users u ON a.created_by=u.id WHERE a.id=$1`, id,
 		).Scan(&actID, &title, &desc, &status, &rewardType, &signupMode,
 			&maxP, &signupCount, &hours, &activityDate, &deadline,
 			&location, &scopeType, &scopeVal, &creatorName,
-			&createdAt, &genderLimit, &creatorOverride)
+			&createdAt, &genderLimit, &creatorOverride, &actCollege)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				c.JSON(404, gin.H{"detail": "活动不存在"})
@@ -113,6 +129,15 @@ func GetActivity(db *pgxpool.Pool) gin.HandlerFunc {
 			log.Printf("GetActivity query error: %v", err)
 			c.JSON(500, gin.H{"detail": "查询活动失败"})
 			return
+		}
+		// Scope isolation: internal/college-scoped activities restricted (破阵 finding)
+		if role != "school_admin" && scopeType == "college" {
+			var userCollege string
+			db.QueryRow(c.Request.Context(), "SELECT COALESCE(college,'') FROM users WHERE id=$1", userID).Scan(&userCollege)
+			if userCollege == "" || userCollege != actCollege {
+				c.JSON(403, gin.H{"detail": "无权访问此活动"})
+				return
+			}
 		}
 		c.JSON(200, gin.H{
 			"id": actID, "title": title, "description": desc, "status": status,
@@ -127,6 +152,11 @@ func GetActivity(db *pgxpool.Pool) gin.HandlerFunc {
 }
 
 func Signup(db *pgxpool.Pool) gin.HandlerFunc {
+	if db == nil {
+		return func(c *gin.Context) {
+			c.JSON(500, gin.H{"detail": "服务器配置错误"})
+		}
+	}
 	return func(c *gin.Context) {
 		userID := c.GetInt("user_id")
 		actID, err := strconv.Atoi(c.Param("id"))
@@ -148,8 +178,8 @@ func Signup(db *pgxpool.Pool) gin.HandlerFunc {
 		var maxP, cnt int
 		err = tx.QueryRow(c.Request.Context(),
 			`SELECT COALESCE(deadline,''), COALESCE(signup_start,''), status, signup_mode, max_participants,
-			 (SELECT COUNT(*) FROM signups WHERE activity_id=$1)
-			 FROM activities WHERE id=$1 FOR UPDATE`, actID,
+				 (SELECT COUNT(*) FROM signups WHERE activity_id=$1)
+				 FROM activities WHERE id=$1 FOR UPDATE`, actID,
 		).Scan(&deadlineStr, &signupStartStr, &status, &signupMode, &maxP, &cnt)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -190,6 +220,26 @@ func Signup(db *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 
+		// B02v2: After FOR UPDATE lock is acquired, re-check the count with a FRESH snapshot.
+		// In PostgreSQL READ COMMITTED, the FOR UPDATE subquery COUNT(*) was evaluated from
+		// the statement's original snapshot, which may be stale if another concurrent
+		// transaction committed between the snapshot and lock acquisition. A new statement
+		// here gets the latest committed count, preventing over-capacity.
+		if signupMode == "first_come" && maxP > 0 {
+			var freshCount int
+			if err := tx.QueryRow(c.Request.Context(),
+				"SELECT COUNT(*) FROM signups WHERE activity_id=$1", actID,
+			).Scan(&freshCount); err != nil {
+				log.Printf("Signup recount error: %v", err)
+				c.JSON(500, gin.H{"detail": "服务器错误"})
+				return
+			}
+			if freshCount >= maxP {
+				c.JSON(400, gin.H{"detail": "名额已满"})
+				return
+			}
+		}
+
 		initialStatus := "pending"
 		if signupMode == "first_come" {
 			initialStatus = "selected"
@@ -219,6 +269,11 @@ func Signup(db *pgxpool.Pool) gin.HandlerFunc {
 }
 
 func CancelSignup(db *pgxpool.Pool) gin.HandlerFunc {
+	if db == nil {
+		return func(c *gin.Context) {
+			c.JSON(500, gin.H{"detail": "服务器配置错误"})
+		}
+	}
 	return func(c *gin.Context) {
 		userID := c.GetInt("user_id")
 		actID, err := strconv.Atoi(c.Param("id"))
@@ -233,7 +288,7 @@ func CancelSignup(db *pgxpool.Pool) gin.HandlerFunc {
 		var lotteryDrawnAt *time.Time
 		err = db.QueryRow(c.Request.Context(),
 			`SELECT a.signup_mode, a.status, COALESCE(a.deadline,''), COALESCE(a.cancel_policy='lock',false), a.lottery_drawn_at, s.status
-			 FROM activities a JOIN signups s ON s.activity_id=a.id AND s.user_id=$2 WHERE a.id=$1`,
+				 FROM activities a JOIN signups s ON s.activity_id=a.id AND s.user_id=$2 WHERE a.id=$1`,
 			actID, userID,
 		).Scan(&signupMode, &actStatus, &deadline, &cancelDeadlineLock, &lotteryDrawnAt, &signupStatus)
 		if err != nil {
