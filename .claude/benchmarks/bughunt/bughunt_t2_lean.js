@@ -45,7 +45,9 @@ Bug描述: ${bug.d}
 技术栈: ${bug.l}
 
 严格按 skill 的合同链执行: [分类]→[证据]→[追踪]→[分析]→[修复]→[验证]→[记录]
-遵循所有 Red Lines、致命误判表 F1-F6、决策流、Gotchas、T4 强制配置检查。
+严格按 skill 的合同链执行: [分类]→[证据]→[追踪]→[分析]→[修复]→[验证]→[记录]→[成长]
+遵循所有 Red Lines、致命误判表 F1-F8、决策流、Gotchas、T4 强制配置检查。
+⚠ classification字段必须以 "Type: T[0-7] " 开头(正则 ^Type: T[0-7] .+)，不匹配→分类无效。
 
 返回JSON: {bug_id,classification,classification_reason,evidence,trace,root_cause,root_cause_file_line,cf_evidence,fix_description,confidence,latent_issues}`
 }
@@ -124,7 +126,7 @@ function makeScores() {
         const r = results[BUGS.indexOf(b)]
         if (!r||!r.root_cause) return {bug_id:b.id,gt_type:GT[b.id].t,agent_type:'?',total:0,c1:0,c2:0,c3:0,c4:0,c5:0,c6:0,c7:0,l3:'WRONG'}
         const g=GT[b.id]; const jr=judgeResults[b.id]||null
-        const at=(r.classification||'').trim().substring(0,2)
+        const at_match = (r.classification||'').match(/T[0-7]/); const at = at_match ? at_match[0] : (r.classification||'').trim().substring(0,2)
         const hasFileLine = !!(r.root_cause_file_line)
         const c1=at===g.t?1:0
         const c2=(r.evidence&&r.trace&&r.root_cause&&r.cf_evidence&&r.fix_description)?1:0
