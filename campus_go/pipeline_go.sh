@@ -80,34 +80,18 @@ s3_lint() {
     if [ -x "$gci" ] || command -v golangci-lint &>/dev/null; then
         local runner="${gci}"
         command -v golangci-lint &>/dev/null && runner="golangci-lint"
-        local out
-        out=$("$runner" run --timeout=60s --go=1.25 ./... 2>&1) || true
-        if echo "$out" | grep -q 'can.*load config.*language version'; then
-            warn "golangci-lint" "go1.25 not supported yet — trying fallback with --go=1.24"
-            # Fallback 1: try with go=1.24
-            local fallback_out
-            fallback_out=$("$runner" run --timeout=60s --go=1.24 ./... 2>&1) || true
-            if echo "$fallback_out" | grep -qE '\.go:[0-9]+:'; then
-                local issues=$(echo "$fallback_out" | grep -cE '\.go:[0-9]+:' 2>/dev/null || echo 0)
-                warn "golangci-lint --go=1.24 ($issues issues)" "review recommended"
-            elif [ "${PIPESTATUS[0]:-0}" -eq 0 ] 2>/dev/null; then
+        # Try go1.25 first; fallback to go1.24 if config parser fails
+        if "$runner" run --timeout=3m --go=1.25 ./... 2>/dev/null; then
+            check "golangci-lint" 0
+        elif "$runner" run --timeout=3m --go=1.25 ./... 2>&1 | grep -q 'can.*load config.*language version'; then
+            # Go 1.25 not supported — fallback to 1.24
+            if "$runner" run --timeout=3m --go=1.24 ./... 2>/dev/null; then
                 check "golangci-lint --go=1.24" 0
             else
-                # Fallback 2: run go vet -vettool instead
-                dim "  golangci-lint fallback: trying go vet -vettool..."
-                local vet_out
-                if vet_out=$(go vet -vettool="$(which vet 2>/dev/null || echo '')" ./... 2>&1); then
-                    check "go vet (golangci-lint fallback)" 0
-                else
-                    local vet_issues=$(echo "$vet_out" | grep -cE '\.go:[0-9]+:' 2>/dev/null || echo 0)
-                    warn "go vet (fallback)" "$vet_issues issues"
-                fi
+                check "golangci-lint --go=1.24" 1 "review issues"
             fi
-        elif [ "${PIPESTATUS[0]:-0}" -eq 0 ] 2>/dev/null || ! echo "$out" | grep -qE '^[^[:space:]]+\.go:'; then
-            check "golangci-lint" 0
         else
-            local issues=$(echo "$out" | grep -cE '\.go:[0-9]+:' 2>/dev/null || echo 0)
-            warn "golangci-lint ($issues issues)" "review recommended"
+            check "golangci-lint" 1 "review issues"
         fi
     else
         warn "golangci-lint" "not installed — run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
