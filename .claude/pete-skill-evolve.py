@@ -125,35 +125,108 @@ def check_triggers():
         if recent_avg < overall_avg - 4:
             events.append({"ring":"R4_OVERFIT","trigger":f"Recent avg {recent_avg:.0f} vs overall {overall_avg:.0f} (gap={overall_avg-recent_avg:.0f}pp)","action":"Re-select hold-out + GEPA diversity optimization","auto":True})
 
-    # R5: Regression — summary: last 3-run avg below baseline
+    # R5: Regression — same-version 3-run avg below baseline
+    # Only fires when ALL 3 runs are skill condition AND same version
     if len(summary) >= 3:
-        recent_3 = [int(r["score"]) for r in summary[-3:]]
-        avg3 = sum(recent_3) / len(recent_3)
-        if avg3 < BASELINE_SCORE - 4:
-            events.append({"ring":"R5_REGRESSION","trigger":f"3-run avg {avg3:.0f} < baseline {BASELINE_SCORE} (gap={BASELINE_SCORE-avg3:.0f}pp)","action":"GEPA analyze -> fix skill -> verify","auto":True})
+        recent_3 = summary[-3:]
+        # All must be same version + skill condition
+        versions = set(r.get("skill_version","") for r in recent_3)
+        conditions = set(r.get("condition","") for r in recent_3)
+        if len(versions) == 1 and conditions == {"skill"}:
+            scores = [int(r["score"]) for r in recent_3]
+            avg3 = sum(scores) / len(scores)
+            if avg3 < BASELINE_SCORE - 4:
+                ver = list(versions)[0]
+                events.append({"ring":"R5_REGRESSION","trigger":f"{ver}: 3-run avg {avg3:.0f} < baseline {BASELINE_SCORE} (gap={BASELINE_SCORE-avg3:.0f}pp)","action":f"GEPA analyze {ver} -> fix skill -> verify","auto":True})
 
     return events
 
 def evolve(auto=False):
-    """Execute triggered actions."""
+    """Execute triggered actions.
+
+    Auto triggers execute immediately. Manual triggers generate NEXT_ACTION.md.
+    """
     events = check_triggers()
 
     if not events:
         log("[OK] All clear. No triggers fired.")
-        return
+        return events
 
-    auto_count = 0
-    log(f"{len(events)} triggers:")
+    actions_taken = []
+
     for e in events:
         icon = "[AUTO]" if e["auto"] else "[MANUAL]"
         log(f"  {icon} [{e['ring']}] {e['trigger']}")
-        log(f"       → {e['action']}")
-        if auto and e["auto"]:
-            auto_count += 1
-            log(f"       [AUTO-EXEC] Would run: {e['action']}")
 
-    log(f"Auto: {auto_count}/{len(events)} | Manual: {len(events)-auto_count}")
+        if e["ring"] == "R3_BLINDSPOT" and e["auto"]:
+            # Auto: run SkillAxe → generate F-candidate
+            bug_id = e.get("bug_id", "?")
+            log(f"       → SkillAxe analyzing {bug_id}...")
+            _run_skillaxe_for_bug(bug_id)
+            actions_taken.append(f"SkillAxe: {bug_id}")
+
+        elif e["ring"] == "R5_REGRESSION" and e["auto"]:
+            # Auto: run SkillAxe full diagnosis
+            log(f"       → SkillAxe full diagnosis...")
+            _run_skillaxe_full()
+            actions_taken.append("SkillAxe: full diagnosis")
+
+        elif e["ring"] == "R4_OVERFIT" and e["auto"]:
+            log(f"       → Re-selecting hold-out + diversity check")
+            actions_taken.append("Overfit: diversity check recommended")
+
+        elif e["ring"] == "R2_RETIRE":
+            log(f"       → Auto-retire candidate. Run: just retire-{e.get('bug_id','?')}")
+            actions_taken.append(f"Retire: {e.get('bug_id','?')}")
+
+        elif e["ring"] == "R1_MINE":
+            log(f"       → Run: python growth_engine.py mine")
+            actions_taken.append("Mine: git history scanned")
+
+    # Write next action file
+    NEXT = BENCH_DIR / "NEXT_ACTION.md"
+    with open(NEXT, "w", encoding="utf-8") as f:
+        f.write(f"# Next Action — {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n")
+        f.write(f"Triggers: {len(events)} fired, {sum(1 for e in events if e['auto'])} auto\n\n")
+        for e in events:
+            f.write(f"- [{e['ring']}] {e['trigger']}\n")
+            f.write(f"  → {e['action']}\n\n")
+        if actions_taken:
+            f.write(f"\nActions taken: {', '.join(actions_taken)}\n")
+
+    log(f"Actions: {len(actions_taken)} | NEXT_ACTION.md written")
     return events
+
+
+def _run_skillaxe_for_bug(bug_id: str):
+    """Run SkillAxe diagnosis for a specific bug's blind spot."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["python", str(BENCH_DIR / "skillaxe_diagnose.py"), "--suggest"],
+            capture_output=True, text=True, timeout=30, cwd=str(BENCH_DIR.parent.parent)
+        )
+        # Log output
+        for line in result.stdout.strip().split("\n"):
+            if "F" in line and ":" in line:
+                log(f"  Candidate: {line.strip()}")
+    except Exception as e:
+        log(f"  SkillAxe error: {e}")
+
+
+def _run_skillaxe_full():
+    """Run full SkillAxe 4-dim diagnosis."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["python", str(BENCH_DIR / "skillaxe_diagnose.py")],
+            capture_output=True, text=True, timeout=30, cwd=str(BENCH_DIR.parent.parent)
+        )
+        for line in result.stdout.strip().split("\n"):
+            if "D" in line and ":" in line:
+                log(f"  {line.strip()}")
+    except Exception as e:
+        log(f"  SkillAxe error: {e}")
 
 def append_from_workflow(skill_ver, score, ttype, c4_hits, total_bugs=10, model="deepseek-v4", condition="skill"):
     """Called after each T2/T3 run to record result."""
