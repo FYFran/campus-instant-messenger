@@ -209,6 +209,7 @@ def suggest():
             "direction": "Review F1-F7 fatal misclassification patterns. "
                        "May need new F-rule for emerging misclassification.",
             "cost": 0.05,
+            "validate_on": ["all"],
         })
 
     # If D3 is weakest: instruction compliance
