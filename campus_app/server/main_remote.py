@@ -839,7 +839,8 @@ async def export_signups(activity_id: int, user: dict = Depends(get_current_user
     rows = await pool.fetch("SELECT s.*, u.name, u.student_id, u.class, u.college, u.phone FROM signups s JOIN users u ON s.user_id=u.id WHERE s.activity_id=$1 ORDER BY s.signed_at", activity_id)
     def _csv_escape(val):
         s = str(val or "")
-        stripped = s.lstrip()
+        import unicodedata
+        stripped = ''.join(c for c in s if not unicodedata.category(c).startswith('Z'))
         if stripped and stripped[0] in '=+-@':
             s = "'" + s
         if '"' in s or '\n' in s or '\r' in s or ',' in s:
