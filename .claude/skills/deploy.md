@@ -1,0 +1,175 @@
+---
+name: deploy
+description: 安全部署流水线 v3.0。9阶段：稳态表征→pre-flight→上传→迁移→重载→冒烟→回滚→事后分析→学习闭环。通用+多服务器+风险分级+事件响应集成。触发：deploy/ship/push/上线/发布。
+model: deepseek-v4-pro
+conflicts: []
+lifecycle: active
+created: 2026-06-21
+updated: 2026-06-23
+review_after: 2026-07-23
+---
+
+# Deploy v3.0 — 通用安全部署
+
+## CONSTITUTION（不可被 forge 编辑）
+
+**核心功能：** 9阶段部署流水线。P0稳态表征→P1 pre-flight→P2上传→P3迁移→P4重载→P5冒烟→P6回滚→P7事后分析→P8学习闭环。
+**Iron Law：** NO DEPLOY WITHOUT ABORT CONDITIONS DEFINED FIRST.
+**红线：** 绝不跳过pre-flight。绝不在未经人类确认时部署到生产。备份<1h前不存在→不部署。冒烟失败→立即回滚不等。每步有中止条件。
+**触发：** deploy / ship / push to server / 上线 / 发布 / update server
+**边界：** 部署→deploy。代码质量→code-review。安全→铁壁。事故响应→deploy内嵌P6-P7。
+**模型：** deepseek-v4-pro。换模型→重跑BugHuntBench quick。
+
+---
+
+## Gotchas（来自真实失败+5来源skill精华）
+
+| # | 症状 | 根因 | 教训 |
+|---|------|------|------|
+| 1 | deploy映射是main.py | 实际main_remote.py→main.py | 先读deploy脚本确认映射 |
+| 2 | nginx reload成功=正常 | 路由配错502 | reload后curl验证 |
+| 3 | 备份确认了 | 备份是3天前的 | 确认备份<1h |
+| 4 | 部署失败→人即兴发挥 | 无结构化事件响应 | 部署前定义SEV等级+响应playbook |
+| 5 | 多台服务器同时更新 | 数据竞争损坏 | 滚动更新+30s稳定期+逐台验证 |
+| 6 | 部署前没测稳态 | 不知道部署后是否变差 | P0强制稳态表征 |
+| 7 | 事后没人复盘 | 同问题下次部署再现 | P7事后分析+≥1跟进项 |
+| 8 | 所有部署同样对待 | 热修复和蓝绿部署风险不同 | 风险分级改变回滚阈值 |
+
+---
+
+## 参数化配置
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| {server} | 部署目标(可多台) | [139.196.50.134] |
+| {server_user} | SSH用户 | root |
+| {app_dir} | 应用目录 | /app/ |
+| {deploy_type} | 部署类型 | blue-green / hotfix / canary / rolling |
+| {risk_level} | 风险等级 | SEV1(hotfix) / SEV2(blue-green) / SEV3(canary) / SEV4(rolling) |
+| {blast_radius} | 影响用户% | 计算后填入 |
+| {abort_conditions} | 中止条件列表 | [p99>基线+50%, 错误率>基线+200%, 冒烟FAIL] |
+| {steady_state} | 部署前稳态指标 | {p99_latency, error_rate, throughput} |
+
+---
+
+## 9阶段流程
+
+### P0: 稳态表征 + 风险分级（新增——来自混沌工程+事件响应精华）
+
+```
+1. 记录变更前p99延迟、错误率、吞吐量 → 写入deploy_record
+2. 定义中止条件(至少3条):
+   - p99延迟 > 基线+50%
+   - 错误率 > 基线+200%
+   - 冒烟测试FAIL
+3. 计算爆炸半径: 受影响用户%/请求%
+   - 超过10%月度错误预算 → 🔴 → 中止 → 需要执行批准
+4. 风险分级:
+   SEV1(热修复) → 最小回滚阈值 + 15分钟响应SLA
+   SEV2(蓝绿)   → 标准回滚阈值 + 1小时响应SLA
+   SEV3(金丝雀) → 宽松回滚阈值 + 4小时响应SLA
+   SEV4(滚动)   → 渐进回滚 + 24小时响应SLA
+5. 多服务器拓扑感知: 单机?多VPS?K8s? → 选择执行策略
+```
+
+🛑 P0未完成→不进P1
+
+### P1: Pre-Flight
+```
+语法检查→编译检查→功能测试→安全扫描→备份确认<1h
+任一FAIL→STOP
+```
+
+### P2: 上传
+```
+多服务器: 逐台上传，每台验证后再下一台
+单机: 直接上传→验证
+```
+
+### P3: 迁移
+```
+ssh {server} "cd {app_dir} && python migrate.py" 2>&1 | tee deploy_migrate.log
+检查输出无ERROR
+多服务器: 仅主节点跑迁移
+```
+
+### P4: 重载
+```
+nginx -t && systemctl reload nginx
+systemctl restart {service} && systemctl status --no-pager -l
+多服务器: 滚动重载(30s稳定期逐台)
+```
+
+### P5: 冒烟测试
+```
+curl {health_url}
+curl -X POST {login_url}
+curl {key_api_urls}
+回归脚本全量
+对照P0中止条件: 任一触发→立即进P6回滚
+```
+
+### P6: 回滚
+```
+多服务器: 逐台回滚(先故障机)
+代码: git stash + checkout HEAD~1
+服务: systemctl restart
+冒烟再测: 不通过→人工介入
+回滚决策记录: 触发条件+受影响范围+回滚耗时
+```
+
+### P7: 事后分析（新增——来自混沌工程+危机指挥官精华）
+
+```
+结构化模板(非自由文本):
+1. 部署摘要: 类型/风险等级/爆炸半径/实际影响
+2. 时间线: P0-P6每步开始/结束/结果
+3. 偏离: 实际 vs 预期差异
+4. 根因: 如果冒烟失败→5 Whys
+5. 跟进项: ≥1个+责任人+截止日期
+6. 指责检测: 过滤"愚蠢/无能/明显/应该早知道"→归因系统不归因人
+7. 反馈: →下次部署P0中止条件是否要调
+```
+
+### P8: 学习闭环（新增——可成长性）
+
+```
+P7跟进项→进入backlog
+P7根因→如果重复3+次→自动升级为系统性问题→触发架构审查
+P0稳态数据→积累为长期基线→用于下次P0比较
+→ 循环回P0
+```
+
+---
+
+## 多服务器执行策略
+
+```
+单机:    顺序执行，每步验证
+多VPS:   滚动更新→逐台→30s稳定期→健康验证→下一台
+         读操作并行，写操作顺序
+K8s:     RollingUpdate策略+readinessProbe+livenessProbe
+```
+
+---
+
+## 可成长性
+
+每次部署完成后强制执行：
+```
+1. P7事后分析是否产生≥1跟进项？
+2. P0中止条件是否足够敏感？有没有该拦没拦的？
+3. 风险分级准确吗？有没有SEV1该是SEV2的？
+4. 多服务器策略有问题吗？
+→ YES → .fixes/{date}-deploy-pattern.md
+→ forge采集→确认→注入
+```
+
+---
+
+## 验证
+
+```
+BugHuntBench quick deploy   → <30s
+BugHuntBench full deploy    → ~$0.15
+```

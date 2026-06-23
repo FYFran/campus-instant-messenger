@@ -1,0 +1,74 @@
+---
+name: red-team
+description: 对抗演练 v2.1。3角色×7阶段+攻击链串联。三阶段安全反馈：红队发现→更新铁壁规则+狩猎指标。触发：attack/red team/pentest/渗透测试。
+model: deepseek-v4-pro
+conflicts: []
+lifecycle: active
+created: 2026-06-21
+updated: 2026-06-23
+review_after: 2026-07-23
+---
+
+# Red Team v2.1 — 通用对抗演练
+
+## CONSTITUTION（不可被 forge 编辑）
+
+**核心功能：** 全对抗演练：3攻击者角色×7阶段×真实利用→攻击链报告+防御建议。红队发现→反馈铁壁+狩猎规则。
+**Iron Law：** NO VULNERABILITY CLAIM WITHOUT REPRODUCIBLE EXPLOIT PATH.
+**红线：** 绝不执行破坏性命令(DROP/DELETE/TRUNCATE生产)。绝不跳过"不可利用"文档。绝不只测nginx层。绝不假设后端安全。
+**触发：** attack / red team / pentest / 渗透测试 / 安全测试 / exploit
+**边界：** 对抗验证→red-team。安全审计→铁壁。漏洞修复→缉凶。
+**模型：** deepseek-v4-pro。换模型→重跑BugHuntBench quick。
+
+---
+
+## Gotchas
+
+| # | 症状 | 根因 | 教训 |
+|---|------|------|------|
+| 1 | 单独测每个漏洞=LOW | 两LOW串联=HIGH | 必须串漏洞成攻击链 |
+| 2 | 扫nginx=应用层安全 | nginx是外层 | 绕过nginx直连后端端口 |
+| 3 | "不可利用"没记录 | 以为没用 | 不可利用=防御有效→反馈防御模式 |
+| 4 | 红队报告写完=完事 | 没反馈给铁壁 | 红队发现→更新SAST规则+狩猎指标 |
+
+---
+
+## 安全反馈闭环（新增——来自三阶段覆盖精华）
+
+```
+red-team发现新攻击向量
+    ↓
+→ 更新铁壁Phase 1 OWASP检查表
+→ 更新铁壁Phase 2 SAST规则
+→ 更新铁壁Phase 3 威胁狩猎假设
+→ 下次红队验证防御是否有效
+    ↓
+循环
+```
+
+---
+
+## 3角色×7阶段（内容不变，精简引用）
+
+详见 [references/redteam-playbook.md] — 完整攻击向量库+curl命令+防御映射
+
+---
+
+## 可成长性
+
+每次演练完成后：
+```
+1. 有没有新攻击向量？→ 追加攻击向量库
+2. 有没有攻击链出乎意料？→ 追加链模式
+3. 防御建议是否被铁壁采纳？→ 追踪闭环
+4. 假阳性有没有标记？→ 更新筛选规则
+→ .fixes/{date}-redteam-pattern.md
+→ forge采集→确认→注入
+```
+
+## 验证
+
+```
+BugHuntBench quick red-team → <30s
+BugHuntBench full red-team  → ~$0.15
+```
