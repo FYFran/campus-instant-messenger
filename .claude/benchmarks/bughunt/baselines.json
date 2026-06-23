@@ -33,10 +33,10 @@
   "布阵": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 0,
+    "bugs": 3,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "L1 only. Bugset NOT created — D01/D02/D03 planned but no desc.md+truth.md files."
+    "notes": "L1 only. D01/D02/D03 bugset created 2026-06-23 — L2 baseline pending."
   },
   "门神": {
     "score": 8.0,
@@ -59,10 +59,10 @@
   "火眼": {
     "score": 8.0,
     "max_score": 8,
-    "bugs": 0,
+    "bugs": 3,
     "mode": "L1_quick",
     "timestamp": "2026-06-23",
-    "notes": "L1 only. Bugset NOT created — G01/G02/G03 planned but no desc.md+truth.md files."
+    "notes": "L1 only. G01/G02/G03 bugset created 2026-06-23 — L2 baseline pending."
   },
   "试金石": {
     "score": 8.0,
