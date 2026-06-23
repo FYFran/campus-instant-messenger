@@ -8,6 +8,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +18,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var startTime = time.Now() // Server start time for health check uptime
 
 // CreateActivity — POST /api/activities
 func CreateActivity(db *pgxpool.Pool) gin.HandlerFunc {
@@ -503,25 +508,42 @@ func UploadImage() gin.HandlerFunc {
 	}
 }
 
-// HealthCheck — GET /api/health
+// HealthCheck — GET /api/health (G01 fix: real uptime, DB pool stats, no fake redis)
 func HealthCheck(db *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 		defer cancel()
+
 		dbOK := true
+		dbLatency := ""
+		pingStart := time.Now()
 		if err := db.Ping(ctx); err != nil {
 			dbOK = false
+			dbLatency = err.Error()
+		} else {
+			dbLatency = time.Since(pingStart).Round(time.Millisecond).String()
 		}
+
 		status := "ok"
 		if !dbOK {
 			status = "degraded"
 		}
+
+		poolStats := db.Stat()
+		version := os.Getenv("APP_VERSION")
+		if version == "" {
+			version = "dev"
+		}
+
 		c.JSON(200, gin.H{
 			"status":         status,
-			"uptime_seconds": 0,
-			"version":        "1.0.12",
+			"uptime_seconds": int(time.Since(startTime).Seconds()),
+			"version":        version,
 			"database":       map[bool]string{true: "ok", false: "error"}[dbOK],
-			"redis":          "ok",
+			"db_latency":     dbLatency,
+			"db_pool_active": poolStats.AcquiredConns(),
+			"db_pool_idle":   poolStats.IdleConns(),
+			"db_pool_total":  poolStats.TotalConns(),
 		})
 	}
 }

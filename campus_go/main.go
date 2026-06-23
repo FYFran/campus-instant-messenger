@@ -23,6 +23,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middleware.CORS())
+	r.Use(middleware.RequestID()) // Trace every request (G01 observability fix)
 	// Rate limiting is handled by nginx reverse proxy in production
 
 	// Start WebSocket hub
