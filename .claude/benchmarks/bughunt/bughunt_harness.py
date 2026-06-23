@@ -27,7 +27,7 @@ BUGS_DIR = BENCH_DIR / "bugs"          # v1 旧格式 (兼容)
 BUGSET_DIR = BENCH_DIR / "bugset"       # v2 新格式 (答案分离)
 RESULTS_FILE = BENCH_DIR / "results.tsv"
 BUG_PATTERN = re.compile(r"^B\d{2}_.+\.md$")
-BUGSET_PATTERN = re.compile(r"^(B|S|C|D|Q|R|M|T)\d{2}$")  # Multi-skill: 缉凶/铁壁/明镜/布阵/门神/破阵/元/试金石
+BUGSET_PATTERN = re.compile(r"^(B|S|C|D|Q|R|M|T|G)\d{2}$")  # Multi-skill: 缉凶/铁壁/明镜/布阵/门神/破阵/元/试金石/火眼
 
 # Skill → bug prefix mapping
 SKILL_PREFIX = {
@@ -136,7 +136,7 @@ def _parse_bug_v2(bug_dir: Path) -> Optional[BugSpec]:
 
     # Parse desc.md for bug_id, type, description
     desc_content = desc_file.read_text(encoding="utf-8")
-    header_match = re.match(r"^#\s+(B\d+)\s*[—\-]\s*(T\d+):?\s*(.+)$", desc_content.split("\n")[0])
+    header_match = re.match(r"^#\s+([BCDRGQSM]\d+)\s*[—\-]\s*([TRGQDSM]\d+):?\s*(.+)$", desc_content.split("\n")[0])
     if not header_match:
         return None
 
@@ -411,46 +411,96 @@ def _check_trace_compliance(report: AgentReport) -> int:
 
 # --- Agent Prompt Builder ---
 
+# Per-skill prompt templates
+_SKILL_PROMPTS = {
+    "缉凶": {
+        "role": "缉凶 agent — Bug 排查合同框架 v2.0",
+        "type_label": "T-Type",
+        "type_options": "T0稳定复现 / T1竞态时序 / T2多因素 / T3无报错数据错 / T4昨天还好 / T5状态机异常 / T6特定环境 / T7代码对需求错",
+        "chain": ["分类", "证据", "追踪", "分析", "修复", "验证", "记录"],
+        "output_prefix": "SCORE_CARD: T分类|链完整|证据|根因|CF|修复",
+    },
+    "破阵": {
+        "role": "破阵 agent — 对抗演练 v2.1（3角色×7阶段）",
+        "type_label": "R-Type",
+        "type_options": "R0认证绕过 / R1权限提升链 / R2重放攻击 / R3注入 / R4信息泄露",
+        "chain": ["侦察", "武器化", "投放", "利用", "安装", "C2", "行动"],
+        "output_prefix": "SCORE_CARD: R分类|链完整|利用路径|根因|攻击链|修复",
+    },
+    "门神": {
+        "role": "门神 agent — 上线前质量门禁 v2.1",
+        "type_label": "Q-Type",
+        "type_options": "Q0恒真检查 / Q1检查跳过 / Q2阈值绕过 / Q3误报",
+        "chain": ["检查清单", "逐项验证", "门禁判定", "风险分级", "修复建议"],
+        "output_prefix": "SCORE_CARD: Q分类|链完整|绕过证据|根因|门禁BYPASS|修复",
+    },
+    "布阵": {
+        "role": "布阵 agent — 安全部署 v3.0（9阶段流水线）",
+        "type_label": "D-Type",
+        "type_options": "D0备份缺陷 / D1冒烟跳过 / D2中止条件缺失 / D3回滚失败",
+        "chain": ["稳态表征", "pre-flight", "部署检查", "冒烟验证", "回滚评估"],
+        "output_prefix": "SCORE_CARD: D分类|链完整|缺陷证据|根因|部署风险|修复",
+    },
+    "火眼": {
+        "role": "火眼 agent — 项目差距分析引擎 v1.1（7-Phase）",
+        "type_label": "G-Type",
+        "type_options": "G0维度缺失 / G1交叉验证漏报 / G2静默降级 / G3分类错误",
+        "chain": ["PreScan", "Map", "Probe", "Confirm", "Synthesize"],
+        "output_prefix": "SCORE_CARD: G分类|链完整|gap证据|根因|遗漏影响|修复",
+    },
+    "试金石": {
+        "role": "试金石 agent — 测试锻造 v1.0（RED-GREEN-REFACTOR）",
+        "type_label": "M-Type",
+        "type_options": "M0恒真测试 / M1过度Mock / M2边界缺失 / M3断言错误",
+        "chain": ["测试意图", "RED验证", "边界枚举", "Mock审计", "GREEN确认"],
+        "output_prefix": "SCORE_CARD: M分类|链完整|测试缺陷证据|根因|覆盖缺口|修复",
+    },
+}
+
+_SKILL_RESOURCES = {
+    "缉凶": "f:/ClaudeFiles/bug-patterns.md",
+    "破阵": "f:/ClaudeFiles/.claude/skills/references/redteam-playbook.md",
+    "门神": "f:/ClaudeFiles/.claude/benchmarks/bughunt/bughunt_ci.py",
+    "布阵": "f:/ClaudeFiles/campus_go/",
+    "火眼": "f:/ClaudeFiles/.claude/skills/火眼/SKILL.md",
+    "试金石": "f:/ClaudeFiles/campus_go/internal/handlers/",
+}
+
 
 def build_agent_prompt(bug: BugSpec, skill_name: str = "缉凶") -> str:
-    """Build the prompt for spawning a debug agent.
+    """Build the prompt for spawning an agent with the correct skill contract.
 
-    This produces the exact prompt that Claude Code receives to investigate the bug.
-    The prompt includes the 缉凶 contract chain requirements.
+    Adapts the output format, type taxonomy, and chain steps based on the skill.
     """
-    return f"""你是缉凶 agent — Bug 排查合同框架 v2.0。严格按合同链输出。
+    cfg = _SKILL_PROMPTS.get(skill_name, _SKILL_PROMPTS["缉凶"])
+    resource = _SKILL_RESOURCES.get(skill_name, "f:/ClaudeFiles/campus_go/")
 
-## Bug 描述
+    chain_steps = "\n".join(
+        f"**{s}** — ___" for s in cfg["chain"]
+    )
+
+    return f"""你是{cfg['role']}。严格按合同链输出。
+
+## 调查目标
 
 {bug.description}
 
 ## 合同链（必须全填，每步产出=下步门票）
 
-**分类** — Type: T___ 依据: ___
-（T-Type: T0稳定复现 / T1竞态时序 / T2多因素 / T3无报错数据错 / T4昨天还好 / T5状态机异常 / T6特定环境 / T7代码对需求错）
+{chain_steps}
 
-**证据** — 复现步骤 + baseline 输出
-
-**追踪** — 调用链 + Expected vs Actual 第一点
-
-**分析** — 根因: ___ (conf: ___) + Counterfactual。Conf<0.8→SUSPECT
-
-**修复** — 测试 FAIL→PASS
-
-**验证** — pre/post diff
-
-**记录** — 完整报告 + 发现的潜在问题
+**{cfg['type_label']}分类**: {cfg['type_options']}
 
 ## 资源
 - campus_go 代码在 f:/ClaudeFiles/campus_go/
 - campus_app 在 f:/ClaudeFiles/campus_app/
 - 生产服务器: 139.196.50.134
-- Bug 模式库: f:/ClaudeFiles/bug-patterns.md
+- 参考: {resource}
 
 ## 输出格式
 
-输出完整 bug report（所有 7 步），最后一行：
-SCORE_CARD: T分类|链完整|证据|根因|CF|修复"""
+输出完整报告（所有 {len(cfg['chain'])} 步），最后一行：
+{cfg['output_prefix']}"""
 
 
 # --- Judge Prompt Builder ---
