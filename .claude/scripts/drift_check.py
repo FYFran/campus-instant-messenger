@@ -108,7 +108,7 @@ def main():
         for skill in baselines:
             if skill.startswith("_"):
                 continue
-            result = check_drift(skill, args.max_drift, quiet=True)
+            result = check_drift(skill, args.max_drift, quiet=False)
             if result["status"] != "NO_BASELINE":
                 icon = "~" if result["drift_pct"] != 0 else "OK"
                 print(f"  {icon} {skill}: {result['baseline']} [{result['status']}]")
