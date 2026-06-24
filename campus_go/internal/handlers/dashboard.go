@@ -27,10 +27,18 @@ func CollegeDashboard(db *pgxpool.Pool) gin.HandlerFunc {
 
 		var students, teachers, activities int
 		var totalHours float64
-		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE college=$1 AND role='student'", college).Scan(&students)
-		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE college=$1 AND role='teacher'", college).Scan(&teachers)
-		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM activities WHERE college=$1", college).Scan(&activities)
-		db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id IN (SELECT id FROM users WHERE college=$1)", college).Scan(&totalHours)
+		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE college=$1 AND role='student'", college).Scan(&students); err != nil {
+			log.Printf("CollegeDashboard students count error: %v", err)
+		}
+		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE college=$1 AND role='teacher'", college).Scan(&teachers); err != nil {
+			log.Printf("CollegeDashboard teachers count error: %v", err)
+		}
+		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM activities WHERE college=$1", college).Scan(&activities); err != nil {
+			log.Printf("CollegeDashboard activities count error: %v", err)
+		}
+		if err := db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id IN (SELECT id FROM users WHERE college=$1)", college).Scan(&totalHours); err != nil {
+			log.Printf("CollegeDashboard hours sum error: %v", err)
+		}
 
 		c.JSON(200, gin.H{
 			"college": college, "students": students, "teachers": teachers,
@@ -48,12 +56,23 @@ func SchoolDashboard(db *pgxpool.Pool) gin.HandlerFunc {
 		}
 		var totalStudents, totalActs int
 		var totalHours float64
-		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE role='student'").Scan(&totalStudents)
-		db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM activities").Scan(&totalActs)
-		db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates").Scan(&totalHours)
+		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE role='student'").Scan(&totalStudents); err != nil {
+			log.Printf("SchoolDashboard students count error: %v", err)
+		}
+		if err := db.QueryRow(c.Request.Context(), "SELECT COUNT(*) FROM activities").Scan(&totalActs); err != nil {
+			log.Printf("SchoolDashboard activities count error: %v", err)
+		}
+		if err := db.QueryRow(c.Request.Context(), "SELECT COALESCE(SUM(hours),0) FROM certificates").Scan(&totalHours); err != nil {
+			log.Printf("SchoolDashboard hours sum error: %v", err)
+		}
 
-		rows, _ := db.Query(c.Request.Context(),
+		rows, err := db.Query(c.Request.Context(),
 			"SELECT college, COUNT(*) FROM users WHERE role='student' AND college != '' GROUP BY college ORDER BY COUNT(*) DESC")
+		if err != nil {
+			log.Printf("SchoolDashboard colleges query error: %v", err)
+			c.JSON(500, gin.H{"detail": "查询失败"})
+			return
+		}
 		defer rows.Close()
 		var colleges []gin.H
 		for rows.Next() {

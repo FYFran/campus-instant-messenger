@@ -3,6 +3,7 @@ package handlers
 import (
 	log "campus-go/internal/logger"
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -73,7 +74,9 @@ func executeLottery(ctx context.Context, db *pgxpool.Pool, actID int, overCount 
 	}
 	if signupMode != "lottery" {
 		if actStatus == "published" {
-			_, _ = db.Exec(ctx, "UPDATE activities SET status='ended' WHERE id=$1", actID)
+			if _, err := db.Exec(ctx, "UPDATE activities SET status='ended' WHERE id=$1", actID); err != nil {
+				log.Printf("DrawLottery end non-lottery error act=%d: %v", actID, err)
+			}
 		}
 		return 0, nil
 	}
@@ -95,7 +98,9 @@ func executeLottery(ctx context.Context, db *pgxpool.Pool, actID int, overCount 
 			return 0, err
 		}
 		if pendingCnt == 0 {
-			_, _ = db.Exec(ctx, "UPDATE activities SET status='ended' WHERE id=$1", actID)
+			if _, err := db.Exec(ctx, "UPDATE activities SET status='ended' WHERE id=$1", actID); err != nil {
+				log.Printf("DrawLottery end empty error act=%d: %v", actID, err)
+			}
 			return 0, nil
 		}
 		maxSel = pendingCnt
@@ -125,15 +130,22 @@ func executeLottery(ctx context.Context, db *pgxpool.Pool, actID int, overCount 
 		log.Printf("DrawLottery waitlist error: %v", err)
 	}
 
-	_, _ = db.Exec(ctx, "UPDATE activities SET status='ended', lottery_drawn_at=NOW() WHERE id=$1", actID)
+	if _, err := db.Exec(ctx, "UPDATE activities SET status='ended', lottery_drawn_at=NOW() WHERE id=$1", actID); err != nil {
+		log.Printf("DrawLottery end status error act=%d: %v", actID, err)
+	}
 
 	var actTitle string
-	_ = db.QueryRow(ctx, "SELECT title FROM activities WHERE id=$1", actID).Scan(&actTitle)
+	if err := db.QueryRow(ctx, "SELECT title FROM activities WHERE id=$1", actID).Scan(&actTitle); err != nil {
+		log.Printf("DrawLottery title scan error act=%d: %v", actID, err)
+		actTitle = fmt.Sprintf("活动#%d", actID)
+	}
 
 	var selectedCount int
-	_ = db.QueryRow(ctx,
+	if err := db.QueryRow(ctx,
 		"SELECT COUNT(*) FROM signups WHERE activity_id=$1 AND status='selected'", actID,
-	).Scan(&selectedCount)
+	).Scan(&selectedCount); err != nil {
+		log.Printf("DrawLottery selected count error act=%d: %v", actID, err)
+	}
 
 	// 通知中签者
 	rows, err := db.Query(ctx,
@@ -142,9 +154,11 @@ func executeLottery(ctx context.Context, db *pgxpool.Pool, actID int, overCount 
 		for rows.Next() {
 			var uid int
 			if err := rows.Scan(&uid); err == nil {
-				_, _ = db.Exec(ctx,
+				if _, err := db.Exec(ctx,
 					"INSERT INTO notifications (user_id, type, title, content, is_read) VALUES ($1,'lottery','中签通知',$2,0)",
-					uid, "恭喜！你已中签活动「"+actTitle+"」")
+					uid, fmt.Sprintf("恭喜！你已中签活动「%s」", actTitle)); err != nil {
+					log.Printf("DrawLottery notify winner error uid=%d: %v", uid, err)
+				}
 			}
 		}
 		rows.Close()
@@ -157,9 +171,11 @@ func executeLottery(ctx context.Context, db *pgxpool.Pool, actID int, overCount 
 		for rows2.Next() {
 			var uid int
 			if err := rows2.Scan(&uid); err == nil {
-				_, _ = db.Exec(ctx,
+				if _, err := db.Exec(ctx,
 					"INSERT INTO notifications (user_id, type, title, content, is_read) VALUES ($1,'lottery','抽签结果',$2,0)",
-					uid, "很遗憾，你未中签活动「"+actTitle+"」，已进入候补队列")
+					uid, fmt.Sprintf("很遗憾，你未中签活动「%s」，已进入候补队列", actTitle)); err != nil {
+					log.Printf("DrawLottery notify loser error uid=%d: %v", uid, err)
+				}
 			}
 		}
 		rows2.Close()
@@ -208,7 +224,9 @@ func StartAutoProcessor(db *pgxpool.Pool) {
 					}
 				} else {
 					// first_come/direct 等其他模式：直接结束活动
-					_, _ = db.Exec(ctx, "UPDATE activities SET status='ended' WHERE id=$1", actID)
+					if _, err := db.Exec(ctx, "UPDATE activities SET status='ended' WHERE id=$1", actID); err != nil {
+						log.Printf("[AutoProcessor] end error act=%d: %v", actID, err)
+					}
 				}
 				processed++
 			}
@@ -222,8 +240,12 @@ func StartAutoProcessor(db *pgxpool.Pool) {
 			cleanupTick++
 			if cleanupTick >= 10 {
 				cleanupTick = 0
-				_, _ = db.Exec(ctx, "DELETE FROM notifications WHERE is_read=1 AND created_at < NOW() - INTERVAL '7 days'")
-				_, _ = db.Exec(ctx, "DELETE FROM checkin_tokens WHERE expires_at < NOW()")
+				if _, err := db.Exec(ctx, "DELETE FROM notifications WHERE is_read=1 AND created_at < NOW() - INTERVAL '7 days'"); err != nil {
+					log.Printf("[AutoProcessor] cleanup notifications error: %v", err)
+				}
+				if _, err := db.Exec(ctx, "DELETE FROM checkin_tokens WHERE expires_at < NOW()"); err != nil {
+					log.Printf("[AutoProcessor] cleanup tokens error: %v", err)
+				}
 			}
 		}
 	}()

@@ -72,7 +72,7 @@ func main() {
 			protected.GET("/certificates", handlers.UserCertificates(db))
 			protected.GET("/users", handlers.ListUsers(db))
 			protected.GET("/config/codes", handlers.GetConfigCodes(db))
-			api.GET("/ws", handlers.HandleWS)
+			protected.GET("/ws", handlers.HandleWS)
 			// Publish permission requests
 			protected.GET("/available-reviewers", handlers.GetAvailableReviewers(db))
 			protected.POST("/publish-requests", handlers.CreatePublishRequest(db))
