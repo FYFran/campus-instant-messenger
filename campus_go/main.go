@@ -43,7 +43,7 @@ func main() {
 
 		api.POST("/login", handlers.Login(db))
 		api.POST("/register", middleware.RateLimit(6, time.Minute), handlers.Register(db))
-		api.POST("/token/refresh", handlers.RefreshToken(db)) // 不需要JWT — refresh_token自身就是凭证
+		api.POST("/token/refresh", middleware.RateLimit(10, time.Minute), handlers.RefreshToken(db)) // refresh_token自身即凭证，10次/分钟防暴力刷新
 
 		protected := api.Group("")
 		protected.Use(middleware.JWT(db))
@@ -67,6 +67,9 @@ func main() {
 			protected.GET("/notifications", handlers.GetNotifications(db))
 			protected.GET("/my-signups", handlers.GetMySignups(db))
 			protected.GET("/my-stats", handlers.GetMyStats(db))
+			protected.POST("/activities/:id/complete", handlers.CompleteActivity(db))
+			protected.POST("/activities/:id/certificates", handlers.GenerateCertificates(db))
+			protected.GET("/certificates", handlers.UserCertificates(db))
 			protected.GET("/users", handlers.ListUsers(db))
 			protected.GET("/config/codes", handlers.GetConfigCodes(db))
 			api.GET("/ws", handlers.HandleWS)

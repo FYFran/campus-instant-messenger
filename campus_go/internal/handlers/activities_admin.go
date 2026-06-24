@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -89,6 +92,9 @@ func CreateActivity(db *pgxpool.Pool) gin.HandlerFunc {
 		// Get the creator's college so activities.college is populated for college-scoped queries
 		var creatorCollege string
 		db.QueryRow(c.Request.Context(), "SELECT COALESCE(college,'') FROM users WHERE id=$1", userID).Scan(&creatorCollege)
+
+		// Sanitize user input — prevent stored XSS via activity description
+		req.Description = html.EscapeString(req.Description)
 
 		var activityID int
 		err := db.QueryRow(c.Request.Context(),
@@ -552,5 +558,308 @@ func HealthCheck(db *pgxpool.Pool) gin.HandlerFunc {
 			"db_pool_idle":   poolStats.IdleConns(),
 			"db_pool_total":  poolStats.TotalConns(),
 		})
+	}
+}
+
+// CompleteActivity — POST /api/activities/:id/complete
+// 完结活动并自动生成学时证书。只能对 status='ended' 的活动操作。
+// 与 Python 后端 main.py complete_activity 逻辑一致。
+func CompleteActivity(db *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		actID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(400, gin.H{"detail": "无效的活动ID"})
+			return
+		}
+		role := c.GetString("role")
+		if role != "teacher" && role != "college_admin" && role != "school_admin" {
+			c.JSON(403, gin.H{"detail": "需要教师或管理员权限"})
+			return
+		}
+		userID := c.GetInt("user_id")
+
+		// 获取活动信息
+		var actStatus, title, actCollege, scopeType string
+		var hours, staffHours, participantHours float64
+		var createdAt time.Time
+		var createdBy int
+		err = db.QueryRow(c.Request.Context(),
+			`SELECT status, title, COALESCE(hours,0), COALESCE(staff_hours,0), COALESCE(participant_hours,0),
+			 COALESCE(college,''), COALESCE(scope_type,'all'), created_by, created_at
+			 FROM activities WHERE id=$1`, actID,
+		).Scan(&actStatus, &title, &hours, &staffHours, &participantHours,
+			&actCollege, &scopeType, &createdBy, &createdAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				c.JSON(404, gin.H{"detail": "活动不存在"})
+				return
+			}
+			log.Printf("CompleteActivity query error: %v", err)
+			c.JSON(500, gin.H{"detail": "查询活动失败"})
+			return
+		}
+		if actStatus != "ended" {
+			c.JSON(400, gin.H{"detail": "只能完结已结束的活动"})
+			return
+		}
+
+		// Scope isolation check
+		if role != "school_admin" && scopeType != "all" {
+			var userCollege string
+			db.QueryRow(c.Request.Context(), "SELECT COALESCE(college,'') FROM users WHERE id=$1", userID).Scan(&userCollege)
+			if userCollege != actCollege {
+				c.JSON(403, gin.H{"detail": "无权操作此活动"})
+				return
+			}
+		}
+
+		tx, err := db.Begin(c.Request.Context())
+		if err != nil {
+			log.Printf("CompleteActivity begin tx error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+		defer func() { _ = tx.Rollback(c.Request.Context()) }()
+
+		// 更新活动状态为completed
+		_, err = tx.Exec(c.Request.Context(),
+			"UPDATE activities SET status='completed' WHERE id=$1 AND status='ended'", actID)
+		if err != nil {
+			log.Printf("CompleteActivity status update error: %v", err)
+			c.JSON(500, gin.H{"detail": "完结失败"})
+			return
+		}
+
+		// 获取所有签到/选中状态signups
+		rows, err := tx.Query(c.Request.Context(),
+			`SELECT user_id, status, COALESCE(role,'participant') FROM signups
+			 WHERE activity_id=$1 AND status IN ('selected','checked_in')`, actID)
+		if err != nil {
+			log.Printf("CompleteActivity signups query error: %v", err)
+			c.JSON(500, gin.H{"detail": "查询报名记录失败"})
+			return
+		}
+		defer rows.Close()
+
+		certsGenerated := 0
+		for rows.Next() {
+			var uid int
+			var signupStatus, signupRole string
+			if err := rows.Scan(&uid, &signupStatus, &signupRole); err != nil {
+				log.Printf("CompleteActivity scan error: %v", err)
+				continue
+			}
+
+			// 计算学时: staff用staff_hours, 其余用participant_hours, 0则fallback到hours
+			certHours := participantHours
+			if signupRole == "staff" {
+				certHours = staffHours
+			}
+			if certHours == 0 {
+				certHours = hours
+			}
+
+			certNo := fmt.Sprintf("CERT-%s-%d-%04d",
+				createdAt.Format("20060102"), actID, uid)
+
+			_, err := tx.Exec(c.Request.Context(),
+				`INSERT INTO certificates (activity_id, user_id, hours, certificate_no, reward_type, generated_at)
+				 VALUES ($1,$2,$3,$4,'volunteer',NOW()) ON CONFLICT DO NOTHING`,
+				actID, uid, certHours, certNo)
+			if err != nil {
+				log.Printf("CompleteActivity cert insert error uid=%d: %v", uid, err)
+				continue
+			}
+
+			// 同步更新 users.volunteer_hours
+			_, _ = tx.Exec(c.Request.Context(),
+				`UPDATE users SET volunteer_hours = (
+					SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1
+				) WHERE id=$1`, uid)
+
+			// 发送学时通知
+			_, _ = tx.Exec(c.Request.Context(),
+				`INSERT INTO notifications (user_id, type, title, content, is_read)
+				 VALUES ($1,'activity_done','学时已发放',$2,0)`,
+				uid, fmt.Sprintf("[aid:%d]「%s」已完结，请查看你的学时记录", actID, title))
+
+			certsGenerated++
+		}
+
+		// 通知发布者
+		_, _ = tx.Exec(c.Request.Context(),
+			`INSERT INTO notifications (user_id, type, title, content, is_read)
+			 VALUES ($1,'activity_done','活动已完结',$2,0)`,
+			createdBy, fmt.Sprintf("[aid:%d]「%s」已完结发分（%d人）", actID, title, certsGenerated))
+
+		if err := tx.Commit(c.Request.Context()); err != nil {
+			log.Printf("CompleteActivity commit error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+
+		log.Printf("AUDIT: activity_completed by=%d aid=%d title=%s certs=%d",
+			userID, actID, title, certsGenerated)
+		c.JSON(200, gin.H{"ok": true, "certificates_generated": certsGenerated})
+	}
+}
+
+// GenerateCertificates — POST /api/activities/:id/certificates
+// 为活动内的所有符合条件的签到者手动生成学时证书（幂等：ON CONFLICT DO NOTHING）
+func GenerateCertificates(db *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		actID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(400, gin.H{"detail": "无效的活动ID"})
+			return
+		}
+		role := c.GetString("role")
+		if role != "teacher" && role != "college_admin" && role != "school_admin" {
+			c.JSON(403, gin.H{"detail": "需要教师或管理员权限"})
+			return
+		}
+		userID := c.GetInt("user_id")
+
+		var actStatus, title string
+		var hours, staffHours, participantHours float64
+		var createdAt time.Time
+		err = db.QueryRow(c.Request.Context(),
+			`SELECT status, title, COALESCE(hours,0), COALESCE(staff_hours,0), COALESCE(participant_hours,0), created_at
+			 FROM activities WHERE id=$1`, actID,
+		).Scan(&actStatus, &title, &hours, &staffHours, &participantHours, &createdAt)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				c.JSON(404, gin.H{"detail": "活动不存在"})
+				return
+			}
+			log.Printf("GenerateCertificates query error: %v", err)
+			c.JSON(500, gin.H{"detail": "查询活动失败"})
+			return
+		}
+
+		tx, err := db.Begin(c.Request.Context())
+		if err != nil {
+			log.Printf("GenerateCertificates begin tx error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+		defer func() { _ = tx.Rollback(c.Request.Context()) }()
+
+		rows, err := tx.Query(c.Request.Context(),
+			`SELECT user_id, status, COALESCE(role,'participant') FROM signups WHERE activity_id=$1`, actID)
+		if err != nil {
+			log.Printf("GenerateCertificates signups query error: %v", err)
+			c.JSON(500, gin.H{"detail": "查询报名记录失败"})
+			return
+		}
+		defer rows.Close()
+
+		generated := 0
+		var failedUsers []int
+		for rows.Next() {
+			var uid int
+			var signupStatus, signupRole string
+			if err := rows.Scan(&uid, &signupStatus, &signupRole); err != nil {
+				log.Printf("GenerateCertificates scan error: %v", err)
+				continue
+			}
+
+			// 跳过未选中/未签到且非staff的记录
+			if signupStatus != "selected" && signupStatus != "checked_in" && signupRole != "staff" {
+				continue
+			}
+
+			certHours := participantHours
+			if signupRole == "staff" {
+				certHours = staffHours
+			}
+			if certHours == 0 {
+				certHours = hours
+			}
+
+			certNo := fmt.Sprintf("CERT-%s-%d-%04d",
+				createdAt.Format("20060102"), actID, uid)
+
+			_, err := tx.Exec(c.Request.Context(),
+				`INSERT INTO certificates (activity_id, user_id, hours, certificate_no, reward_type, generated_at)
+				 VALUES ($1,$2,$3,$4,'volunteer',NOW()) ON CONFLICT DO NOTHING`,
+				actID, uid, certHours, certNo)
+			if err != nil {
+				log.Printf("GenerateCertificates insert error uid=%d: %v", uid, err)
+				failedUsers = append(failedUsers, uid)
+				continue
+			}
+
+			// 同步更新 users.volunteer_hours
+			_, _ = tx.Exec(c.Request.Context(),
+				`UPDATE users SET volunteer_hours = (
+					SELECT COALESCE(SUM(hours),0) FROM certificates WHERE user_id=$1
+				) WHERE id=$1`, uid)
+
+			generated++
+		}
+
+		if err := tx.Commit(c.Request.Context()); err != nil {
+			log.Printf("GenerateCertificates commit error: %v", err)
+			c.JSON(500, gin.H{"detail": "服务器错误"})
+			return
+		}
+
+		if failedUsers != nil {
+			log.Printf("AUDIT: certs_generated by=%d aid=%d count=%d failed=%d",
+				userID, actID, generated, len(failedUsers))
+		}
+		if len(failedUsers) > 0 {
+			c.JSON(200, gin.H{"generated": generated, "failed_users": failedUsers})
+			return
+		}
+		c.JSON(200, gin.H{"generated": generated, "failed_users": nil})
+	}
+}
+
+// UserCertificates — GET /api/certificates
+// 获取当前用户的所有证书
+func UserCertificates(db *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.GetInt("user_id")
+
+		rows, err := db.Query(c.Request.Context(),
+			`SELECT c.id, c.activity_id, c.certificate_no, c.hours, c.reward_type,
+			 COALESCE(a.title,'') as activity_title, c.generated_at
+			 FROM certificates c
+			 LEFT JOIN activities a ON c.activity_id = a.id
+			 WHERE c.user_id=$1
+			 ORDER BY c.generated_at DESC`, userID)
+		if err != nil {
+			log.Printf("UserCertificates query error: %v", err)
+			c.JSON(500, gin.H{"detail": "查询证书失败"})
+			return
+		}
+		defer rows.Close()
+
+		var certs []gin.H
+		for rows.Next() {
+			var id, actID int
+			var certNo, rewardType, actTitle string
+			var hours float64
+			var generatedAt time.Time
+			if err := rows.Scan(&id, &actID, &certNo, &hours, &rewardType, &actTitle, &generatedAt); err != nil {
+				log.Printf("UserCertificates scan error: %v", err)
+				continue
+			}
+			certs = append(certs, gin.H{
+				"id":             id,
+				"activity_id":    actID,
+				"certificate_no": certNo,
+				"hours":          hours,
+				"reward_type":    rewardType,
+				"activity_title": actTitle,
+				"generated_at":   generatedAt.Format(time.RFC3339),
+			})
+		}
+		if certs == nil {
+			certs = []gin.H{}
+		}
+		c.JSON(200, certs)
 	}
 }
