@@ -15,7 +15,9 @@ func GetAvailableReviewers(db *pgxpool.Pool) gin.HandlerFunc {
 		userID := c.GetInt("user_id")
 		// Get the student's college
 		var college string
-		db.QueryRow(c.Request.Context(), "SELECT COALESCE(college,'') FROM users WHERE id=$1", userID).Scan(&college)
+		if err := db.QueryRow(c.Request.Context(), "SELECT COALESCE(college,'') FROM users WHERE id=$1", userID).Scan(&college); err != nil {
+			log.Printf("GetAvailableReviewers college scan error uid=%d: %v", userID, err)
+		}
 
 		// Return teachers from same college + all school_admins
 		rows, err := db.Query(c.Request.Context(),
@@ -142,8 +144,10 @@ func CreatePublishRequest(db *pgxpool.Pool) gin.HandlerFunc {
 
 		// Send notification to teachers
 		var studentName string
-		db.QueryRow(c.Request.Context(),
-			"SELECT COALESCE(name, student_id::text) FROM users WHERE id=$1", userID).Scan(&studentName)
+		if err := db.QueryRow(c.Request.Context(),
+			"SELECT COALESCE(name, student_id::text) FROM users WHERE id=$1", userID).Scan(&studentName); err != nil {
+			log.Printf("CreatePublishRequest student name scan error uid=%d: %v", userID, err)
+		}
 		for _, tid := range req.TeacherIDs {
 			db.Exec(c.Request.Context(),
 				`INSERT INTO notifications (user_id, title, content, type)
