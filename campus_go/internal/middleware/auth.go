@@ -122,8 +122,14 @@ func JWT(db *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 
+		// Use DB role, not token role — prevents stale role escalation (破阵 finding)
+		var dbRole string
+		db.QueryRow(c.Request.Context(), "SELECT role FROM users WHERE id=$1", claims.UserID).Scan(&dbRole)
+		if dbRole == "" {
+			dbRole = claims.Role // fallback if DB query fails
+		}
 		c.Set("user_id", claims.UserID)
-		c.Set("role", claims.Role)
+		c.Set("role", dbRole)
 		c.Set("token_iat", claims.IssuedAt.Time)
 		c.Next()
 	}

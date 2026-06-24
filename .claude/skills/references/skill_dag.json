@@ -1,0 +1,279 @@
+{
+  "version": "1.0",
+  "description": "11-Skill DAG — 工程全生命周期编排",
+  "lifecycle": [
+    {
+      "phase": "规划",
+      "skills": [
+        "火眼",
+        "架构师"
+      ],
+      "trigger": "新项目/大功能/重构前",
+      "flow": "火眼(gap) → 架构师(design)"
+    },
+    {
+      "phase": "开发",
+      "skills": [
+        "明镜",
+        "试金石"
+      ],
+      "trigger": "每次commit/PR",
+      "flow": "明镜(review) ↔ 试金石(test)"
+    },
+    {
+      "phase": "验证",
+      "skills": [
+        "铁壁",
+        "破阵",
+        "门神"
+      ],
+      "trigger": "pre-deploy",
+      "flow": "铁壁(audit) → 破阵(attack) → 门神(gate)"
+    },
+    {
+      "phase": "发布",
+      "skills": [
+        "布阵"
+      ],
+      "trigger": "门神PASS后",
+      "flow": "布阵(deploy)"
+    },
+    {
+      "phase": "运行",
+      "skills": [
+        "天眼",
+        "缉凶"
+      ],
+      "trigger": "部署后持续",
+      "flow": "天眼(monitor) → alert → 缉凶(debug)"
+    },
+    {
+      "phase": "进化",
+      "skills": [
+        "轮回"
+      ],
+      "trigger": "score drift / 按周",
+      "flow": "缉凶/铁壁/明镜 failure → 轮回(optimize)"
+    }
+  ],
+  "edges": [
+    {
+      "from": "火眼",
+      "to": "架构师",
+      "when": "gap_found",
+      "signal": "gap_report"
+    },
+    {
+      "from": "架构师",
+      "to": "明镜",
+      "when": "design_ready",
+      "signal": "adr_output"
+    },
+    {
+      "from": "明镜",
+      "to": "试金石",
+      "when": "review_pass",
+      "signal": "review_ok"
+    },
+    {
+      "from": "试金石",
+      "to": "铁壁",
+      "when": "tests_pass",
+      "signal": "test_ok"
+    },
+    {
+      "from": "铁壁",
+      "to": "破阵",
+      "when": "audit_done",
+      "signal": "findings"
+    },
+    {
+      "from": "破阵",
+      "to": "门神",
+      "when": "attack_done",
+      "signal": "attack_report"
+    },
+    {
+      "from": "门神",
+      "to": "布阵",
+      "when": "gate_pass",
+      "signal": "gate_ok"
+    },
+    {
+      "from": "布阵",
+      "to": "天眼",
+      "when": "deploy_done",
+      "signal": "deployed"
+    },
+    {
+      "from": "天眼",
+      "to": "缉凶",
+      "when": "alert_fired",
+      "signal": "alert"
+    },
+    {
+      "from": "缉凶",
+      "to": "轮回",
+      "when": "bug_found",
+      "signal": "root_cause"
+    },
+    {
+      "from": "铁壁",
+      "to": "轮回",
+      "when": "score_drift",
+      "signal": "drift_alert"
+    },
+    {
+      "from": "明镜",
+      "to": "轮回",
+      "when": "score_drift",
+      "signal": "drift_alert"
+    },
+    {
+      "from": "轮回",
+      "to": "铁壁",
+      "when": "optimization_applied",
+      "signal": "skill_updated"
+    },
+    {
+      "from": "轮回",
+      "to": "明镜",
+      "when": "optimization_applied",
+      "signal": "skill_updated"
+    },
+    {
+      "from": "轮回",
+      "to": "缉凶",
+      "when": "optimization_applied",
+      "signal": "skill_updated"
+    }
+  ],
+  "shared_signals": {
+    "gap_report": {
+      "format": "markdown",
+      "schema": [
+        "id",
+        "severity",
+        "file:line",
+        "description",
+        "recommendation"
+      ]
+    },
+    "adr_output": {
+      "format": "markdown",
+      "schema": [
+        "title",
+        "status",
+        "context",
+        "decision",
+        "consequences"
+      ]
+    },
+    "findings": {
+      "format": "markdown",
+      "schema": [
+        "id",
+        "severity",
+        "cwe",
+        "file:line",
+        "description",
+        "fix"
+      ]
+    },
+    "review_ok": {
+      "format": "json",
+      "schema": {
+        "passed": "bool",
+        "score": "int",
+        "blockers": "list"
+      }
+    },
+    "gate_ok": {
+      "format": "json",
+      "schema": {
+        "passed": "bool",
+        "score": "float",
+        "checks": "list"
+      }
+    },
+    "alert": {
+      "format": "json",
+      "schema": {
+        "severity": "str",
+        "slo_burn": "float",
+        "runbook": "str"
+      }
+    },
+    "drift_alert": {
+      "format": "json",
+      "schema": {
+        "skill": "str",
+        "baseline": "float",
+        "current": "float",
+        "drift_pct": "float"
+      }
+    },
+    "root_cause": {
+      "format": "markdown",
+      "schema": [
+        "id",
+        "description"
+      ]
+    },
+    "deployed": {
+      "format": "markdown",
+      "schema": [
+        "id",
+        "description"
+      ]
+    },
+    "attack_report": {
+      "format": "markdown",
+      "schema": [
+        "id",
+        "description"
+      ]
+    },
+    "test_ok": {
+      "format": "markdown",
+      "schema": [
+        "id",
+        "description"
+      ]
+    },
+    "skill_updated": {
+      "format": "json",
+      "schema": {
+        "skill": "str",
+        "version": "str",
+        "changes": "list"
+      }
+    }
+  },
+  "adaptive_rules": [
+    {
+      "condition": "铁壁.fp_rate > 0.3",
+      "action": "notify 轮回 to optimize 铁壁"
+    },
+    {
+      "condition": "明镜.score < 5",
+      "action": "add 铁壁 pre-check before 明镜"
+    },
+    {
+      "condition": "破阵.hit_rate < 0.5",
+      "action": "notify 轮回: attack surface incomplete"
+    },
+    {
+      "condition": "门神.score < 80",
+      "action": "BLOCK deploy chain"
+    },
+    {
+      "condition": "天眼.alert_count > 10/hour",
+      "action": "auto-trigger 缉凶"
+    },
+    {
+      "condition": "缉凶.root_cause == 'skill_gap'",
+      "action": "notify 火眼 to scan for similar gaps"
+    }
+  ]
+}

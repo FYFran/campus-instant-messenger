@@ -1,0 +1,296 @@
+[
+  {
+    "bug_id": "B01",
+    "classification": "T0",
+    "classification_reason": "数据库为空时稳定复现500错误，是crash/panic/500。F5: 数据库为空/初始状态导致必现500/crash → T0。不是T1(每次必现非间歇)，不是T2(空数据库是系统状态非用户输入参数)",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B02",
+    "classification": "T1",
+    "classification_reason": "同一操作(报名)同一输入，约1/20-30概率出现重复报名。结果不一致。不是T3(间歇性非每必一致)",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B03",
+    "classification": "T2",
+    "classification_reason": "跟学院名有关——不同学院名产生不同结果(有些学院能看到操作其他学院，有些不能)。换一个参数值可能正常。不是T1(不随机，跟学院名关联)",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B04",
+    "classification": "T3",
+    "classification_reason": "时长统计始终比实际短，每次一致地错。无报错无crash。不是T1(每次必不对)，不是T2(与输入参数无关)，不是T5(非状态卡住)",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B05",
+    "classification": "T4",
+    "classification_reason": "代码没改、昨天能用、服务器重启后全401。F6确认: 前一版本正常/重启后 → T4。查JWT密钥/环境配置",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B06",
+    "classification": "T5",
+    "classification_reason": "报名后一直pending不变成confirmed——状态卡在中间状态回不来。F3: 一直pending不变 → T5不是T3",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B07",
+    "classification": "T6",
+    "classification_reason": "本机go1.22全通但CI go1.23 panic nil deref——环境差异(Go版本不同)导致。不同环境不同结果",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B08",
+    "classification": "T7",
+    "classification_reason": "产品经理反馈+用户投诉+需确认是代码问题还是产品设计。F4: 行为一致无报错+描述含需要确认是否产品设计 → 考虑T7",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B09",
+    "classification": "T1",
+    "classification_reason": "积分更新偶尔不生效——刷新又好了。F1: 偶尔不生效+刷新又好了 → T1不是T3。同一操作有时正常有时异常",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B10",
+    "classification": "T3",
+    "classification_reason": "活动列表越来越慢，没报错API正常200。数据一致地慢(每50个活动一组数据都慢)。不是T1(每次都慢)，不是T2(与具体参数值无关)，不是T5(非状态卡住)",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B11",
+    "classification": "T0",
+    "classification_reason": "条件满足(数据库连接池耗尽/网络异常)时稳定复现500+panic nil pointer dereference，伴随报错。F5: 系统状态异常导致必现500/crash → T0",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B12",
+    "classification": "T3",
+    "classification_reason": "仪表板统计数据全部是0，HTTP 200无报错。每次一致地错。不是T1(始终0非间歇)，不是T2(与输入参数无关)，不是T5(数据错非状态卡住)",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B13",
+    "classification": "T4",
+    "classification_reason": "之前版本有频率限制，最近版本不生效了。F6: 之前有但现在没了/版本更新后 → T4。查配置/环境变化",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B14",
+    "classification": "T2",
+    "classification_reason": "某些学生数据缺失(50显示48)，缺失学生在数据库存在且可登录。不同学生(不同参数)产生不同结果——有些能显示有些不能。换一个学生可能正常",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B15",
+    "classification": "T6",
+    "classification_reason": "日志有scan error(类型转换错误)导致is_read始终false。F7: 日志有scan error/类型转换错误 → T6不是T3。数据库存整数0/1但API期望bool——类型不匹配=DB schema差异",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B16",
+    "classification": "T7",
+    "classification_reason": "代码审查发现defer Rollback后又Commit，需确认是否真有问题。标准Go database/sql中defer Rollback在Commit后是安全no-op(返回ErrTxDone)。审查者认为的bug在标准实现中不成立",
+    "confidence": 80
+  },
+  {
+    "bug_id": "B17",
+    "classification": "T1",
+    "classification_reason": "注册接口偶尔允许普通学生注册为教师/管理员，不是每次都触发。同一注册流程有时正常有时越权",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B18",
+    "classification": "T1",
+    "classification_reason": "已结束活动偶尔变回已发布——同一记录状态不一致地变。不是T2(与输入参数无关)，不是T3(间歇非一致)",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B19",
+    "classification": "T1",
+    "classification_reason": "登录限流偶尔不准确+go test -race出现race告警+压力测试更容易触发——经典竞态条件。同一操作有时限流生效有时不生效",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B20",
+    "classification": "T4",
+    "classification_reason": "偏差固定8小时(23:59截止但16:00就停)——F8: 偏差固定数值查时区/过滤条件。8小时=UTC/GMT+8时区问题，环境配置导致。不是T3(F8明确排除)",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B21",
+    "classification": "T3",
+    "classification_reason": "只点完成活动学时永远为0——每次一致地错。无报错。不是T1(总是0非间歇)，不是T2(与输入无关)，不是T5(非卡住，数据正常返回但数值错)",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B22",
+    "classification": "T0",
+    "classification_reason": "数据库无活动记录时返回500，日志ZeroDivisionError。F5: 数据库为空导致必现500/crash → T0。有活动时正常说明条件满足时稳定复现",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B23",
+    "classification": "T2",
+    "classification_reason": "报名开始时间未设置(空)时提示报名尚未开始——若设置了开始时间则正常。不同参数值(空start_time vs 有效start_time)产生不同结果。换一个参数值(设置开始时间)就正常了",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B24",
+    "classification": "T1",
+    "classification_reason": "API偶尔返回旧数据——刷新后刚报名的状态按钮没变，等1-2分钟才正确。同一操作有时返回新数据有时返回旧数据",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B25",
+    "classification": "T5",
+    "classification_reason": "详情页显示已读，列表页红点仍在——状态从详情页返回列表页时卡在未读状态，转移失败。正常输入(点击通知)后状态没正确传播到列表视图",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B26",
+    "classification": "T0",
+    "classification_reason": "不带Authorization头时panic nil pointer dereference——每次条件满足(缺Authorization头)稳定crash。伴随报错(runtime error)",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B27",
+    "classification": "T3",
+    "classification_reason": "扣费始终在API调用之前，AI超时/失败时token已扣但用户没收到回复。每次一致地错(扣费顺序先于调用)。不是T1(操作顺序每次固定)，不是T2(与模型参数值无关)",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B28",
+    "classification": "T1",
+    "classification_reason": "充值订单偶尔一直显示处理中——同一支付回调有时更新状态有时不更新。偶尔发生非每次必现",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B29",
+    "classification": "T7",
+    "classification_reason": "安全审查标记bcrypt cost值10低于OWASP推荐12——代码功能正确，密码哈希正常工作。属安全加固建议非功能性缺陷。行为符合产品设计(DefaultCost)",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B30",
+    "classification": "T1",
+    "classification_reason": "WebSocket推送偶尔丢消息(10条丢1-2条)——同一连接有时收到全部有时丢。间歇性非一致",
+    "confidence": 90
+  },
+  {
+    "bug_id": "B31",
+    "classification": "T2",
+    "classification_reason": "浮点偏差偶尔出现——某些数值组合精确某些有浮点误差。不同输入(不同数值)不同结果。换一组数值可能精确",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B32",
+    "classification": "T6",
+    "classification_reason": "开发机Python 3.12正常但服务器3.9只发第一条——不同环境(Python版本)不同结果。环境差异导致功能不兼容",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B33",
+    "classification": "T5",
+    "classification_reason": "网络慢时登录后首页白屏——导航栏在主体空白，卡在中间渲染状态回不来。条件满足时稳定复现但无crash无报错。T0要求伴随报错(日志无错误)",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B34",
+    "classification": "T3",
+    "classification_reason": "活动列表越来越慢(<100ms变成>2秒)，HTTP 200无报错。每次一致地慢。不是T1(每次都慢非间歇)，不是T2(与具体参数无关)，不是T5(非状态卡住)",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B35",
+    "classification": "T7",
+    "classification_reason": "安全审查标记scope_type=all对所有学院可见/可操作——scope_type=all的设计意图就是全部可见。行为符合产品设计。标记HIGH但属设计决策非代码缺陷",
+    "confidence": 85
+  },
+  {
+    "bug_id": "B36",
+    "classification": "T1",
+    "classification_reason": "登录偶尔失败401密码正确——重试2-3次成功。同一密码同一用户有时成功有时失败。间歇性非一致",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B37",
+    "classification": "T6",
+    "classification_reason": "开发环境显示正确(10.5h)，生产环境始终0。代码相同数据相同，环境不同结果不同。不同环境差异",
+    "confidence": 95
+  },
+  {
+    "bug_id": "B38",
+    "classification": "T0",
+    "classification_reason": "重启后第一个请求必panic nil pointer dereference——每次重启稳定复现crash。伴随报错(panic/nil deref)。之后的请求正常说明是初始化未完成",
+    "confidence": 95
+  },
+  {
+    "bug_id": "M01",
+    "classification": "T1",
+    "classification_reason": "高并发时偶尔502/504——平时正常流量高峰期概率性超时。同一操作有时成功有时超时",
+    "confidence": 85
+  },
+  {
+    "bug_id": "M02",
+    "classification": "T1",
+    "classification_reason": "同一IP偶尔绕过注册频率限制，并发时更容易触发——经典竞态条件。有时限流生效有时不生效",
+    "confidence": 90
+  },
+  {
+    "bug_id": "M03",
+    "classification": "T3",
+    "classification_reason": "频率限制完全不工作——无限流从未触发。每次一致地不生效。不是T1(每次都无效非间歇)，不是T2(与输入无关)，不是T5(非状态卡住)",
+    "confidence": 85
+  },
+  {
+    "bug_id": "M04",
+    "classification": "T2",
+    "classification_reason": "不存在邮箱秒拒401，存在邮箱错误密码慢1-2秒。不同输入(邮箱是否存在)产生不同响应时间。换一个参数值(不存在邮箱)时序正常",
+    "confidence": 95
+  },
+  {
+    "bug_id": "M05",
+    "classification": "T3",
+    "classification_reason": "每次API请求都失败，前端刚加新参数后所有用户受影响。每次一致地错。不是T1(每次都失败非间歇)，不是T2(所有请求不论参数都失败)，不是T5(非状态卡住)",
+    "confidence": 85
+  },
+  {
+    "bug_id": "M06",
+    "classification": "T2",
+    "classification_reason": "某些AI模型空白回复，普通模型正常。不同模型(不同参数/输入)产生不同结果——换一个模型就正常了",
+    "confidence": 90
+  },
+  {
+    "bug_id": "M07",
+    "classification": "T1",
+    "classification_reason": "支付回调偶尔触发双倍token(5-10%概率)，同一invoice ID处理两次。同一操作有时正确有时重复。间歇性",
+    "confidence": 90
+  },
+  {
+    "bug_id": "M08",
+    "classification": "T3",
+    "classification_reason": "所有非JSON Content-Type请求返回415——每次一致地拒。不是T1(每次都拒非间歇)，不是T2(所有非JSON请求不论参数都拒)，不是T5(非状态卡住)",
+    "confidence": 85
+  },
+  {
+    "bug_id": "T01",
+    "classification": "T2",
+    "classification_reason": "某些AI模型暴露内部思考过程，普通模型没有。不同模型(不同参数/输入)产生不同结果——换一个模型正常",
+    "confidence": 90
+  },
+  {
+    "bug_id": "T02",
+    "classification": "T1",
+    "classification_reason": "AI聊天偶尔空回复——API返回tokens但前端渲染空白，非每次都触发。同一操作有时正常有时空",
+    "confidence": 90
+  },
+  {
+    "bug_id": "T03",
+    "classification": "T3",
+    "classification_reason": "前端更新代码后聊天功能完全无法工作，所有用户受影响。每次一致地错。不是T1(每次都失败非间歇)，不是T2(与输入参数无关所有用户都挂)，不是T5(非状态卡住)。代码逻辑bug非环境配置",
+    "confidence": 80
+  }
+]

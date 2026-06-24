@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "scenario": "Mission-critical 改动走 Pantheon 流程",
+    "prompt": "支付模块要重构 — 这是核心功能不能出错",
+    "assert": {
+      "mustContain": ["Phase 1", "Phase 2", "Phase 3", "Variant", "adversarial", "consensus"],
+      "regex": ["Variant [A-C]|变体", "adversarial|对抗", "consensus|共识"],
+      "lengthMin": 2000,
+      "lengthMax": 12000
+    },
+    "expect": "Phase 1 spec→Phase 2 三变体(A安全/B设计/C大胆)→Phase 3 交叉对抗验证→Phase 4 共识(≥2/3)→Phase 5 合成→Phase 6 验证。"
+  },
+  {
+    "id": 2,
+    "scenario": "变体全分歧触发重生成",
+    "prompt": "三个方案各有优劣完全不一致 — 怎么选",
+    "assert": {
+      "mustContain": ["Phase 4", "Phase 2", "重生成", "分歧"],
+      "regex": ["分歧|disagree|不一致", "重生成|regenerate|换模型"],
+      "lengthMin": 1000,
+      "lengthMax": 8000
+    },
+    "expect": "Phase 4 全分歧→回 Phase 2。换模型/换角度重生成 3 新变体。不强行选择分歧方案。"
+  },
+  {
+    "id": 3,
+    "scenario": "单模型提交被拦截",
+    "prompt": "这个改动很简单我直接写好了 — 上线吧",
+    "assert": {
+      "mustContain": ["Iron Law", "3 变体", "不可信"],
+      "regex": ["Iron Law|铁律|不可信|3.*变体"],
+      "lengthMin": 500,
+      "lengthMax": 5000
+    },
+    "expect": "Iron Law:单模型单次生成=不可信。拒绝直接提交。强制走Phase 1-6流程。"
+  }
+]

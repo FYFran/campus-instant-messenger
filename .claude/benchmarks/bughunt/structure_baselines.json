@@ -1,0 +1,68 @@
+{
+  "铁壁": {
+    "size": 7304,
+    "gotcha_count": 14,
+    "constitution_hash": "7cf3ea4a206eac2a4721d485a0cec250",
+    "red_line_count": 1
+  },
+  "缉凶": {
+    "size": 4359,
+    "gotcha_count": 17,
+    "constitution_hash": "b8558f79b555e73f551e2da6b3ddaee5",
+    "red_line_count": 6
+  },
+  "明镜": {
+    "size": 4147,
+    "gotcha_count": 7,
+    "constitution_hash": "098c1724028cbc628d8dfe14ce9a6f8d",
+    "red_line_count": 1
+  },
+  "布阵": {
+    "size": 6428,
+    "gotcha_count": 12,
+    "constitution_hash": "6dc742119c15bf134dc2077264f01215",
+    "red_line_count": 1
+  },
+  "门神": {
+    "size": 3031,
+    "gotcha_count": 7,
+    "constitution_hash": "589bbabec833292cafd46fda1e4a8521",
+    "red_line_count": 1
+  },
+  "破阵": {
+    "size": 2375,
+    "gotcha_count": 4,
+    "constitution_hash": "6401197783d67c703d492f20e3c715ed",
+    "red_line_count": 1
+  },
+  "天眼": {
+    "size": 5111,
+    "gotcha_count": 6,
+    "constitution_hash": "04cd187192ce53e84120aa5db850533c",
+    "red_line_count": 1
+  },
+  "架构师": {
+    "size": 5423,
+    "gotcha_count": 12,
+    "constitution_hash": "74900b5eef952ffaacafecd11669cd67",
+    "red_line_count": 1
+  },
+  "试金石": {
+    "size": 4618,
+    "gotcha_count": 12,
+    "constitution_hash": "20834df6c2eb12dc3c2a6b5c57e67de7",
+    "red_line_count": 1
+  },
+  "轮回": {
+    "size": 5915,
+    "gotcha_count": 7,
+    "constitution_hash": "a4cbf7723dd1154c866dffc8db4ae5d0",
+    "red_line_count": 6
+  },
+  "火眼": {
+    "size": 3524,
+    "gotcha_count": 3,
+    "constitution_hash": "a7ac5ab98c465c7f1d581726c7914f1c",
+    "red_line_count": 1
+  }
+}

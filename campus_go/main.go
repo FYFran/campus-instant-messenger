@@ -3,8 +3,8 @@ package main
 import (
 	"campus-go/internal/database"
 	"campus-go/internal/handlers"
+	log "campus-go/internal/logger"
 	"campus-go/internal/middleware"
-	"log"
 	"os"
 	"time"
 
@@ -23,6 +23,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(middleware.CORS())
+	r.Use(middleware.RequestID()) // Trace every request (G01 observability fix)
 	// Rate limiting is handled by nginx reverse proxy in production
 
 	// Start WebSocket hub
@@ -34,7 +35,6 @@ func main() {
 		api.GET("/colleges", handlers.GetColleges(db))
 		api.GET("/notices", handlers.ListNotices(db))
 		api.GET("/health", handlers.HealthCheck(db))
-		api.POST("/upload", handlers.UploadImage())
 
 		auth := api.Group("/auth")
 		{
@@ -42,13 +42,14 @@ func main() {
 		}
 
 		api.POST("/login", handlers.Login(db))
-		api.POST("/register", handlers.Register(db))
+		api.POST("/register", middleware.RateLimit(6, time.Minute), handlers.Register(db))
 		api.POST("/token/refresh", handlers.RefreshToken(db)) // 不需要JWT — refresh_token自身就是凭证
 
 		protected := api.Group("")
 		protected.Use(middleware.JWT(db))
 		protected.Use(middleware.RateLimit(60, time.Minute))
 		{
+			protected.POST("/upload", handlers.UploadImage())
 			protected.GET("/me", handlers.GetMe(db))
 			protected.GET("/activities", handlers.ListActivities(db))
 			protected.GET("/activities/:id", handlers.GetActivity(db))

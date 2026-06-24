@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "scenario": "典型场景：优化单个 skill",
+    "prompt": "优化 campus-code-review 这个 skill — 它最近的审查漏了几个 SQL 注入",
+    "expected": "forge 应触发 Phase 0(初始化)→0.5(设计测试prompt)→1(基线评估5维打分)→展示最低维度→🔴CHECKPOINT等用户确认→Phase 2(优化循环:诊断→提出≤4处修改→编辑→独立子agent复评→保留/回滚)→触顶break→Phase 3汇总"
+  },
+  {
+    "id": 2,
+    "scenario": "仅评估不改",
+    "prompt": "评估所有 skill 的质量，不要改",
+    "expected": "forge 应只执行 Phase 0.5-1(生成测试prompt+基线评估)，不进入 Phase 2。输出评分排名表。不应擅自修改任何文件"
+  },
+  {
+    "id": 3,
+    "scenario": "歧义/边界场景",
+    "prompt": "帮我看下这个 skill 怎么样",
+    "expected": "forge 应追问：哪个 skill？要评估还是优化？不应盲目扫描全部 skill 或默认进入优化循环。应检查 git 状态、确认范围后再行动"
+  }
+]

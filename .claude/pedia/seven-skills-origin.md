@@ -21,7 +21,7 @@
 
 | 来源 | 核心贡献 | 融入了什么 |
 |------|---------|-----------|
-| **SkillOpt** (Microsoft, arXiv 2605.23904) | 像训练神经网络一样训练 skill 文本。Bounded edit (≤4处修改)、validation gate (留存集验证)、rejected buffer (负反馈记忆) | skill-lab 的核心循环 |
+| **SkillOpt** (Microsoft, arXiv 2605.23904) | 像训练神经网络一样训练 skill 文本。Bounded edit (≤4处修改)、validation gate (留存集验证)、rejected buffer (负反馈记忆) | forge 的核心循环 |
 | **SkillLens** (Microsoft, arXiv 2605.23899) | LLM-as-judge 准确率仅 46.4%≈随机。加 meta-skill 维度 → 73.8% | 6 维评估卡 (5a 确定性断言 + 5b 3-judge blind) |
 | **darwin-skill** (社区, 微软官方集成) | 人审检查点、9 维 rubric、反例黑名单、git ratchet | 人审 CHECKPOINT、反例黑名单 8 条、results.tsv |
 | **autoresearch** (Karpathy, 80K⭐) | 1 个可编辑文件 + 1 个指标 + 固定预算 + 循环。630 行 Python | 编排器模式、收敛循环、state 持久化 |
@@ -76,7 +76,7 @@ Review Outcome Template (Findings Table + Verdict + Score)
 Step 2 Post-Review CHECKPOINT
 ```
 
-### 2. skill-lab (68.0 → ~99, +31 分, 5 轮 + v0.2)
+### 2. forge (68.0 → ~99, +31 分, 5 轮 + v0.2)
 
 **原始状态**: 5 维评估卡，核心循环有但子 agent spawn 机制未定义，批处理缺失，歧义处理缺失。
 
@@ -164,12 +164,12 @@ Phase 4: DISCOVER (从失败中发现新 skill)
 ### 决策 2: Constitution 锚 — 每个 skill 的安全边界
 
 ```
-CONSTITUTION (skill-lab 不可编辑)
+CONSTITUTION (forge 不可编辑)
   - 核心功能
   - 安全约束 (绝对不能做的事)
   - 触发条件 (什么时候该用/不该用)
 
-IMPLEMENTATION (skill-lab 可以优化)
+IMPLEMENTATION (forge 可以优化)
 ```
 
 ### 决策 3: 6 维评估替代 5 维 LLM judge
@@ -184,7 +184,7 @@ LLM judge 准确率仅 46.4% (SkillLens)。确定性断言 + 3 judge 多数 → 
 ### 决策 4: 成长性 — v0.2 加入 DISCOVER + 使用追踪
 
 ```
-skill-lab 不只是优化器，是 skill 生态系统管理者:
+forge 不只是优化器，是 skill 生态系统管理者:
   - EVOLVE: 优化现有 skill (bounded edit + validation gate)
   - DISCOVER: 从失败/重复劳动中发现新 skill (EvoSkill 模式)
   - TRACK: 使用追踪 → 数据驱动决策
@@ -205,7 +205,7 @@ f:/ClaudeFiles/.claude/skills/
 ├── campus-deploy.md                    部署 — defense-in-depth + pre-flight
 ├── campus-quality-gate.md             质量门 — 9道检查 + 多agent共识
 ├── campus-red-team.md                 红队 — 3角色 × 7阶段 + 链条原则
-├── skill-lab/                  (~99)  Skill优化 — 6维评估 + DISCOVER + 追踪
+├── forge/                  (~99)  Skill优化 — 6维评估 + DISCOVER + 追踪
 ├── pantheon-custom/                   代码生成 — 任意模型验证
 ├── pantheon-gap-custom/              差距分析 — 9维度审查 + 任意模型确认
 └── _archived/                         退役存档 (5 pantheon 变体)
@@ -215,7 +215,7 @@ f:/ClaudeFiles/.claude/skills/
 
 读完后，你应该：
 
-1. **先读 skill-lab/SKILL.md** — 理解整个优化框架
+1. **先读 forge/SKILL.md** — 理解整个优化框架
 2. **再读 campus-code-review.md** — 看最成功的优化案例 (59.5→98.5)
 3. **跑一个快速测试** — 让 campus-code-review 审查一个文件，看实际效果
 4. **检查 results.tsv** — 看完整的优化历史记录
@@ -223,10 +223,10 @@ f:/ClaudeFiles/.claude/skills/
 
 ### 如果遇到问题
 
-- skill-lab 可以优化所有 7 个 skill (除了它自己的 CONSTITUTION 段)
+- forge 可以优化所有 7 个 skill (除了它自己的 CONSTITUTION 段)
 - DISCOVER 层会在检测到重复劳动时提议创建新 skill
-- 使用追踪数据在 `.claude/skills/skill-lab/skill-usage.jsonl`
-- 优化历史在 `.claude/skills/skill-lab/results.tsv`
+- 使用追踪数据在 `.claude/skills/forge/skill-usage.jsonl`
+- 优化历史在 `.claude/skills/forge/results.tsv`
 
 ### 核心哲学
 

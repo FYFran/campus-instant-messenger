@@ -1,118 +1,92 @@
 ---
 name: 火眼
-description: 火眼（Fire Eye）— 项目差距分析引擎。PreScan→Map→Probe→Confirm→Synthesize→Critic→Write。跨模型对抗验证。零依赖降级：无Workflow则单agent模式仍可用。触发：火眼/gap analysis/差距分析/find gaps/confirm gaps/项目审查。
+description: 项目差距分析引擎 v1.1。7-Phase pipeline+架构维度扩展(ADR/API/部署/容量)。通用——配target路径。触发：火眼/gap analysis/差距分析/find gaps/project review。
+model: deepseek-v4-pro
+conflicts: []
+lifecycle: active
+created: 2026-06-23
+updated: 2026-06-23
+review_after: 2026-07-23
 ---
 
-# 火眼 — 项目差距分析引擎
+# 火眼 v1.1 — 项目差距分析引擎
 
-## CONSTITUTION（不可被 skill-lab 编辑）
+## CONSTITUTION（不可被 forge 编辑）
 
-**核心功能：** 代码库差距分析 → P0-P3优先级报告。7-Phase pipeline：PreScan（静态grep）→ Map（侦察选维度）→ Probe（找gap+证据）→ Confirm（跨模型steelman验证）→ Synthesize（去重排序）→ Critic（自检报告）→ Write（产物持久化）。
-**安全约束：** 绝不编造gap（每finding需file:line证据）。绝不修改被审查repo源码。`.gaps/` 审计产物不入源码（应在`.gitignore`）。绝不在聊天中暴露API key。外部模型不可用→标记unconfirmed，不静默跳过。
-**触发：** 火眼 / gap analysis / find gaps / 差距分析 / confirm gaps / project review / 项目审查
+**核心功能：** 代码库差距分析→P0-P3优先级报告。7-Phase: PreScan→Map→Probe→Confirm→Synthesize→Critic→Write。扩展架构维度：ADR/API标准/部署架构/容量规划。
+**Iron Law：** NO GAP CLAIM WITHOUT FILE:LINE EVIDENCE. 绝不编造gap。
+**红线：** 绝不编造gap。绝不修改被审查repo源码。.gaps/不入源码。绝不在聊天暴露API key。外部模型不可用→标记unconfirmed。
+**触发：** 火眼 / gap analysis / find gaps / 差距分析 / confirm gaps / project review
+**边界：** 差距分析→火眼。安全→铁壁。Bug→缉凶。前瞻设计→架构师。代码审查→明镜。
+**模型：** deepseek-v4-pro。换模型→重跑BugHuntBench quick。
 
 ---
 
-## PREFLIGHT（每次必跑）
+## Gotchas
+
+| # | 症状 | 根因 | 教训 |
+|---|------|------|------|
+| 1 | 扫了一圈"没gap" | 维度选太窄 | ≥6维度交叉验证 |
+| 2 | 发现的全是LOW | 不敢判严重性 | P0=直接导致安全事故/数据丢失 |
+| 3 | 外部模型静默降级 | 网络故障没标记 | 强制标注Mode: single/engine |
+
+---
+
+## 7-Phase Pipeline
 
 ```
-1. 检查 ~/.pantheon/ 目录是否存在 → 不存在则 "New-Item -ItemType Directory -Force ~/.pantheon/"
-2. 检查 ~/.pantheon/config.json → 不存在则创建 {"verifier":"claude"}
-3. 检查 Workflow 工具是否可用 → 可用则 MODE=engine(7-phase)。不可用则 MODE=single(agent模式)
+PreScan → Map → Probe → Confirm → Synthesize → Critic → Write
 ```
 
-MODE=single 时：agent 直接执行三步（无并行验证、无 Critic、无 Write），仍按 Output Spec 产出报告：
-1. **PreScan:** `Select-String`(Win) / `grep -rn`(Unix) 扫 TODO/FIXME/空catch/硬编码密钥→种子证据
-2. **Map:** 读 README + 目录结构 + package manifests → 选最相关维度
-3. **Probe:** 逐一维度检查，每 finding 需 file:line 证据 → 标 P0-P3 优先级 + 置信度
-标注 `Mode: single`（非跨模型验证，置信度较低）。
+### 维度扩展（新增——来自架构7skill精华）
 
----
+原有维度 + 新增架构维度：
 
-## Procedure
+| 维度类别 | 维度 | 检查什么 |
+|---------|------|---------|
+| 安全 | 认证授权/输入验证/数据保护/依赖安全 | 原有 |
+| 质量 | 错误处理/审计日志/限流/测试覆盖 | 原有 |
+| **架构** | **ADR** | 重大决策是否有ADR记录？docs/adr/是否存在？ |
+| **架构** | **API设计** | URL规范？状态码正确？OpenAPI文档？速率限制？ |
+| **架构** | **部署架构** | 零公共端口？非root容器？健康检查？Unix socket？ |
+| **架构** | **容量规划** | 磁盘/内存/DB/SSL证书监控？告警阈值？趋势预测？ |
+| **架构** | **数据库设计** | 范式化？索引策略？迁移方案？软删除？UUID/SERIAL？ |
+| **架构** | **技术栈** | 每个角色选型是否合适？有无反推荐(新项目PHP/MongoDB)？ |
 
-**1.** 🔴 解析确认模型。内联模型名 → 直接使用。读 `~/.pantheon/config.json` → 取 `verifier ?? defaultVerifier`。无配置 → BLOCK，引导用户运行 `/pantheon-model` 或同意 Claude default。
-格式：`provider/model-id` 或别名（deepseek/qwen/kimi/ollama:model/profile:name）。
-Claude-tier（opus/sonnet/haiku）通过 `agent({model})` 切换。
+### 融合：火眼 ↔ 架构师
 
-**2.** 🔴 检查确认模型可用性。不可用 → 标记 unconfirmed 但继续。绝不静默替换为 Claude。
-
-**3.** 🔴 确定目标路径。无路径 → BLOCK，追问。路径不存在 → BLOCK。必须是绝对路径。
-
-**4.** 🔴 决定参数并确认：target（绝对路径）、focus、maxDimensions（默认6, quick模式3）、verifiers（默认2, quick模式0）、verifier。参数不完整 → BLOCK，追问。
-
-**5.** 🔴 Pre-Workflow Gate：确认 target/maxDimensions/verifier/预期成本后启动。
-
-**6.** 🔴 按 MODE 执行：MODE=engine → 读 `pantheon-gap-class.js` → `Workflow({script, args})`。MODE=single → agent 直接 PreScan+Map+Probe。两种模式均按 Output Spec 格式输出。Workflow 失败 → 降级到 single 重试。
-
-**7.** 报告含：确认模型、Passes、Lenses覆盖、Confirmed Gaps（P0-P3+Evidence+Confidence+Fix）、SUSPECT Gaps（conf<0.8）、Quick Wins、Highest-Leverage Fix。标注模式（engine/single）。
-
----
-
-## Output Specification
-
-```markdown
-## Gap Analysis: {target} — {timestamp}
-**Confirm model:** {model} | **Passes:** N | **Lenses:** [lenses] | **Mode:** {engine/single}
-
-### Summary
-{一段话项目状态评估}
-
-### Confirmed Gaps ({n})
-| # | P | Dimension | Gap | Evidence | Confidence | Fix |
-|---|----|-----------|-----|----------|------------|-----|
-| 1 | P0 | security | ... | file:line | 0.95 | ... |
-
-### SUSPECT Gaps ({n}) — avg confidence <0.8, treat as suggestions
-| # | Dimension | Gap | Confidence | Why SUSPECT |
-
-### Quick Wins
-- [ ] {低成本高价值修复}
-
-### Highest-Leverage Fix
-**{title}** — {为什么这是最该先修的}
+```
+火眼发现架构gap → 建议"调用架构师重新设计X"
+架构师Phase 7 Gap Handoff → 触发火眼验证新设计
+火眼"架构/设计模式"维度 → 调用架构师Phase 2-4验证
 ```
 
 ---
 
-## 分级执行
+## 优先级定义
 
-| 模式 | 触发 | 行为 |
+| 级别 | 定义 | 示例 |
 |------|------|------|
-| **full** | 默认 | 7-Phase 引擎（需Workflow），跨模型验证，convergence re-probe |
-| **quick** | `quick gap scan` | 3维度 + 跳过确认（⚠ UNCONFIRMED，仅用于快速摸底） |
-| **safe** | `safe gap scan` | 7-Phase 但强制 Claude-tier 确认（⚠ 同模型家族，非真实跨模型独立） |
+| P0 | 直接导致安全事故/数据丢失/服务不可用 | 缺认证、密钥硬编码、SQL注入 |
+| P1 | 高概率短期导致问题 | 缺限流、缺审计日志、错误暴露内部信息 |
+| P2 | 降低质量/可维护性 | 缺输入验证、缺测试、依赖过期 |
+| P3 | 改善性 | 文档缺失、代码风格不一致 |
 
 ---
 
-## Pipeline（MODE=engine 时 JS 执行）
+## 可成长性
 
-- **PreScan:** 静态 grep（Select-String/rg）：TODO/FIXME/空catch/硬编码密钥 → 种子证据
-- **Map:** 侦察项目结构选最相关维度（默认 6 维）
-- **Probe:** 每维度一个 agent 找 gap（3-8个高信号 gap，维度扎实则返回空）
-- **Confirm:** V 个 skeptic（各不同 lens: correctness/security/performance/completeness/architecture）先 steelman 再反驳，多数确认则保留。弱理由（空 steelman 或无 code reference）→ 降权 0.5。avg confidence <0.8 → SUSPECT
-- **Synthesize:** 去重 + P0-P3 优先级排序
-- **Critic:** 自检报告（证据/hedging/重复/置信度/修复方案），blocking issues → auto-fix ≤2次
-- **Write:** Python3 跨平台写入 `.gaps/{scope}-{timestamp}.json`
+```
+1. 维度候选列表有没有遗漏的gap类型？
+2. 假阳性/假阴性有没有？
+3. 外部模型稳定性？
+4. 火眼→架构师的交叉引用有没有产生value？
+→ 轮回采集→确认→注入
+```
 
-**收敛：** CRITICAL gap 触发互补维度 re-probe（security↔correctness, performance↔architecture, testing↔completeness），最多 3 轮。
+## 验证
 
-**上报：** 外部模型不可用 → 标记 unconfirmed。JSON 解析失败 → valid:true, reason:"parse error — gap kept"。
-
----
-
-## Gotchas（真实踩坑）
-
-| # | 坑 | 正确做法 |
-|---|-----|---------|
-| 1 | codex exec exit 0 但 output 为空 JSON | 检查 output 非空 + 含 `valid` 字段。空 → unconfirmed |
-| 2 | pipeline 并行竞态 | confirm 阶段 `--sandbox read-only`，绝不加 `--sandbox none` |
-| 3 | DeepSeek 返回中文 JSON key | VERDICT_SCHEMA 强制验证，解析失败 → gap kept |
-| 4 | 大项目 probe 超时 | maxDimensions 默认 6，大项目降到 4 |
-| 5 | verifier 全票否决但全是弱理由 | steelman 空或 reason 无 codeReference → 降权 0.5 |
-| 6 | config.json schema 变更 | 读取时兼容 `verifier ?? defaultVerifier ?? 'claude'` |
-| 7 | 单 dimension 扫描当全面报告 | 标注 "Partial — {n}/{total} dimensions probed" |
-
-## Report Artifacts
-
-产物写入 `{target}/.gaps/{scope}-{timestamp}.json`。同 gap 连续 2 次出现 → severity +1 升级。保留 20 个文件，删 >90 天。
+```
+BugHuntBench quick 火眼 → 待bugset定义
+BugHuntBench full 火眼  → 待bugset定义
+```

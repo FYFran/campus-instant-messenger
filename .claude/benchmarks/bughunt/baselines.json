@@ -1,0 +1,81 @@
+{
+  "铁壁": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 3,
+    "timestamp": "2026-06-23T20:00:00",
+    "mode": "full",
+    "notes": "L2 full baseline 8.0/8. L1 ceiling: 7.5/8.",
+    "cna": 0.0479,
+    "tokens": 167000
+  },
+  "明镜": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 3,
+    "timestamp": "2026-06-23T20:30:00",
+    "mode": "L1_quick",
+    "notes": "C01-C03 bugset created 2026-06-23. L2 baseline pending.",
+    "cna": 0.0379,
+    "tokens": 211000
+  },
+  "缉凶": {
+    "score": 6.1,
+    "adjusted_score": "~7.0",
+    "max_score": 8,
+    "bugs": 35,
+    "timestamp": "2026-06-23T00:00:00",
+    "mode": "full",
+    "notes": "L2 full baseline 6.1/8. v3.2 adjusted ~7.0. L1 ceiling: 8.0/8. Re-benchmark pending.",
+    "cna": 0.0197,
+    "tokens": 310000
+  },
+  "布阵": {
+    "score": 7.2,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 7.2/8 (format match ceiling). L2 full baseline pending."
+  },
+  "门神": {
+    "score": 7.2,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 7.2/8 (format match ceiling). L2 full baseline pending."
+  },
+  "破阵": {
+    "score": 7.2,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 7.2/8 (format match ceiling). L2 full baseline pending. Real agent pilot: R01 agent found /api/ws JWT bypass.",
+    "cna": 0.2963,
+    "tokens": 27000
+  },
+  "火眼": {
+    "score": 7.0,
+    "max_score": 8,
+    "bugs": 3,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 7.0/8 (format match ceiling). L2 full baseline pending."
+  },
+  "试金石": {
+    "score": 8.0,
+    "max_score": 8,
+    "bugs": 8,
+    "mode": "L1_quick",
+    "timestamp": "2026-06-23T22:35:00",
+    "notes": "L1 ceiling: 8.0/8 (reuses 缉凶 bug types). L2 full baseline pending."
+  },
+  "_cna_methodology": {
+    "formula": "CNA = score / (tokens / 1000) = 千token产出分",
+    "source": "CLEAR Framework (arxiv 2511.14136)",
+    "benchmark": "Higher CNA = more efficient skill. >0.1 = excellent, <0.02 = needs optimization",
+    "updated": "2026-06-23"
+  }
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "scenario": "全面差距分析",
+    "prompt": "对这个项目做一次彻底差距分析 — 找出所有问题和改进空间",
+    "assert": {
+      "mustContain": ["Phase 0", "Phase 1", "Phase 2", "Phase 3", "Phase 4", "Phase 5", "Phase 6", "PreScan", "Steelman", "Critic"],
+      "regex": ["Phase [0-6]", "P0|P1|P2|P3", "confidence.*0\\."],
+      "lengthMin": 3000,
+      "lengthMax": 15000
+    },
+    "expect": "Phase 0 PreScan→Phase 1 3Agent并行(代码质量/架构/安全)→Phase 2交叉确认→Phase 3 Steelman→Phase 4 Critic→Phase 5 Priority排序(P0-P3)→Phase 6 Write。"
+  },
+  {
+    "id": 2,
+    "scenario": "Steelman 反驳成立标记 false positive",
+    "prompt": "代码复杂度高 — 这是个gap吗",
+    "assert": {
+      "mustContain": ["Steelman", "false positive", "Phase 3"],
+      "regex": ["Steelman|steelman", "false.positive|不是.*gap|反驳"],
+      "lengthMin": 1000,
+      "lengthMax": 8000
+    },
+    "expect": "Phase 3 Steelman: 陈述gap+证据→最好反驳→counter→结论(real/false/uncertain)。反驳成立→标记false positive。"
+  },
+  {
+    "id": 3,
+    "scenario": "无证据gap被丢弃",
+    "prompt": "感觉代码架构不太好 — 列出来",
+    "assert": {
+      "mustContain": ["Phase 2", "交叉确认", "丢弃", "证据"],
+      "regex": ["丢弃|discard|无.*证据|no.*evidence"],
+      "lengthMin": 1000,
+      "lengthMax": 8000
+    },
+    "expect": "Phase 2 交叉确认: 无独立维度确认→丢弃。不报告无证据gap。Gotcha: 不编造confidence。"
+  }
+]

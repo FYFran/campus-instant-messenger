@@ -1,0 +1,19 @@
+--- a/campus_go/internal/handlers/activities.go
++++ b/campus_go/internal/handlers/activities.go
+@@ -196,10 +196,17 @@ func Signup(db *pgxpool.Pool) gin.HandlerFunc {
+
+-       initialStatus := "pending"
+-       if signupMode == "first_come" {
+-           initialStatus = "selected"
++       // BUG-INJECTION-B06: Missing approval_required check
++       // NULL value interpreted as false in Go, but migration changed to NOT NULL DEFAULT true
++       // Result: auto-confirm activities get stuck in pending
++       var approvalRequired sql.NullBool
++       _ = tx.QueryRow(c.Request.Context(),
++           "SELECT approval_required FROM activities WHERE id=$1", actID,
++       ).Scan(&approvalRequired)
++
++       initialStatus := "pending"
++       if !approvalRequired.Bool {
++           initialStatus = "selected"
+        }

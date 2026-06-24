@@ -1,0 +1,47 @@
+{
+  "last_scan_seq": 57,
+  "dispatched_hashes": [
+    "da51744c125f",
+    "bece33c9bfcb",
+    "3ec652b5dae6",
+    "3c29b92cfbdc"
+  ],
+  "signals": {
+    "build_failure": {
+      "count": 2,
+      "last_event_ts": "2026-06-21T05:31:54.430417+00:00",
+      "latest_description": "你说得对，再查一遍。三个潜在问题：\n\n**1. guard-repeat-fail hook 注册了吗？**",
+      "accumulated_strength": 6.987145216417404
+    },
+    "security_violation": {
+      "count": 0,
+      "last_event_ts": "2026-06-21T05:31:54.152693+00:00",
+      "latest_description": "做完了。两条行为规范从文本编译成了代码：\n\n## 编译结果\n\n### \"审查先Recall\" → `task-router.py` (UserPromptSubmit Hook)\n\n```\n用户说\"review代码\" \n  → task-router 匹配规则 → 输出 @router: code-reviewer + security-auditor（并行）\n  → 同时检测路由中包含 code",
+      "accumulated_strength": 3.999724996926333
+    },
+    "bug_pattern_repeat": {
+      "count": 1,
+      "last_event_ts": "2026-06-21T05:31:53.604841+00:00",
+      "latest_description": "说实话：**大部分装了对我们的边际收益很低。**\n\n一个一个拆：\n\n| 工具 | 我们已有等价物 | 真实增量 |\n|------|--------------|---------|\n| komi-learn | `learning-loop` + `memory MCP` | 自动触发 vs 手动，但质量未知 |\n| EvoSkill | `bug-patterns.md` + `skill-c",
+      "accumulated_strength": 7.978192174657074
+    },
+    "test_failure_cascade": {
+      "count": 0,
+      "last_event_ts": "",
+      "latest_description": "",
+      "accumulated_strength": 0.0
+    },
+    "stale_skill": {
+      "count": 0,
+      "last_event_ts": "",
+      "latest_description": "",
+      "accumulated_strength": 0.0
+    },
+    "disk_low": {
+      "count": 0,
+      "last_event_ts": "",
+      "latest_description": "",
+      "accumulated_strength": 0.0
+    }
+  }
+}

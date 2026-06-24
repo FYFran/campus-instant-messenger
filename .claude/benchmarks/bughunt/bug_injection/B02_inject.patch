@@ -1,0 +1,11 @@
+--- a/campus_go/internal/handlers/activities.go
++++ b/campus_go/internal/handlers/activities.go
+@@ -202,7 +202,7 @@ func Signup(db *pgxpool.Pool) gin.HandlerFunc {
+
+        var insertedID int
+        err = tx.QueryRow(c.Request.Context(),
+-           "INSERT INTO signups (activity_id, user_id, status, signed_at) VALUES ($1,$2,$3,$4) ON CONFLICT (activity_id, user_id) DO NOTHING RETURNING id",
++           "INSERT INTO signups (activity_id, user_id, status, signed_at) VALUES ($1,$2,$3,$4) RETURNING id",
+            actID, userID, initialStatus, time.Now()).Scan(&insertedID)
+        if err != nil {
+            if errors.Is(err, pgx.ErrNoRows) {

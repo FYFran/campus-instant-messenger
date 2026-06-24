@@ -1,0 +1,14 @@
+diff --git a/campus_go/internal/handlers/activities.go b/campus_go/internal/handlers/activities.go
+index 8196d1b..e7403bd 100644
+--- a/campus_go/internal/handlers/activities.go
++++ b/campus_go/internal/handlers/activities.go
+@@ -73,6 +73,9 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
+ 				"qq_group": qqGroup, "signed_up": signedUp,
+ 			})
+ 		}
++		// BUG-INJECTION-B01v2: Access first element without nil/empty check
++		titleCheck := acts[0]["title"]
++		_ = titleCheck
+ 		if acts == nil {
+ 			acts = []gin.H{}
+ 		}
