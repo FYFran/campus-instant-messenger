@@ -1,4 +1,4 @@
-# BOOT.md — 自动生成 (2026-06-22 23:03)
+# BOOT.md — 自动生成 (2026-06-24 10:55)
 
 ## 装备状态
 - Hermes Agent: 检查 `~/.local/bin/hermes gateway status`
@@ -19,10 +19,10 @@
 
 最近 5 条 memory:
 - MEMORY_EVENTS.md
+- session-2026-06-23-skill-ecosystem-forge.md
+- decision-protocol.md
+- mempalace-integration.md
 - bughunt-statistical-methodology.md
-- gepa-skill-optimization.md
-- session-2026-06-22-bughunt-top.md
-- skill-contract-framework-2026-06-21.md
 
 ## 最近变更
 自动从 git log 提取最近 3 次提交

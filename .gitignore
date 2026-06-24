@@ -159,3 +159,7 @@ _research/index.html
 _research/blog-10-tools-ai-gratis-mahasiswa-2026.html
 _research/github-skills.tar.gz
 _research/github-skills/
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json

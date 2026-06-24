@@ -540,6 +540,30 @@ func UploadImage() gin.HandlerFunc {
 			c.JSON(400, gin.H{"detail": "图片不能超过10MB"})
 			return
 		}
+		// Verify MIME magic bytes — prevent extension spoofing
+		src, err := file.Open()
+		if err != nil {
+			c.JSON(400, gin.H{"detail": "无法读取文件"})
+			return
+		}
+		magic := make([]byte, 12)
+		n, _ := src.Read(magic)
+		src.Close()
+		magicOK := false
+		switch ext {
+		case "jpg", "jpeg":
+			magicOK = n >= 2 && magic[0] == 0xFF && magic[1] == 0xD8
+		case "png":
+			magicOK = n >= 4 && magic[0] == 0x89 && magic[1] == 0x50 && magic[2] == 0x4E && magic[3] == 0x47
+		case "gif":
+			magicOK = n >= 3 && magic[0] == 0x47 && magic[1] == 0x49 && magic[2] == 0x46
+		case "webp":
+			magicOK = n >= 12 && magic[0] == 0x52 && magic[1] == 0x49 && magic[2] == 0x46 && magic[3] == 0x46 && magic[8] == 0x57 && magic[9] == 0x45 && magic[10] == 0x42 && magic[11] == 0x50
+		}
+		if !magicOK {
+			c.JSON(400, gin.H{"detail": "文件格式与扩展名不匹配"})
+			return
+		}
 		b := make([]byte, 8)
 		rand.Read(b)
 		filename := fmt.Sprintf("%d_%s.%s", time.Now().UnixNano(), hex.EncodeToString(b), ext)

@@ -191,7 +191,7 @@ for pfx in _impersonate_prefixes:
 1. **Signup max_participants**: `SELECT count(*) + INSERT` gap. Signup function uses `FOR UPDATE` on the activity row, then checks count inside the same transaction. Mitigated.
 2. **Refresh token rotation**: `SELECT + UPDATE` gap. Uses `SELECT ... FOR UPDATE` inside a transaction. Mitigated.
 3. **Substitute student**: `old_signup status check + update`. Uses `FOR UPDATE` on both rows inside a transaction. Mitigated.
-4. **Int code join**: `SELECT + INSERT` gap. Not mitigated (no FOR UPDATE on the activity row) — low risk because `INSERT INTO signups` has unique constraint on (activity_id, user_id).
+4. **Int code join**: `SELECT + INSERT` gap. Mitigated (Go backend `Signup` handler uses `FOR UPDATE` on the activity row + `ON CONFLICT DO NOTHING` on the INSERT + UNIQUE constraint on (activity_id, user_id)). Concurrent 10-request test verified zero duplicates.
 
 **Prevention pattern**:
 ```python
