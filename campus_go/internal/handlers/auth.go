@@ -94,7 +94,9 @@ func Login(db *pgxpool.Pool) gin.HandlerFunc {
 		}
 		// 登录时bump token_version → 旧token失效(单设备控制)
 		tokenVersion++
-		_, _ = db.Exec(c.Request.Context(), "UPDATE users SET token_version=$1 WHERE id=$2", tokenVersion, id)
+		if _, err := db.Exec(c.Request.Context(), "UPDATE users SET token_version=$1 WHERE id=$2", tokenVersion, id); err != nil {
+			log.Printf("Login token_version update error uid=%d: %v", id, err)
+		}
 		token, err := middleware.GenerateToken(id, role, tokenVersion)
 		if err != nil {
 			log.Printf("GenerateToken error: %v", err)
@@ -218,7 +220,8 @@ func GetMe(db *pgxpool.Pool) gin.HandlerFunc {
 		err := db.QueryRow(c.Request.Context(),
 			`SELECT name, student_id, role, COALESCE(college,''), COALESCE(class,''),
 				 COALESCE(gender,''), COALESCE(grade,''), COALESCE(phone,''), COALESCE(qq,''),
-				 COALESCE(can_publish,0)::boolean, COALESCE(is_poor,0)::boolean, COALESCE(volunteer_hours,0),
+				 COALESCE(can_publish,0)::boolean, COALESCE(is_poor,0)::boolean,
+					 COALESCE((SELECT SUM(c.hours) FROM certificates c WHERE c.user_id=$1),0),
 				 COALESCE(show_phone,0)::boolean, COALESCE(show_qq,0)::boolean, publisher_org_id,
 				 created_at, COALESCE(is_active,true)::boolean
 				 FROM users WHERE id=$1`, userID,

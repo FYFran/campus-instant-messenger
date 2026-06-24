@@ -68,6 +68,14 @@ func CreateActivity(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(400, gin.H{"detail": "报名人数需在0-10000之间"})
 			return
 		}
+		if len(req.Description) > 5000 {
+			c.JSON(400, gin.H{"detail": "活动描述不能超过5000字符"})
+			return
+		}
+		if len(req.Location) > 200 {
+			c.JSON(400, gin.H{"detail": "活动地点不能超过200字符"})
+			return
+		}
 
 		status := "published"
 		if role == "student" {
@@ -162,7 +170,7 @@ func ApproveActivity(db *pgxpool.Pool) gin.HandlerFunc {
 			"SELECT created_by, title FROM activities WHERE id=$1", actID).Scan(&createdBy, &title); err == nil {
 			_, _ = db.Exec(c.Request.Context(),
 				"INSERT INTO notifications (user_id, type, title, content, is_read) VALUES ($1,'approval','活动已通过',$2,0)",
-				createdBy, "你的活动「"+title+"」已通过审核")
+				createdBy, fmt.Sprintf("你的活动「%s」已通过审核", title))
 		}
 		c.JSON(200, gin.H{"ok": true})
 	}
@@ -212,7 +220,7 @@ func RejectActivity(db *pgxpool.Pool) gin.HandlerFunc {
 			}
 			_, _ = db.Exec(c.Request.Context(),
 				"INSERT INTO notifications (user_id, type, title, content, is_read) VALUES ($1,'approval','活动已驳回',$2,0)",
-				createdBy, "你的活动「"+title+"」已被驳回："+reason)
+				createdBy, fmt.Sprintf("你的活动「%s」已被驳回：%s", title, reason))
 		}
 		c.JSON(200, gin.H{"ok": true})
 	}
@@ -258,7 +266,7 @@ func ModifyActivity(db *pgxpool.Pool) gin.HandlerFunc {
 			"SELECT created_by, title FROM activities WHERE id=$1", actID).Scan(&createdBy, &title); err == nil {
 			_, _ = db.Exec(c.Request.Context(),
 				"INSERT INTO notifications (user_id, type, title, content, is_read) VALUES ($1,'approval','活动需修改',$2,0)",
-				createdBy, "你的活动「"+title+"」需要修改："+req.Suggestion)
+				createdBy, fmt.Sprintf("你的活动「%s」需要修改：%s", title, req.Suggestion))
 		}
 		c.JSON(200, gin.H{"ok": true})
 	}
