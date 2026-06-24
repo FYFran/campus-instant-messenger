@@ -3,6 +3,7 @@ package handlers
 import (
 	log "campus-go/internal/logger"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -34,7 +35,7 @@ func ListActivities(db *pgxpool.Pool) gin.HandlerFunc {
 		rows, err := db.Query(c.Request.Context(),
 			`SELECT a.id, a.title, a.description, a.status, a.reward_type, a.signup_mode,
 				 a.max_participants, (SELECT COUNT(*) FROM signups WHERE activity_id=a.id),
-				 a.hours, a.activity_date, a.deadline, a.location,
+				 a.hours, COALESCE(a.activity_date,''), COALESCE(a.deadline,''), a.location,
 				 a.scope_type, a.scope_value, COALESCE(u.name,'') as creator_name,
 				 a.created_at, a.gender_limit, COALESCE(a.signup_start,''),
 				 COALESCE(a.contact_qq,''), COALESCE(a.contact_phone,''), COALESCE(a.qq_group,''),
@@ -117,7 +118,7 @@ func GetActivity(db *pgxpool.Pool) gin.HandlerFunc {
 		err = db.QueryRow(c.Request.Context(),
 			`SELECT a.id, a.title, a.description, a.status, a.reward_type, a.signup_mode,
 				 a.max_participants, (SELECT COUNT(*) FROM signups WHERE activity_id=a.id),
-				 a.hours, a.activity_date, a.deadline, a.location,
+				 a.hours, COALESCE(a.activity_date,''), COALESCE(a.deadline,''), a.location,
 				 a.scope_type, a.scope_value, COALESCE(u.name,'') as creator_name,
 				 a.created_at, a.gender_limit, COALESCE(a.creator_override,'') as creator_override,
 				 COALESCE(a.college,'')
@@ -354,7 +355,7 @@ func CancelSignup(db *pgxpool.Pool) gin.HandlerFunc {
 					}
 					if _, err := tx.Exec(c.Request.Context(),
 						"INSERT INTO notifications (user_id, type, title, content, is_read) VALUES ($1,'lottery','候补中签', $2, 0)",
-						promotedUserID, "你已候补中签活动「"+actTitle+"」，请等待发布者完结发放学时"); err != nil {
+						promotedUserID, fmt.Sprintf("你已候补中签活动「%s」，请等待发布者完结发放学时", actTitle)); err != nil {
 						log.Printf("CancelSignup promote notify error: %v", err)
 					}
 				}

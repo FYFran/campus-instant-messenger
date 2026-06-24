@@ -76,6 +76,26 @@ func CreateActivity(db *pgxpool.Pool) gin.HandlerFunc {
 			c.JSON(400, gin.H{"detail": "活动地点不能超过200字符"})
 			return
 		}
+		if len(req.ContactQQ) > 20 {
+			c.JSON(400, gin.H{"detail": "QQ号格式不正确"})
+			return
+		}
+		if len(req.ContactPhone) > 20 {
+			c.JSON(400, gin.H{"detail": "手机号格式不正确"})
+			return
+		}
+		if len(req.QQGroup) > 30 {
+			c.JSON(400, gin.H{"detail": "QQ群号格式不正确"})
+			return
+		}
+		if len(req.ImageURL) > 500 {
+			c.JSON(400, gin.H{"detail": "图片URL过长"})
+			return
+		}
+		if len(req.FormLink) > 500 {
+			c.JSON(400, gin.H{"detail": "表单链接过长"})
+			return
+		}
 
 		status := "published"
 		if role == "student" {
