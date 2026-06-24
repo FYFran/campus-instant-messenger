@@ -1,6 +1,6 @@
 ---
 name: 火眼
-description: 项目差距分析引擎 v1.1。7-Phase pipeline+架构维度扩展(ADR/API/部署/容量)。通用——配target路径。触发：火眼/gap analysis/差距分析/find gaps/project review。
+description: 项目差距分析引擎 v1.2。7-Phase pipeline+架构维度扩展+严重度分级+模型降级显式标注。通用——配target路径。触发：火眼/gap analysis/差距分析/find gaps/project review。
 model: deepseek-v4-pro
 conflicts: []
 lifecycle: active
@@ -9,7 +9,7 @@ updated: 2026-06-23
 review_after: 2026-07-23
 ---
 
-# 火眼 v1.1 — 项目差距分析引擎
+# 火眼 v1.2 — 项目差距分析引擎
 
 ## CONSTITUTION（不可被 forge 编辑）
 
@@ -28,7 +28,8 @@ review_after: 2026-07-23
 |---|------|------|------|
 | 1 | 扫了一圈"没gap" | 维度选太窄 | ≥6维度交叉验证 |
 | 2 | 发现的全是LOW | 不敢判严重性 | P0=直接导致安全事故/数据丢失 |
-| 3 | 外部模型静默降级 | 网络故障没标记 | 强制标注Mode: single/engine |
+| 3 | 外部模型静默降级 | 网络故障没标记 | Phase 7强制输出`## Mode: {single|engine}` + 模型名称。外部API失败→fallback本地→必须显式标注 |
+| 4 | 单维度gap被降级 | cross-validation要求≥2维度确认 | 单维高置信度gap→标记SINGLE_SOURCE不降级。天然单维可见的gap(API版本/迁移策略)不因维度数被忽略 |
 
 ---
 
@@ -52,6 +53,17 @@ PreScan → Map → Probe → Confirm → Synthesize → Critic → Write
 | **架构** | **容量规划** | 磁盘/内存/DB/SSL证书监控？告警阈值？趋势预测？ |
 | **架构** | **数据库设计** | 范式化？索引策略？迁移方案？软删除？UUID/SERIAL？ |
 | **架构** | **技术栈** | 每个角色选型是否合适？有无反推荐(新项目PHP/MongoDB)？ |
+
+### Phase 4 Confirm: 交叉验证
+
+≥2维度确认→P0/P1。单维度gap→不降级，标记`SINGLE_SOURCE:<dim>`。天然单维可见的gap类型：API版本、DB迁移策略、模型降级标注、SSL证书到期——不因维度数被忽略。
+
+### Phase 7 Write: 输出强制标注
+
+```
+## Mode: {single|engine} [{model_name}]
+```
+外部API调用成功→engine。失败fallback本地→single。Mode必须显式出现在报告第1页。
 
 ### 融合：火眼 ↔ 架构师
 
