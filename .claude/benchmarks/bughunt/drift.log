@@ -46,3 +46,15 @@
 {"skill": "试金石", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T00:05:19.607440"}
 {"skill": "轮回", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T00:05:19.608067"}
 {"skill": "火眼", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T00:05:19.608568"}
+{"skill": "铁壁", "status": "WARNING", "score": 7, "failed": ["constitution"], "timestamp": "2026-06-24T08:20:33.273326"}
+{"skill": "缉凶", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.276716"}
+{"skill": "明镜", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.277377"}
+{"skill": "布阵", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.278223"}
+{"skill": "门神", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.278809"}
+{"skill": "破阵", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.279353"}
+{"skill": "天眼", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.280194"}
+{"skill": "架构师", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.281049"}
+{"skill": "试金石", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.281878"}
+{"skill": "轮回", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.282451"}
+{"skill": "火眼", "status": "STABLE", "score": 8, "failed": [], "timestamp": "2026-06-24T08:20:33.283275"}
+{"skill": "明镜", "status": "OPTIMIZED", "score": 8, "version": "2.2", "baseline_score": 20, "max_score": 24, "pct": 83.3, "changes": ["Severity Rubric", "Phase1 4步模板(找→追→验→判)", "13类检查清单具体化", "Gotcha#7跨skill操作化"], "timestamp": "2026-06-24T12:00:00"}
