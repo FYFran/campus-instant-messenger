@@ -91,9 +91,20 @@ bughunt/
 
 ## 最新成绩
 
+**2026-06-24 铁壁 v2.2 飞轮闭环:**
+- 铁壁 v2.0 基线 → GEPA 5模式 → 轮回 2轮(8处修改) → v2.2
+- 基线: S02存储XSS 发现 7/8
+- Round 1 lift: +RateLimit端点维度 +Step2逐handler输入清洗 +Step5跨栈 +Phase3 gate
+- Round 2 lift: +Severity Rubric +3Q攻击场景测试 +Step6/7最低标准
+- Step 6 lift: 0→2 findings (HIGH no-HTTPS, MEDIUM unsafe-eval)
+- 体积: 5193B → 7304B (+40.7%, <150% 红线)
+- 完整安全报告: `.audits/campus_go_security_audit_20260624.md` (2 HIGH, 2 MEDIUM, 0 假阳性)
+
+**2026-06-24 缉凶 v3.3 封版:** 6.85/8 (+14% vs v2.0)
+
 **2026-06-21 完整跑分:** 53/70 = 75.7% (10 bugs, 缉凶 v2.0)
 
-详见 [RUN_2026-06-21.md](RUN_2026-06-21.md)
+详见 [RUN_2026-06-21.md](RUN_2026-06-21.md) | [铁壁 baseline](scores/铁壁_baseline_20260624.md)
 
 ## 设计依据
 

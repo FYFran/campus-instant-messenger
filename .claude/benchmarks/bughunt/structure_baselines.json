@@ -1,13 +1,13 @@
 {
   "铁壁": {
-    "size": 5193,
+    "size": 7304,
     "gotcha_count": 14,
-    "constitution_hash": "6205671db0b6c848d3c0283fb7dab1fa",
+    "constitution_hash": "7cf3ea4a206eac2a4721d485a0cec250",
     "red_line_count": 1
   },
   "缉凶": {
-    "size": 3941,
-    "gotcha_count": 15,
+    "size": 4359,
+    "gotcha_count": 17,
     "constitution_hash": "b8558f79b555e73f551e2da6b3ddaee5",
     "red_line_count": 6
   },
